@@ -5,44 +5,37 @@
 <footer id="footer" class="bg-dark text-white py-5">
     <div class="container">
         <div class="row">
-            <div class="col-lg-3 col-12">
-                <h4 class="font-rubik font-size-20">Mobile Shopee</h4>
-                <p class="font-size-14 font-rale text-white-50">Lorem ipsum dolor sit amet consectetur, adipisicing elit. Repellendus, deserunt.</p>
+            <div class="col-lg-2 col-12">
+                <img width="100" src="./assets/logo_flower.png" alt="logo" class="logo">
             </div>
             <div class="col-lg-4 col-12">
-                <h4 class="font-rubik font-size-20">Newslatter</h4>
-                <form class="form-row">
-                    <div class="col">
-                        <input type="text" class="form-control" placeholder="Email *">
-                    </div>
-                    <div class="col">
-                        <button type="submit" class="btn btn-primary mb-2">Subscribe</button>
-                    </div>
-                </form>
-            </div>
-            <div class="col-lg-2 col-12">
-                <h4 class="font-rubik font-size-20">Information</h4>
+                <h4 class="font-rubik font-size-20">About</h4>
                 <div class="d-flex flex-column flex-wrap">
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">About Us</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Delivery Information</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Privacy Policy</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Terms & Conditions</a>
+                    <p class="font-size-14 font-rale text-white-50">
+                        Niên Flower thành lập năm 2024. Chúng tôi là cửa hàng bán hoa uy tín tại Việt Nam , chuyên cung cấp các loại hoa đẹp, chất lượng, giá rẻ nhất thị trường.
+                    </p>
+                </div>
+
+            </div>
+            <div class="col-lg-3 col-12">
+                <h4 class="font-rubik font-size-20">Feature</h4>
+                <div class="d-flex flex-column flex-wrap">
+                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Giỏ hàng</a>
+                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Blog</a>
                 </div>
             </div>
-            <div class="col-lg-2 col-12">
-                <h4 class="font-rubik font-size-20">Account</h4>
+            <div class="col-lg-3 col-12">
+                <h4 class="font-rubik font-size-20">Contact</h4>
                 <div class="d-flex flex-column flex-wrap">
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">My Account</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Order History</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Wish List</a>
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Newslatters</a>
+                    <p class="font-rale font-size-14 text-white-50 pb-1">Hotline: 0763651041</p>
+                    <p class="font-rale font-size-14 text-white-50 pb-1">Address: Hoà Khương, Hoà Vang TP Đà Nẵng</p>
                 </div>
             </div>
         </div>
     </div>
 </footer>
 <div class="copyright text-center bg-dark text-white py-2">
-    <p class="font-rale font-size-14">&copy; Copyrights 2020. Desing By <a href="#" class="color-second">Daily Tuition</a></p>
+    <p class="font-rale font-size-14">&copy; Copyrights 2024. Desing By <span class="color-second">Niên Flower</span></p>
 </div>
 <!-- !start #footer -->
 
@@ -59,4 +52,5 @@
 <!-- Custom Javascript -->
 <script src="index.js"></script>
 </body>
+
 </html>
