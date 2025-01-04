@@ -19,14 +19,14 @@ $in_cart = $Cart->getCartId($product->getData('cart'));
 <section id="special-price">
     <div class="container">
         <h4 class="font-rubik font-size-20">Special Price</h4>
-        <div id="filters" class="button-group text-right font-baloo font-size-16">
+        <!-- <div id="filters" class="button-group text-right font-baloo font-size-16">
             <button class="btn is-checked" data-filter="*">All Brand</button>
             <?php
                 array_map(function ($brand){
                     printf('<button class="btn" data-filter=".%s">%s</button>', $brand, $brand);
                 }, $unique);
             ?>
-        </div>
+        </div> -->
 
         <div class="grid">
             <?php array_map(function ($item) use($in_cart){ ?>

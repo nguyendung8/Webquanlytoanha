@@ -38,7 +38,7 @@
 
     <!-- Primary Navigation -->
     <nav style=" background: #d76868;" class="navbar navbar-expand-lg navbar-dark color-header-bg">
-        <a class="navbar-brand" href="#">
+        <a class="navbar-brand" href="./index.php">
             <img width="80" src="./assets/logo_flower.png" alt="logo" class="logo">
         </a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -60,9 +60,6 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">Category <i class="fas fa-chevron-down"></i></a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="#">Coming Soon</a>
                 </li>
             </ul>
             <form action="#" class="font-size-14 font-rale">
