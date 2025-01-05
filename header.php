@@ -44,8 +44,8 @@
         <div class="strip d-flex justify-content-between px-4 py-1 bg-light">
             <p class="font-rale font-size-12 text-black-50 m-0">Niên Flower - 0763651041 - Hoà Khương, Hoà Vang - TP Đà Nẵng</p>
             <div class="font-rale font-size-14">
-                <a href="#" class="px-3 border-right border-left text-dark">Login</a>
-                <!-- <a href="#" class="px-3 border-right text-dark">Whishlist (0)</a> -->
+                <a href="#" class="px-3 text-dark">Đăng ký</a>
+                <a href="./login.php" class="px-3 border-right border-left text-dark">Đăng nhập</a>
             </div>
         </div>
 
