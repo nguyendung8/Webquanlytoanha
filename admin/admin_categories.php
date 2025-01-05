@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:login.php');
+    header('location:../login.php');
     exit();
 }
 
@@ -34,8 +34,6 @@ if (isset($_GET['delete'])) {
     } else {
         $message[] = 'Xóa danh mục thất bại!';
     }
-    header('location:admin_categories.php');
-    exit();
 }
 
 // Cập nhật danh mục
@@ -50,8 +48,6 @@ if (isset($_POST['update_category'])) {
     } else {
         $message[] = 'Cập nhật danh mục thất bại!';
     }
-    header('location:admin_categories.php');
-    exit();
 }
 ?>
 
@@ -72,9 +68,21 @@ if (isset($_POST['update_category'])) {
 <body>
     <div class="d-flex">
         <?php include 'admin_navbar.php'; ?>
-        <div style="width: calc(100% - 250px);">
+        <div class="manage-container">
+        <?php
+            //nhúng vào các trang bán hàng
+            if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
+                foreach ($message as $msg) {
+                    echo '
+                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                        <span style="font-size: 16px;">' . $msg . '</span>
+                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                    </div>';
+                }
+            }
+            ?>
             <div class="bg-primary text-white text-center py-2 mb-4 shadow">
-                <h1 class="mb-0">Quản lý danh mục</h1>
+                <h1 class="mb-0">Quản Lý Danh Mục</h1>
             </div>
 
             <!-- Thêm danh mục mới -->

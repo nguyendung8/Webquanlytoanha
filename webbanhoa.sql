@@ -79,3 +79,12 @@ TABLE `products` (
   `item_image` varchar(255) NOT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 )
+
+TABLE `users` (
+  `user_id` int(11) NOT NULL,
+  `username` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` varchar(255) default 'user' NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+)

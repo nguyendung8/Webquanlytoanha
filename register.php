@@ -6,7 +6,6 @@ if (isset($_POST['submit'])) {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, md5($_POST['password']));
     $confirm_password = mysqli_real_escape_string($conn, md5($_POST['confirm_password']));
-    $role = 'user';
 
     // Kiểm tra email đã tồn tại chưa
     $select_user = mysqli_query($conn, "SELECT * FROM `users` WHERE email = '$email'") or die('Query failed');
@@ -18,7 +17,7 @@ if (isset($_POST['submit'])) {
             $message[] = 'Mật khẩu không khớp!';
         } else {
             // Thêm tài khoản vào bảng `users`
-            mysqli_query($conn, "INSERT INTO `users` (username, email, password, role) VALUES('$name', '$email', '$password', '$role')") or die('Query failed');
+            mysqli_query($conn, "INSERT INTO `users` (username, email, password) VALUES('$name', '$email', '$password')") or die('Query failed');
             $message[] = 'Đăng ký thành công!';
             header('location:login.php');
         }
@@ -28,6 +27,7 @@ if (isset($_POST['submit'])) {
 
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -35,9 +35,24 @@ if (isset($_POST['submit'])) {
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="./admin/admin_style.css">
 </head>
 
-<body class="bg-light">
+<body class="background">
+    <?php
+    //nhúng vào các trang bán hàng
+    if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
+        foreach ($message as $msg) {
+            echo '
+                            <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                                <span style="font-size: 16px;">' . $msg . '</span>
+                                <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                            </div>';
+        }
+    }
+    ?>
     <div class="container d-flex justify-content-center align-items-center vh-100">
         <div class="card shadow" style="width: 400px; border-radius: 15px;">
             <div class="card-header text-center bg-primary text-white" style="border-radius: 15px 15px 0 0;">
@@ -78,7 +93,7 @@ if (isset($_POST['submit'])) {
                     <button type="submit" name="submit" class="btn btn-primary w-100">Đăng ký ngay</button>
                 </form>
                 <p class="text-center mt-3">
-                    Bạn đã có tài khoản? 
+                    Bạn đã có tài khoản?
                     <a href="login.php" class="text-primary text-decoration-none">Đăng nhập</a>
                 </p>
             </div>
@@ -88,4 +103,5 @@ if (isset($_POST['submit'])) {
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>
