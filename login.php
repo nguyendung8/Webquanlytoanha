@@ -3,7 +3,6 @@ include 'database/DBController.php';
 session_start();
 
 if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submit"
-    
    $email = mysqli_real_escape_string($conn, $_POST['email']);
    $password = mysqli_real_escape_string($conn, md5($_POST['password'])); // Mã hóa mật khẩu bằng md5
 
@@ -60,7 +59,7 @@ if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submi
                         <label for="password" class="form-label">Mật khẩu</label>
                         <input type="password" id="password" name="password" class="form-control" placeholder="Nhập mật khẩu" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Đăng nhập</button>
+                    <input type="submit" name="submit" class="btn btn-primary w-100" value="Đăng nhập">
                 </form>
                 <p class="text-center mt-3">
                     Bạn chưa có tài khoản? 

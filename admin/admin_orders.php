@@ -1,5 +1,6 @@
 <?php
-include 'config.php';
+include '../database/DBController.php';
+
 session_start();
 
 // Kiểm tra admin đăng nhập

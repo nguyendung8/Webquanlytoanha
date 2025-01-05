@@ -1,5 +1,6 @@
 <?php
-include 'database/DBController.php';
+include '../database/DBController.php';
+
 
 session_start();
 

@@ -68,7 +68,7 @@ TABLE `orders` (
 -- Table structure for table `product`
 --
 
-TABLE `product` (
+TABLE `products` (
   `item_id` int(11) NOT NULL,
   `item_brand` varchar(255) NOT NULL,
   `item_category` int(11) NOT NULL,
