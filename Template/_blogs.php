@@ -1,4 +1,16 @@
+<?php
 
+    // request method post
+    if($_SERVER['REQUEST_METHOD'] == "POST"){
+        if (isset($_POST['top_sale_submit'])){
+            // call method addToCart
+            $Cart->addToCart($_POST['user_id'], $_POST['item_id']);
+        }
+    }
+    $select_blog =  mysqli_query($conn, "SELECT * FROM `blogs` limit 3") or die('Query failed');
+    $selectBlogs = mysqli_fetch_all($select_blog, MYSQLI_ASSOC);
+
+?>
 <!-- Blogs -->
 <section id="blogs">
     <div class="container py-4">
@@ -6,30 +18,16 @@
         <hr>
 
         <div class="owl-carousel owl-theme">
+            <?php foreach ($selectBlogs as $item) { ?>
             <div class="item">
                 <div class="card border-0 font-rale mr-5" style="width: 18rem;">
-                    <h5 class="card-title font-size-16">Upcoming Mobiles</h5>
-                    <img src="./assets/blog/blog1.jpg" alt="cart image" class="card-img-top">
-                    <p class="card-text font-size-14 text-black-50 py-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis non iste sequi cupiditate tempora iure. Velit accusamus saepe harum sed.</p>
-                    <a href="#" class="color-second text-left">Go somewhere</a>
+                    <h5 style="min-height: 39px;" class="card-title font-size-16"><?php echo $item['title']; ?></h5>
+                    <img style="min-height: 242px;" src="./assets/blog/<?php echo $item['image']; ?>" alt="cart image" class="card-img-top">
+                    <p class="card-text font-size-14 text-black-50 py-1"><?php echo $item['description']; ?></p>
+                    <a href="#" class="color-second text-left">Xem chi tiết</a>
                 </div>
             </div>
-            <div class="item">
-                <div class="card border-0 font-rale mr-5" style="width: 18rem;">
-                    <h5 class="card-title font-size-16">Upcoming Mobiles</h5>
-                    <img src="./assets/blog/blog2.jpg" alt="cart image" class="card-img-top">
-                    <p class="card-text font-size-14 text-black-50 py-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis non iste sequi cupiditate tempora iure. Velit accusamus saepe harum sed.</p>
-                    <a href="#" class="color-second text-left">Go somewhere</a>
-                </div>
-            </div>
-            <div class="item">
-                <div class="card border-0 font-rale mr-5" style="width: 18rem;">
-                    <h5 class="card-title font-size-16">Upcoming Mobiles</h5>
-                    <img src="./assets/blog/blog3.jpg" alt="cart image" class="card-img-top">
-                    <p class="card-text font-size-14 text-black-50 py-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Veritatis non iste sequi cupiditate tempora iure. Velit accusamus saepe harum sed.</p>
-                    <a href="#" class="color-second text-left">Go somewhere</a>
-                </div>
-            </div>
+            <?php } ?>
         </div>
     </div>
 </section>

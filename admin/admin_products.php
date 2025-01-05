@@ -1,6 +1,5 @@
 <?php
 include '../database/DBController.php';
-
 session_start();
 
 $admin_id = $_SESSION['admin_id'];
@@ -94,21 +93,18 @@ if (isset($_POST['update_product'])) {
     }
 }
 
-// Get the current page number, default to 1 if not set
+// Phân trang
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$limit = 8; // Number of items per page
-$offset = ($page - 1) * $limit; // Offset for SQL query
+$limit = 6;
+$offset = ($page - 1) * $limit; 
 
-// Count the total number of products
 $total_products_query = mysqli_query($conn, "SELECT COUNT(*) AS total FROM `products`") or die('Query failed');
 $total_products = mysqli_fetch_assoc($total_products_query)['total'];
 
-// Fetch the products for the current page
 $select_products = mysqli_query($conn, "SELECT p.*, c.name AS category_name FROM `products` p 
 LEFT JOIN `categories` c ON p.item_category = c.id 
 ORDER BY p.created_at DESC LIMIT $limit OFFSET $offset") or die('Query failed');
 
-// Calculate total number of pages
 $total_pages = ceil($total_products / $limit);
 ?>
 

@@ -43,9 +43,14 @@ body {
   border-radius: 4px;
   transition: all 0.3s;
 }
+.logout-btn:hover {
+    opacity: 0.8 !important;
+    background-color: #dc3545 !important;
+}
 
 .sidebar a:hover {
-  background-color: #495057; /* Slightly lighter color */
+  background-color: #007bff; /* Primary Bootstrap color */
+  color: white;
 }
 
 .sidebar a.active {
