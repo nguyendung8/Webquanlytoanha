@@ -1,7 +1,11 @@
 <?php
 ob_start();
+session_start();
+
 // include header.php file
 include ('header.php');
+include './database/DBController.php';
+
 ?>
 
 <?php
@@ -15,7 +19,7 @@ include ('header.php');
 
 
     /*  include top sale section */
-        include ('Template/_new-phones.php');
+        // include ('Template/_new-phones.php');
     /*  include top sale section */
 
 ?>
