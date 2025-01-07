@@ -11,7 +11,7 @@ include './database/DBController.php';
 <?php
 
     /*  include cart items if it is not empty */
-        count($product->getData('cart')) ? include ('Template/_cart-template.php') :  include ('Template/notFound/_cart_notFound.php');
+        include ('Template/_list_blog.php');
     /*  include cart items if it is not empty */
          include('./message.php');
 

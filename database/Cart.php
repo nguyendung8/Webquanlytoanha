@@ -15,7 +15,6 @@ class Cart
     public  function insertIntoCart($params = null, $table = "cart"){
         if ($this->db->con != null){
             if ($params != null){
-                // "Insert into cart(user_id) values (0)"
                 // get table columns
                 $columns = implode(',', array_keys($params));
 
@@ -31,23 +30,44 @@ class Cart
         }
     }
 
-    // to get user_id and item_id and insert into cart table
-    public  function addToCart($userid, $itemid){
-        if (isset($userid) && isset($itemid)){
-            $params = array(
-                "user_id" => $userid,
-                "item_id" => $itemid
-            );
-
-            // insert data into cart
-            $result = $this->insertIntoCart($params);
-            if ($result){
-                // Reload Page
-                header("Location: " . $_SERVER['PHP_SELF']);
-            }
+    public function deleteAllCart($user_id = null){
+        if ($this->db->con != null){
+            $result = $this->db->con->query("DELETE FROM cart WHERE user_id={$user_id}");
+            return $result;
         }
     }
 
+    // to get user_id and item_id and insert into cart table
+    public function addToCart($userid, $itemid){
+        if (isset($userid) && isset($itemid)){
+            // Kiểm tra xem sản phẩm đã có trong giỏ hay chưa
+            $checkCart = mysqli_query($this->db->con, "SELECT * FROM cart WHERE user_id = {$userid} AND item_id = {$itemid}");
+            
+            // Nếu sản phẩm đã có trong giỏ, tăng số lượng lên 1
+            if (mysqli_num_rows($checkCart) > 0) {
+                // Cập nhật số lượng sản phẩm trong giỏ
+                $updateQuery = "UPDATE cart SET quantity = quantity + 1 WHERE user_id = {$userid} AND item_id = {$itemid}";
+                $result = mysqli_query($this->db->con, $updateQuery);
+                if ($result) {
+                    // Reload Page
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                }
+            } else {
+                // Nếu sản phẩm chưa có trong giỏ, thêm mới vào giỏ
+                $params = array(
+                    "user_id" => $userid,
+                    "item_id" => $itemid,
+                    "quantity" => 1 // Số lượng mặc định khi thêm mới
+                );
+                $result = $this->insertIntoCart($params);
+                if ($result) {
+                    // Reload Page
+                    header("Location: " . $_SERVER['PHP_SELF']);
+                }
+            }
+        }
+    }
+    
     // delete cart item using cart item id
     public function deleteCart($item_id = null, $table = 'cart'){
         if($item_id != null){
@@ -59,16 +79,31 @@ class Cart
         }
     }
 
-    // calculate sub total
-    public function getSum($arr){
-        if(isset($arr)){
-            $sum = 0;
-            foreach ($arr as $item){
-                $sum += floatval($item[0]);
+    public function getSum($cartItems){
+        $sum = 0;
+    
+        if(isset($cartItems)){
+            foreach ($cartItems as $cartItem){
+                // Lấy item_id và quantity từ cart
+                $itemId = $cartItem['item_id'];
+                $quantity = intval($cartItem['quantity']);
+    
+                // Lấy giá sản phẩm từ bảng products
+                $result = mysqli_query($this->db->con, "SELECT item_price FROM products WHERE item_id = {$itemId}");
+                $item = mysqli_fetch_assoc($result);
+    
+                // Kiểm tra xem có giá trị item_price không
+                if ($item) {
+                    $itemPrice = floatval($item['item_price']); // Giá của sản phẩm
+                    $sum += $itemPrice * $quantity; // Tính tổng tiền của sản phẩm
+                }
             }
-            return sprintf('%.2f' , $sum);
         }
+    
+        // Trả về tổng tiền đã định dạng
+        return number_format($sum, 0, ',', '.');
     }
+    
 
     // get item_it of shopping cart list
     public function getCartId($cartArray = null, $key = "item_id"){
@@ -94,6 +129,14 @@ class Cart
             }
             return $result;
         }
+    }
+
+    public function updateQuantity($item_id, $quantity) {
+        // Update quantity for the given item ID
+        $query = "UPDATE cart SET quantity = ? WHERE item_id = ?";
+        $stmt = $this->db->con->prepare($query);
+        $stmt->bind_param("ii", $quantity, $item_id);
+        $stmt->execute();
     }
 
 

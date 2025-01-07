@@ -39,7 +39,7 @@ $user_id = @$_SESSION['user_id'];
         }
 
         .search-product {
-            width: 400px;
+            width: 300px;
             margin-right: 50px;
         }
 
@@ -123,12 +123,18 @@ $user_id = @$_SESSION['user_id'];
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav m-auto font-rubik">
+                <ul class="navbar-nav m-auto font-size-20">
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Category <i class="fas fa-chevron-down"></i></a>
+                        <a class="nav-link" href="./index.php">Trang chủ</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Blog</a>
+                        <a class="nav-link" href="#">Danh mục <i class="fas fa-chevron-down font-size-16"></i></a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./blog.php">Blog</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./order.php">Đơn hàng</a>
                     </li>
                 </ul>
                 <input type="text" class="form-control search-product" placeholder="Search">
@@ -136,7 +142,7 @@ $user_id = @$_SESSION['user_id'];
                     <a href="cart.php" class="py-2 rounded-pill color-primary-bg">
                         <span class="font-size-16 px-2 text-white"><i class="fas fa-shopping-cart"></i></span>
                         <span
-                            class="px-3 py-2 rounded-pill text-dark bg-light"><?php echo count($product->getData('cart')); ?></span>
+                            class="px-3 py-2 rounded-pill text-dark bg-light"><?php echo count($product->getCartData($user_id ?? 0)); ?></span>
                     </a>
                 </form>
             </div>

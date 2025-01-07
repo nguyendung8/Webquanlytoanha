@@ -16,7 +16,8 @@ TABLE `blogs` (
 TABLE `cart` (
   `cart_id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `item_id` int(11) NOT NULL
+  `item_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
 )
 
 -- --------------------------------------------------------
@@ -87,4 +88,12 @@ TABLE `users` (
   `password` varchar(255) NOT NULL,
   `role` varchar(255) default 'user' NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+)
+
+TABLE `order_details` (
+  `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `order_id` int(11) NOT NULL,
+  `item_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `price` int(11) NOT NULL
 )

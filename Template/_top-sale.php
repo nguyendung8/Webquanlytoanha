@@ -1,7 +1,7 @@
 <!-- Top Sale -->
 <?php
 $user_id = @$_SESSION['user_id'];
-    // request method post
+    // Thêm vào giỏ
     if($_SERVER['REQUEST_METHOD'] == "POST"){
         if (isset($_POST['top_sale_submit'])){
             // call method addToCart
@@ -48,7 +48,6 @@ $user_id = @$_SESSION['user_id'];
                                 echo '<button type="submit" name="top_sale_submit" class="btn btn-warning font-size-12">Thêm vào giỏ</button>';
                             }
                             ?>
-
                         </form>
                     </div>
                 </div>

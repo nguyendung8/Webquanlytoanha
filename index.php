@@ -7,15 +7,19 @@ $user_id = @$_SESSION['user_id'];
 include './database/DBController.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Lấy dữ liệu từ form
-    $mess = mysqli_real_escape_string($conn, $_POST['message']);
-    
-    // Thêm dữ liệu vào bảng `message`
-    $insert_query = "INSERT INTO `message` (user_id, message) VALUES ('$user_id', '$mess')";
-    if (mysqli_query($conn, $insert_query)) {
-        $message[] = 'Tin nhắn đã được gửi!';
+    if (!isset($_SESSION['user_id'])) {
+        $message[] = 'Vui lòng đăng nhập để gửi tin nhắn.';
     } else {
-        $message[] = 'Lỗi khi gửi tin nhắn.';
+        // Lấy dữ liệu từ form
+        $mess = mysqli_real_escape_string($conn, $_POST['message']);
+        
+        // Thêm dữ liệu vào bảng `message`
+        $insert_query = "INSERT INTO `message` (user_id, message) VALUES ('$user_id', '$mess')";
+        if (mysqli_query($conn, $insert_query)) {
+            $message[] = 'Tin nhắn đã được gửi!';
+        } else {
+            $message[] = 'Lỗi khi gửi tin nhắn.';
+        }
     }
 }
 

@@ -12,8 +12,22 @@ class Product
     }
 
     // fetch product data using getData Method
-    public function getData($table = 'products'){
-        $result = $this->db->con->query("SELECT * FROM {$table}");
+    public function getData($table = 'products', $user_id = null){
+        $result = $this->db->con->query("SELECT * FROM {$table} ");
+
+        $resultArray = array();
+
+        // fetch product data one by one
+        while ($item = mysqli_fetch_array($result, MYSQLI_ASSOC)){
+            $resultArray[] = $item;
+        }
+
+        return $resultArray;
+    }
+
+     // fetch product data using getData Method
+     public function getCartData($user_id = null){
+        $result = $this->db->con->query("SELECT * FROM cart WHERE user_id = {$user_id}");
 
         $resultArray = array();
 

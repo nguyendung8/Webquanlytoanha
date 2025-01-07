@@ -70,67 +70,53 @@ $(document).ready(function(){
         }
     })
 
-
     // product qty section
-    let $qty_up = $(".qty .qty-up");
-    let $qty_down = $(".qty .qty-down");
-    let $deal_price = $("#deal-price");
-    // let $input = $(".qty .qty_input");
+let $qty_up = $(".qty .qty-up");
+let $qty_down = $(".qty .qty-down");
+let $deal_price = $("#deal-price");
 
-    // click on qty up button
-    $qty_up.click(function(e){
+// click on qty up button
+$qty_up.click(function(e){
+    let $input = $(`.qty_input[data-id='${$(this).data("id")}']`);
+    let $price = $(`.product_price[data-id='${$(this).data("id")}']`);
+    let item_price = parseInt($price.data('price')); // Lấy giá trị item_price từ data-price
 
-        let $input = $(`.qty_input[data-id='${$(this).data("id")}']`);
-        let $price = $(`.product_price[data-id='${$(this).data("id")}']`);
+    if ($input.val() >= 1 && $input.val() < 9) { // Giới hạn số lượng từ 1 đến 9
+        $input.val(function(i, oldval) {
+            return ++oldval; // Tăng số lượng
+        });
 
-        // change product price using ajax call
-        $.ajax({url: "template/ajax.php", type : 'post', data : { itemid : $(this).data("id")}, success: function(result){
-                let obj = JSON.parse(result);
-                let item_price = obj[0]['item_price'];
+        // Tính giá mới của sản phẩm
+        let new_price = item_price * parseInt($input.val());
+        $price.text(new_price.toLocaleString() + ' đ'); // Hiển thị giá mới với định dạng
 
-                if($input.val() >= 1 && $input.val() <= 9){
-                    $input.val(function(i, oldval){
-                        return ++oldval;
-                    });
+        // Cập nhật lại tổng tiền
+        let subtotal = parseInt($deal_price.text().replace(/,/g, '')) + item_price; // Thêm vào tổng tiền
+        $deal_price.text(subtotal.toLocaleString() + ' đ'); // Hiển thị tổng tiền
+    }
+}); // closing qty up button
 
-                    // increase price of the product
-                    $price.text(parseInt(item_price * $input.val()).toFixed(2));
+// click on qty down button
+$qty_down.click(function(e){
+    let $input = $(`.qty_input[data-id='${$(this).data("id")}']`);
+    let $price = $(`.product_price[data-id='${$(this).data("id")}']`);
+    let item_price = parseInt($price.data('price')); // Lấy giá trị item_price từ data-price
 
-                    // set subtotal price
-                    let subtotal = parseInt($deal_price.text()) + parseInt(item_price);
-                    $deal_price.text(subtotal.toFixed(2));
-                }
+    if ($input.val() > 1 && $input.val() <= 10) { // Giới hạn số lượng từ 1 đến 10
+        $input.val(function(i, oldval) {
+            return --oldval; // Giảm số lượng
+        });
 
-            }}); // closing ajax request
-    }); // closing qty up button
+        // Tính giá mới của sản phẩm
+        let new_price = item_price * parseInt($input.val());
+        $price.text(new_price.toLocaleString() + ' đ'); // Hiển thị giá mới với định dạng
 
-    // click on qty down button
-    $qty_down.click(function(e){
+        // Cập nhật lại tổng tiền
+        let subtotal = parseInt($deal_price.text().replace(/,/g, '')) - item_price; // Trừ ra tổng tiền
+        $deal_price.text(subtotal.toLocaleString() + ' đ'); // Hiển thị tổng tiền
+    }
+}); // closing qty down button
 
-        let $input = $(`.qty_input[data-id='${$(this).data("id")}']`);
-        let $price = $(`.product_price[data-id='${$(this).data("id")}']`);
-
-        // change product price using ajax call
-        $.ajax({url: "template/ajax.php", type : 'post', data : { itemid : $(this).data("id")}, success: function(result){
-                let obj = JSON.parse(result);
-                let item_price = obj[0]['item_price'];
-
-                if($input.val() > 1 && $input.val() <= 10){
-                    $input.val(function(i, oldval){
-                        return --oldval;
-                    });
-
-
-                    // increase price of the product
-                    $price.text(parseInt(item_price * $input.val()).toFixed(2));
-
-                    // set subtotal price
-                    let subtotal = parseInt($deal_price.text()) - parseInt(item_price);
-                    $deal_price.text(subtotal.toFixed(2));
-                }
-
-            }}); // closing ajax request
-    }); // closing qty down button
 
 
 });
