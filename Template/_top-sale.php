@@ -1,6 +1,6 @@
 <!-- Top Sale -->
 <?php
-$user_id = @$_SESSION['user_id'];
+$user_id = @$_SESSION['user_id'] ?? 1;
     // Thêm vào giỏ
     if($_SERVER['REQUEST_METHOD'] == "POST"){
         if (isset($_POST['top_sale_submit'])){

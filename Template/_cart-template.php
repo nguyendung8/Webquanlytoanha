@@ -1,6 +1,6 @@
 <!-- Shopping cart section  -->
 <?php
-$user_id = $_SESSION['user_id'] ?? 0;
+$user_id = $_SESSION['user_id'] ?? 1;
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['delete-cart-submit'])) {
         $deletedrecord = $Cart->deleteCart($_POST['item_id']);

@@ -5,7 +5,7 @@ session_start();
 
 // Kiểm tra nếu người dùng đã đăng nhập và có tham số order_id
 if (!isset($_SESSION['user_id']) || !isset($_GET['order_id'])) {
-    header('Location: orders_list.php'); // Chuyển hướng nếu không đủ thông tin
+    header('Location: order.php'); // Chuyển hướng nếu không đủ thông tin
     exit();
 }
 
@@ -17,7 +17,7 @@ $query = "SELECT o.*, u.username, u.email FROM orders o JOIN users u ON o.user_i
 $result = mysqli_query($conn, $query) or die('Query failed');
 
 if (mysqli_num_rows($result) == 0) {
-    echo "<script>alert('Không tìm thấy đơn hàng!'); window.location.href='orders_list.php';</script>";
+    echo "<script>alert('Không tìm thấy đơn hàng!'); window.location.href='order.php';</script>";
     exit();
 }
 

@@ -1,5 +1,5 @@
 <?php
-$user_id = @$_SESSION['user_id'];
+$user_id = @$_SESSION['user_id'] ?? 1;  
 
 ?>
 <!DOCTYPE html>
@@ -69,6 +69,16 @@ $user_id = @$_SESSION['user_id'];
             align-items: center;
             justify-content: space-between;
         }
+        .dropdown-item:focus, .dropdown-item:hover {
+            background-color: #007bff;
+            color: white;
+        }
+        .search-btn {
+            position: absolute;
+            right: 49px;
+            border-radius: 0;
+            height: -webkit-fill-available;
+        }
     </style>
 
 </head>
@@ -94,7 +104,7 @@ $user_id = @$_SESSION['user_id'];
         <div class="strip d-flex justify-content-between px-4 py-1 bg-light">
             <p class="font-rale font-size-12 text-black-50 m-0">Niên Flower - 0763651041 - Hoà Khương, Hoà Vang - TP Đà
                 Nẵng</p>
-            <?php if ($user_id) { ?>
+            <?php if ($user_id && $user_id != 1) { ?>
                 <div class="user-dropdown" style="position: relative; display: inline-block;">
                     <i class="fas fa-user-circle" style="font-size: 30px; cursor: pointer;" id="userIcon"></i>
                     <!-- Dropdown menu -->
@@ -127,9 +137,19 @@ $user_id = @$_SESSION['user_id'];
                     <li class="nav-item">
                         <a class="nav-link" href="./index.php">Trang chủ</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Danh mục <i class="fas fa-chevron-down font-size-16"></i></a>
-                    </li>
+                   <?php 
+                        $categories = $product->getData('categories');
+                        ?>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Danh mục
+                            </a>
+                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <?php foreach ($categories as $category): ?>
+                                    <a class="dropdown-item" href="./category.php?cate_id=<?php echo $category['id'] ?>"><?= $category['name']; ?></a>
+                                <?php endforeach; ?>
+                            </div>
+                        </li>
                     <li class="nav-item">
                         <a class="nav-link" href="./blog.php">Blog</a>
                     </li>
@@ -137,7 +157,15 @@ $user_id = @$_SESSION['user_id'];
                         <a class="nav-link" href="./order.php">Đơn hàng</a>
                     </li>
                 </ul>
-                <input type="text" class="form-control search-product" placeholder="Search">
+                <form method="get" action="./search.php" class="">
+                    <div class="input-group">
+                        <?php $keyword = $_GET['keyword'] ?? ''; ?>
+                        <input type="text" name="keyword" class="form-control search-product" placeholder="Search" value="<?php echo $keyword; ?>">
+                        <div class="input-group-append">
+                            <button class="btn btn-primary search-btn" type="submit">Tìm kiếm</button>
+                        </div>
+                    </div>
+                </form>
                 <form action="#" class="font-size-14 font-rale">
                     <a href="cart.php" class="py-2 rounded-pill color-primary-bg">
                         <span class="font-size-16 px-2 text-white"><i class="fas fa-shopping-cart"></i></span>
