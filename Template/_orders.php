@@ -95,6 +95,7 @@ if ($result) {
                                             break;
                                         case 3:
                                             $statusColor = 'green';
+                                            break;
                                         case 4:
                                             $statusColor = 'red';
                                             break;
@@ -114,6 +115,7 @@ if ($result) {
                                                 break;
                                             case 3:
                                                 echo "Hoàn thành";
+                                                break;
                                             case 4:
                                                 echo "Đã hủy";
                                                 break;
@@ -137,6 +139,8 @@ if ($result) {
                                     <button type="submit" name="complete_order" class="btn btn-success">Hoàn thành</button>
                                 </form>
                             <?php endif; ?>
+
+                            <a href="order_detail.php?order_id=<?php echo $order['id']; ?>" class="btn btn-primary mt-2">Xem Chi tiết</a>
                         </div>
                     </div>
                 </div>
