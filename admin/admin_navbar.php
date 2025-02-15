@@ -14,7 +14,7 @@
 
    <div class="sidebar">
       <div class="logo">
-         <img src="../assets/logo_flower.png" alt="Logo" width="90">
+         <img src="../assets/logo_tl.webp" alt="Logo" width="120">
       </div>
       <a style="margin-bottom: 5px;" href="admin_products.php">
          <i class="menu-icon fa fa-box"></i> Sản phẩm
