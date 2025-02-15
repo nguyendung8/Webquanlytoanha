@@ -40,10 +40,12 @@ TABLE `categories` (
 
 TABLE `message` (
   `id` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL,
-  `message` varchar(255) NOT NULL
+  `sender_id` int(11) NOT NULL,
+  `receiver_id` int(11) NOT NULL,
+  `message` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `status` enum('sent','delivered','read') NOT NULL DEFAULT 'sent'
 )
-
 -- --------------------------------------------------------
 
 --

@@ -2,7 +2,7 @@
 <!-- !start #main-site -->
 
 <!-- start #footer -->
-<footer id="footer" class="bg-dark text-white py-5">
+<footer id="footer" class=" text-white py-5" style="background-color: #959595;">
     <div class="container">
         <div class="row">
             <div class="col-lg-2 col-12">
@@ -12,7 +12,7 @@
                 <h4 class="font-rubik font-size-20">About</h4>
                 <div class="d-flex flex-column flex-wrap">
                     <p class="font-size-14 font-rale text-white-50">
-                        Teelab thành lập năm 2025. Chúng tôi là cửa hàng bán quần áo uy tín tại Việt Nam , chuyên cung cấp các sản phẩm quần áo đẹp, chất lượng, giá rẻ nhất thị trường.
+                        TeeLab thành lập năm 2025. Chúng tôi là cửa hàng bán quần áo uy tín tại Việt Nam , chuyên cung cấp các sản phẩm quần áo đẹp, chất lượng, giá rẻ nhất thị trường.
                     </p>
                 </div>
 
@@ -35,7 +35,7 @@
     </div>
 </footer>
 <div class="copyright text-center bg-dark text-white py-2">
-    <p class="font-rale font-size-14">&copy; Copyrights 2025. Desing By <span class="color-second">Teelab</span></p>
+    <p class="font-rale font-size-14">&copy; Copyrights 2025. Desing By <span class="color-second">TeeLab</span></p>
 </div>
 <!-- !start #footer -->
 

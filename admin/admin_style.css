@@ -24,7 +24,7 @@ body {
   position: relative;
   min-width: 250px;
   min-height: 100vh;
-  background-color: #343a40; /* Dark Bootstrap color */
+  background-color: #959595; /* Dark Bootstrap color */
   color: white;
   padding-top: 20px;
   transition: all 0.3s;

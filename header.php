@@ -8,7 +8,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teelab</title>
+    <title>TeeLab</title>
 
     <!-- Bootstrap CDN -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
@@ -102,7 +102,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         }
         ?>
         <div class="strip d-flex justify-content-between px-4 py-1 bg-light">
-            <p class="font-rale font-size-12 text-black-50 m-0">Teelab - 0763651041 - Việt Nam</p>
+            <p class="font-rale font-size-12 text-black-50 m-0">TeeLab - 0763651041 - Việt Nam</p>
             <?php if ($user_id && $user_id != 1) { ?>
                 <div class="user-dropdown" style="position: relative; display: inline-block;">
                     <i class="fas fa-user-circle" style="font-size: 30px; cursor: pointer;" id="userIcon"></i>

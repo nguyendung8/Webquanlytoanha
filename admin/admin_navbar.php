@@ -12,7 +12,7 @@
 
 <body>
 
-   <div class="sidebar">
+   <div class="sidebar" style="background-color: #667791;">
       <div class="logo">
          <img src="../assets/logo_tl.webp" alt="Logo" width="120">
       </div>

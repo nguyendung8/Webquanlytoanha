@@ -13,3 +13,5 @@
     </div>
 </section>
 <!-- !Owl-carousel -->
+
+<script src="../index.js"></script>
