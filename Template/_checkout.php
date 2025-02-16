@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                     <div class="modal-body text-center">
                         <p>Quý khách vui lòng chuyển khoản theo thông tin bên dưới <br>
                             Nội dung: SĐT - Ngày đặt hàng</p>
-                        <img src="./assets/qr_code.png" alt="QR Code" class="img-fluid" style="max-width: 250px;">
+                        <img src="./assets/qr_ck.jpg" alt="QR Code" class="img-fluid" style="max-width: 250px;">
                         <br>
                         <strong class="">Chú ý: Ghi nội dung đầy đủ để chúng tôi kiểm tra đơn hàng</strong>
                         <p class="mt-3">Tổng tiền: <strong id="modal-total"></strong> đ</p>
