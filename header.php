@@ -91,7 +91,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
 
         global $message;
 
-        if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
+        if (isset($message) && is_array($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
             foreach ($message as $msg) {
                 echo '
        <div class=" alert alert-info alert-dismissible fade show" role="alert">
@@ -154,6 +154,9 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="./order.php">Đơn hàng</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="./personal.php">Hồ sơ cá nhân</a>
                     </li>
                 </ul>
                 <form method="get" action="./search.php" class="">
