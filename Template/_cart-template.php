@@ -56,6 +56,8 @@ if ($cartItems):
             $item_price = $singleItem['item_price']; // Giá sản phẩm
             $item_image = $singleItem['item_image']; // Hình ảnh sản phẩm
             $item_quantity = $cart['quantity']; // Số lượng trong giỏ hàng
+            $item_color = $cart['color'] ?? 'Không xác định'; // Màu sắc
+            $item_size = $cart['size'] ?? 'Không xác định'; // Kích cỡ
         ?>
 
                 <!-- cart item -->
@@ -66,7 +68,8 @@ if ($cartItems):
                     </div>
                     <div class="col-sm-8">
                         <h5 class="font-baloo font-size-20"><?php echo $item_name ?? "Unknown"; ?></h5>
-
+                        <p>Màu sắc: <?php echo $item_color; ?></p>
+                        <p>Kích cỡ: <?php echo $item_size; ?></p>
                         <!-- product qty -->
                         <div class="qty d-flex pt-2">
                             <!-- <div class="d-flex font-rale w-25">

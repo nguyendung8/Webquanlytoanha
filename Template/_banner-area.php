@@ -1,9 +1,9 @@
 <!-- Banner Area -->
 <section id="banner-area">
     <div class="slider">
-        <div class="item"><img src="./assets/slider_1.webp" alt="Banner1"></div>
-        <div class="item"><img src="./assets/slider_2.webp" alt="Banner2"></div>
-        <div class="item"><img src="./assets/slider_3.webp" alt="Banner3"></div>
+        <div class="item"><img src="./assets/slider-1.webp" alt="Banner1"></div>
+        <div class="item"><img src="./assets/slider-2.webp" alt="Banner2"></div>
+        <div class="item"><img src="./assets/slider-3.webp" alt="Banner3"></div>
     </div>
     <div class="dots">
         <span class="dot active"></span>

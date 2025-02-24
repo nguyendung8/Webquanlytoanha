@@ -1,4 +1,7 @@
 <?php
+
+ob_start();
+session_start();
 // include header.php file
 include ('header.php');
 include './database/DBController.php';

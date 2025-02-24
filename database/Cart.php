@@ -12,22 +12,30 @@ class Cart
     }
 
     // insert into cart table
-    public  function insertIntoCart($params = null, $table = "cart"){
-        if ($this->db->con != null){
-            if ($params != null){
-                // get table columns
-                $columns = implode(',', array_keys($params));
-
-                $values = implode(',' , array_values($params));
-
-                // create sql query
-                $query_string = sprintf("INSERT INTO %s(%s) VALUES(%s)", $table, $columns, $values);
-
-                // execute query
-                $result = $this->db->con->query($query_string);
+    public function insertIntoCart($params = null, $table = "cart") {
+        if ($this->db->con != null && $params != null) {
+            // Chuẩn bị câu lệnh SQL với prepared statement
+            $columns = implode(',', array_keys($params));
+            $placeholders = str_repeat('?,', count($params) - 1) . '?';
+            
+            $query = "INSERT INTO {$table} ({$columns}) VALUES ({$placeholders})";
+            
+            // Chuẩn bị statement
+            $stmt = $this->db->con->prepare($query);
+            
+            if ($stmt) {
+                // Bind các giá trị
+                $types = str_repeat('s', count($params)); // Assume all strings for safety
+                $stmt->bind_param($types, ...array_values($params));
+                
+                // Thực thi và trả về kết quả
+                $result = $stmt->execute();
+                $stmt->close();
                 return $result;
             }
+            return false;
         }
+        return false;
     }
 
     public function deleteAllCart($user_id = null){
@@ -38,7 +46,7 @@ class Cart
     }
 
     // to get user_id and item_id and insert into cart table
-    public function addToCart($userid, $itemid){
+    public function addToCart($userid, $itemid, $size, $color){
         if (isset($userid) && isset($itemid)){
             // Kiểm tra xem sản phẩm đã có trong giỏ hay chưa
             $checkCart = mysqli_query($this->db->con, "SELECT * FROM cart WHERE user_id = {$userid} AND item_id = {$itemid}");
@@ -48,16 +56,14 @@ class Cart
                 // Cập nhật số lượng sản phẩm trong giỏ
                 $updateQuery = "UPDATE cart SET quantity = quantity + 1 WHERE user_id = {$userid} AND item_id = {$itemid}";
                 $result = mysqli_query($this->db->con, $updateQuery);
-                if ($result) {
-                    // Reload Page
-                    header("Location: " . $_SERVER['PHP_SELF']);
-                }
             } else {
                 // Nếu sản phẩm chưa có trong giỏ, thêm mới vào giỏ
                 $params = array(
                     "user_id" => $userid,
                     "item_id" => $itemid,
-                    "quantity" => 1 // Số lượng mặc định khi thêm mới
+                    "quantity" => 1, // Số lượng mặc định khi thêm mới
+                    "size" => $size,
+                    "color" => $color
                 );
                 $result = $this->insertIntoCart($params);
                 if ($result) {

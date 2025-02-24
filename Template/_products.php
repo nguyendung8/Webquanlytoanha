@@ -10,22 +10,6 @@ $user_id = $_SESSION['user_id'] ?? 1;
         <div class="row">
             <div class="col-sm-6">
                 <img src="./assets/products/<?php echo $item['item_image'] ?>" alt="product" class="img-fluid">
-                <div class="form-row pt-4 font-size-16 font-baloo">
-                    <!-- <div class="col">
-                        <button type="submit" class="btn btn-danger form-control">Mua hàng</button>
-                    </div> -->
-                    <form method="post">
-                        <input type="hidden" name="item_id" value="<?php echo $item['item_id'] ?? '1'; ?>">
-                        <input type="hidden" name="user_id" value="<?php echo $user_id ?>">
-                        <?php
-                        if (in_array($item['item_id'], $Cart->getCartId($product->getData('cart')) ?? [])){
-                            echo '<button type="submit" disabled class="btn btn-success font-size-16 form-control">Đã có trong giỏ</button>';
-                        }else{
-                            echo '<button type="submit" name="top_sale_submit" class="btn btn-warning font-size-16 form-control">Thêm vào giỏ</button>';
-                        }
-                        ?>
-                    </form>
-                </div>
             </div>
             <div class="col-sm-6 py-5">
                 <h5 class="font-baloo font-size-20"><?php echo $item['item_name'] ?? "Unknown"; ?></h5>
@@ -53,10 +37,7 @@ $user_id = $_SESSION['user_id'] ?? 1;
                             <span><?php echo number_format($item['item_price'], 0, ',', '.'); ?> đ</span><small
                                 class="text-dark font-size-12">&nbsp;&nbsp;Bao gồm thuế</small></td>
                     </tr>
-                    <!-- <tr class="font-rale font-size-14">
-                        <td>You Save:</td>
-                        <td><span class="font-size-16 text-danger">$152.00</span></td>
-                    </tr> -->
+                    
                 </table>
                 <!---    !product price       -->
 
@@ -94,46 +75,52 @@ $user_id = $_SESSION['user_id'] ?? 1;
                 </div> -->
                 <!-- !order-details -->
 
-                <div class="row">
-                    <!-- <div class="col-6">
-                        <div class="color my-3">
-                            <div class="d-flex justify-content-between">
-                                <h6 class="font-baloo">Color:</h6>
-                                <div class="p-2 color-yellow-bg rounded-circle"><button class="btn font-size-14"></button></div>
-                                <div class="p-2 color-primary-bg rounded-circle"><button class="btn font-size-14"></button></div>
-                                <div class="p-2 color-second-bg rounded-circle"><button class="btn font-size-14"></button></div>
+                <div class="form-row pt-4 font-size-16 font-baloo">
+                    <form method="post">
+                        <input type="hidden" name="item_id" value="<?php echo $item['item_id'] ?? '1'; ?>">
+                        <input type="hidden" name="user_id" value="<?php echo $user_id ?>">
+                        <div class="row">
+                            <div class="col-9">
+                                <div class="color my-3">
+                                    <div class="d-flex justify-content-between">
+                                        <h6 class="font-baloo">Màu sắc:</h6>
+                                        <div class="p-2 bg-white border rounded-circle">
+                                            <input type="radio" name="color" value="Trắng" required class="btn font-size-14">
+                                        </div>
+                                        <div class="p-2 bg-dark rounded-circle">
+                                            <input type="radio" name="color" value="Đen" class="btn font-size-14">
+                                        </div>
+                                        <div class="p-2 bg-primary rounded-circle">
+                                            <input type="radio" name="color" value="Xanh" class="btn font-size-14">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div> -->
-                    <!-- <div class="col-6">
-                        <div class="qty d-flex">
-                            <h6 class="font-baloo">Qty</h6>
-                            <div class="px-4 d-flex font-rale">
-                                <button class="qty-up border bg-light" data-id="pro1"><i class="fas fa-angle-up"></i></button>
-                                <input type="text" data-id="pro1" class="qty_input border px-2 w-50 bg-light" disabled value="1" placeholder="1">
-                                <button data-id="pro1" class="qty-down border bg-light"><i class="fas fa-angle-down"></i></button>
+                        <div class="row">
+                            <div class="col-9">
+                                <div class="size my-3">
+                                    <h6 class="font-baloo">Size:</h6>
+                                    <div class="d-flex justify-content-between w-75">
+                                        <?php for($size = 37; $size <= 42; $size++) : ?>
+                                        <div class="font-rubik border p-2">
+                                            <input type="radio" name="size" value="<?php echo $size; ?>" required class="btn p-0 font-size-14">
+                                            <label><?php echo $size; ?></label>
+                                        </div>
+                                        <?php endfor; ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div> -->
+                        <?php
+                        if (in_array($item['item_id'], $Cart->getCartId($product->getData('cart')) ?? [])){
+                            echo '<button type="submit" disabled class="btn btn-success font-size-16 form-control">Đã có trong giỏ</button>';
+                        }else{
+                            echo '<button type="submit" name="top_sale_submit" class="btn btn-warning font-size-16 form-control">Thêm vào giỏ</button>';
+                        }
+                        ?>
+                    </form>
                 </div>
-
-                <!-- size -->
-                <!-- <div class="size my-3">
-                    <h6 class="font-baloo">Size :</h6>
-                    <div class="d-flex justify-content-between w-75">
-                        <div class="font-rubik border p-2">
-                            <button class="btn p-0 font-size-14">4GB RAM</button>
-                        </div>
-                        <div class="font-rubik border p-2">
-                            <button class="btn p-0 font-size-14">6GB RAM</button>
-                        </div>
-                        <div class="font-rubik border p-2">
-                            <button class="btn p-0 font-size-14">8GB RAM</button>
-                        </div>
-                    </div>
-                </div> -->
-                <!-- !size -->
-
 
             </div>
 

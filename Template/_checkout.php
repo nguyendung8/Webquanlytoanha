@@ -71,6 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                             <img src="./assets/products/<?php echo $item['item_image']; ?>" alt="Product Image">
                             <div class="item-info">
                                 <h5><?php echo $item['item_name']; ?></h5>
+                                <p>Màu sắc: <?php echo $item['color'] ?? 'Không xác định'; ?></p>
+                                <p>Kích cỡ: <?php echo $item['size'] ?? 'Không xác định'; ?></p>
                                 <p>Số lượng: <?php echo $item['quantity']; ?></p>
                                 <p>Giá: <?php echo number_format($item['item_price'], 0, ',', '.'); ?> đ</p>
                             </div>

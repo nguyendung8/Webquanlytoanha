@@ -5,7 +5,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
     if($_SERVER['REQUEST_METHOD'] == "POST"){
         if (isset($_POST['top_sale_submit'])){
             // call method addToCart
-            $Cart->addToCart($_POST['user_id'], $_POST['item_id']);
+            $Cart->addToCart($_POST['user_id'], $_POST['item_id'], $_POST['size'], $_POST['color']);
         }
     }
     $select_product =  mysqli_query($conn, "SELECT * FROM `products` limit 10") or die('Query failed');
