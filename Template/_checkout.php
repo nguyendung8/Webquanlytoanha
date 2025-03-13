@@ -19,16 +19,17 @@ if ($result) {
 // Xử lý khi nhấn nút Thanh toán
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
     $name = $_POST['name'];
+    $phone = $_POST['phone'];
     $email = $_POST['email'];
     $method = $_POST['method'];
     $address = $_POST['address'];
     $note = $_POST['note'];
 
     // Lưu đơn hàng vào bảng orders
-    $stmt = $conn->prepare("INSERT INTO orders (user_id, name, email, method, address, note, total_price, status) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO orders (user_id, name, phone, email, method, address, note, total_price, status) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $status = 0; // Đơn hàng mới
-    $stmt->bind_param("isssssii", $user_id, $name, $email, $method, $address, $note, $totalPrice, $status);
+    $stmt->bind_param("issssssii", $user_id, $name, $phone, $email, $method, $address, $note, $totalPrice, $status);
     if ($stmt->execute()) {
         $order_id = $stmt->insert_id;
 
@@ -86,6 +87,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['checkout'])) {
                 <div class="form-group">
                     <label for="name">Họ và tên</label>
                     <input type="text" name="name" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Số điện thoại</label>
+                    <input type="text" name="phone" id="phone" required>
                 </div>
                 <div class="form-group">
                     <label for="email">Email</label>

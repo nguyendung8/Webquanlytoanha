@@ -90,11 +90,13 @@ if (isset($_POST['update_status'])) {
                             <tr>
                                 <th>ID</th>
                                 <th>Tên khách hàng</th>
+                                <th>Số điện thoại </th> 
                                 <th>Email</th>
                                 <th>Địa chỉ</th>
                                 <th>Phương thức thanh toán</th>
                                 <th>Tổng tiền</th>
                                 <th>Trạng thái</th>
+                                <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -106,6 +108,7 @@ if (isset($_POST['update_status'])) {
                                     <tr>
                                         <td><?php echo $order['id']; ?></td>
                                         <td><?php echo $order['name']; ?></td>
+                                        <td><?php echo $order['phone']; ?></td>
                                         <td><?php echo $order['email']; ?></td>
                                         <td><?php echo $order['address']; ?></td>
                                         <td><?php echo $order['method']; ?></td>
@@ -141,6 +144,68 @@ if (isset($_POST['update_status'])) {
                                                 <input type="submit" name="update_status" value="Cập nhật" class="btn btn-success btn-sm mt-2" style="width: 100%;">
                                             </form>
                                             <?php } ?>
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#orderModal<?php echo $order['id']; ?>">
+                                                Xem chi tiết
+                                            </button>
+
+                                            <!-- Modal -->
+                                            <div class="modal fade" id="orderModal<?php echo $order['id']; ?>" tabindex="-1" aria-labelledby="orderModalLabel<?php echo $order['id']; ?>" aria-hidden="true">
+                                                <div class="modal-dialog modal-lg">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="orderModalLabel<?php echo $order['id']; ?>">Chi tiết đơn hàng #<?php echo $order['id']; ?></h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="row mb-3">
+                                                                <div class="col-md-6">
+                                                                    <p><strong>Tên khách hàng:</strong> <?php echo $order['name']; ?></p>
+                                                                    <p><strong>Email:</strong> <?php echo $order['email']; ?></p>
+                                                                    <p><strong>Số điện thoại:</strong> <?php echo $order['phone']; ?></p>
+                                                                    <p><strong>Địa chỉ:</strong> <?php echo $order['address']; ?></p>
+                                                                </div>
+                                                                <div class="col-md-6">
+                                                                    <p><strong>Phương thức thanh toán:</strong> <?php echo $order['method']; ?></p>
+                                                                    <p><strong>Tổng tiền:</strong> <?php echo number_format($order['total_price'], 0, ',', '.'); ?> VND</p>
+                                                                </div>
+                                                            </div>
+                                                            <h6 class="mb-3">Danh sách sản phẩm:</h6>
+                                                            <table class="table table-bordered">
+                                                                <thead>
+                                                                    <tr>
+                                                                        <th>Sản phẩm</th>
+                                                                        <th>Số lượng</th>
+                                                                        <th>Đơn giá</th>
+                                                                        <th>Thành tiền</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <?php
+                                                                    $order_id = $order['id'];
+                                                                    $select_products = mysqli_query($conn, "SELECT od.*, p.item_name, p.item_price FROM `order_details` od 
+                                                                        JOIN `products` p ON od.item_id = p.item_id 
+                                                                        WHERE od.order_id = '$order_id'") or die('Query failed');
+                                                                    while ($product = mysqli_fetch_assoc($select_products)) {
+                                                                        $subtotal = $product['quantity'] * $product['item_price'];
+                                                                    ?>
+                                                                        <tr>
+                                                                            <td><?php echo $product['item_name']; ?></td>
+                                                                            <td><?php echo $product['quantity']; ?></td>
+                                                                            <td><?php echo number_format($product['item_price'], 0, ',', '.'); ?> VND</td>
+                                                                            <td><?php echo number_format($subtotal, 0, ',', '.'); ?> VND</td>
+                                                                        </tr>
+                                                                    <?php } ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                             <?php

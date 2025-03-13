@@ -132,6 +132,58 @@ if (isset($_GET['un_block'])) {
                                                 <a href="admin_accounts.php?un_block=<?php echo $user['user_id']; ?>" class="btn btn-success btn-sm" onclick="return confirm('Bạn có chắc chắn muốn mở khóa tài khoản này?');">Mở Khóa Tài Khoản</a>
                                             <?php } ?>
                                             <a href="admin_accounts.php?delete=<?php echo $user['user_id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa tài khoản này?');">Xóa</a>
+                                            
+                                            <!-- Thêm nút xem chi tiết -->
+                                            <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#userModal<?php echo $user['user_id']; ?>">
+                                                Xem chi tiết
+                                            </button>
+
+                                            <!-- Modal -->
+                                            <div class="modal fade" id="userModal<?php echo $user['user_id']; ?>" tabindex="-1" aria-labelledby="userModalLabel<?php echo $user['user_id']; ?>" aria-hidden="true">
+                                                <div class="modal-dialog">
+                                                    <div class="modal-content">
+                                                        <div class="modal-header">
+                                                            <h5 class="modal-title" id="userModalLabel<?php echo $user['user_id']; ?>">
+                                                                Thông tin chi tiết người dùng
+                                                            </h5>
+                                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                        </div>
+                                                        <div class="modal-body">
+                                                            <div class="user-info">
+                                                                <p><strong>ID:</strong> <?php echo $user['user_id']; ?></p>
+                                                                <p><strong>Tên đăng nhập:</strong> <?php echo $user['username']; ?></p>
+                                                                <p><strong>Email:</strong> <?php echo $user['email']; ?></p>
+                                                                <p><strong>Trạng thái:</strong> 
+                                                                    <?php echo ($user['status'] == 1) ? '<span class="text-success">Đang hoạt động</span>' : '<span class="text-danger">Đã khóa</span>'; ?>
+                                                                </p>
+                                                                <p><strong>Ngày tạo:</strong> <?php echo $user['created_at']; ?></p>
+                                                                
+                                                                <!-- Thống kê đơn hàng -->
+                                                                <?php
+                                                                $user_id = $user['user_id'];
+                                                                $orders_query = mysqli_query($conn, "SELECT 
+                                                                    COUNT(*) as total_orders,
+                                                                    SUM(CASE WHEN status = 3 THEN 1 ELSE 0 END) as completed_orders,
+                                                                    SUM(CASE WHEN status = 4 THEN 1 ELSE 0 END) as cancelled_orders,
+                                                                    SUM(CASE WHEN status = 3 THEN total_price ELSE 0 END) as total_spent
+                                                                    FROM `orders` 
+                                                                    WHERE user_id = '$user_id'") or die('Query failed');
+                                                                $orders_stats = mysqli_fetch_assoc($orders_query);
+                                                                ?>
+                                                                <hr>
+                                                                <h6>Thống kê đơn hàng:</h6>
+                                                                <p><strong>Tổng số đơn hàng:</strong> <?php echo $orders_stats['total_orders']; ?></p>
+                                                                <p><strong>Đơn hàng hoàn thành:</strong> <?php echo $orders_stats['completed_orders']; ?></p>
+                                                                <p><strong>Đơn hàng đã hủy:</strong> <?php echo $orders_stats['cancelled_orders']; ?></p>
+                                                                <p><strong>Tổng chi tiêu:</strong> <?php echo number_format($orders_stats['total_spent'], 0, ',', '.'); ?> VND</p>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer">
+                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </td>
                                     </tr>
                             <?php

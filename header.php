@@ -125,7 +125,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         <!-- Primary Navigation -->
         <nav style=" background: #d83131;" class="navbar navbar-expand-lg navbar-dark color-header-bg">
             <a class="navbar-brand" href="./index.php">
-                <img width="80" src="./assets/logo-shoes.png" alt="logo" class="logo">
+                <img width="90" src="./assets/logo_shoes.png" alt="logo" class="logo">
             </a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">

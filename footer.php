@@ -6,7 +6,7 @@
     <div class="container">
         <div class="row">
             <div class="col-lg-2 col-12">
-                <img width="110" src="./assets/logo-shoes.png" alt="logo" class="logo">
+                <img width="110" src="./assets/logo_shoes.png" alt="logo" class="logo">
             </div>
             <div class="col-lg-4 col-12">
                 <h4 class="font-rubik font-size-20">About</h4>
