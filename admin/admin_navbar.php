@@ -14,19 +14,16 @@
 
    <div class="sidebar" style="background-color: #667791;">
       <div class="logo">
-         <img src="../assets/logo_shoes.png" alt="Logo" width="110">
+         <img src="../assets/logo-fb.png" alt="Logo" width="110">
       </div>
       <a style="margin-bottom: 5px;" href="admin_products.php">
-         <i class="menu-icon fa fa-box"></i> Sản phẩm
-      </a>
-      <a style="margin-bottom: 5px;" href="admin_categories.php">
-         <i class="menu-icon fa fa-list"></i> Danh mục
+         <i class="menu-icon fa fa-box"></i> Sân bóng
       </a>
       <a style="margin-bottom: 5px;" href="admin_orders.php">
-         <i class="menu-icon fa fa-shopping-cart"></i> Đơn hàng
+         <i class="menu-icon fa fa-shopping-cart"></i> Đặt sân
       </a>
       <a style="margin-bottom: 5px;" href="admin_blogs.php">
-         <i class="menu-icon fa fa-newspaper"></i> Blog
+         <i class="menu-icon fa fa-newspaper"></i> Tin tức
       </a>
       <a style="margin-bottom: 5px;" href="admin_accounts.php">
          <i class="menu-icon fa fa-user"></i> Tài khoản

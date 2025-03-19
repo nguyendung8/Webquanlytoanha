@@ -89,6 +89,7 @@ if (isset($_POST['update_blog'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="css/admin_style.css">
+    <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
 </head>
 
 <body>
@@ -117,7 +118,7 @@ if (isset($_POST['update_blog'])) {
                         <input type="text" name="title" class="form-control" placeholder="Tiêu đề blog" required>
                     </div>
                     <div class="mb-3">
-                        <textarea name="description" class="form-control" placeholder="Mô tả blog" rows="5" required></textarea>
+                        <textarea name="description" id="description" class="form-control" placeholder="Mô tả blog" rows="5" required></textarea>
                     </div>
                     <div class="mb-3">
                         <input type="file" name="image" class="form-control" accept="image/*" required>
@@ -162,7 +163,7 @@ if (isset($_POST['update_blog'])) {
                                                             <div class="modal-body">
                                                                 <input type="hidden" name="update_id" value="<?php echo $blog['id']; ?>">
                                                                 <input type="text" name="title" class="form-control mb-3" value="<?php echo $blog['title']; ?>" required>
-                                                                <textarea name="description" class="form-control mb-3" rows="5" required><?php echo $blog['description']; ?></textarea>
+                                                                <textarea name="description" id="description<?php echo $blog['id']; ?>" class="form-control mb-3" rows="5" required><?php echo $blog['description']; ?></textarea>
                                                                 <input type="file" name="image" class="form-control mb-3" accept="image/*">
                                                             </div>
                                                             <div class="modal-footer">
@@ -191,6 +192,16 @@ if (isset($_POST['update_blog'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Khởi tạo CKEditor cho form thêm mới
+        CKEDITOR.replace('description');
+        
+        // Khởi tạo CKEditor cho các form sửa (nếu có)
+        <?php if (isset($select_blogs) && mysqli_num_rows($select_blogs) > 0) { 
+            while ($blog = mysqli_fetch_assoc($select_blogs)) { ?>
+            CKEDITOR.replace('description<?php echo $blog['id']; ?>');
+        <?php } } ?>
+    </script>
 </body>
 
 </html>

@@ -6,7 +6,7 @@ class DBController
     protected $host = 'localhost';
     protected $user = 'root';
     protected $password = '';
-    protected $database = "webgiaydep";
+    protected $database = "websanbong";
     // connection property
     public $con = null;
     // call constructor

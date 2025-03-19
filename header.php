@@ -8,7 +8,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kevi’s Shoes</title>
+    <title>Mchien Football</title>
 
     <!-- Bootstrap CDN -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
@@ -102,7 +102,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         }
         ?>
         <div class="strip d-flex justify-content-between px-4 py-1 bg-light">
-            <p class="font-rale font-size-12 text-black-50 m-0">Kevi’s Shoes - 0763651041 - Việt Nam</p>
+            <p class="font-rale font-size-12 text-black-50 m-0">Mchien Football - 0763651041 - Hoàng Mai - Hà Nội - Việt Nam</p>
             <?php if ($user_id && $user_id != 1) { ?>
                 <div class="user-dropdown" style="position: relative; display: inline-block;">
                     <i class="fas fa-user-circle" style="font-size: 30px; cursor: pointer;" id="userIcon"></i>
@@ -116,7 +116,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                 </div>
             <?php } else { ?>
                 <div class="font-rale font-size-14">
-                    <a href="#" class="px-3 text-dark">Đăng ký</a>
+                    <a href="./register.php" class="px-3 text-dark">Đăng ký</a>
                     <a href="./login.php" class="px-3 border-right border-left text-dark">Đăng nhập</a>
                 </div>
             <?php } ?>
@@ -125,7 +125,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         <!-- Primary Navigation -->
         <nav style=" background: #d83131;" class="navbar navbar-expand-lg navbar-dark color-header-bg">
             <a class="navbar-brand" href="./index.php">
-                <img width="90" src="./assets/logo_shoes.png" alt="logo" class="logo">
+                <img width="90" src="./assets/logo-fb.png" alt="logo" class="logo">
             </a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -136,24 +136,11 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                     <li class="nav-item">
                         <a class="nav-link" href="./index.php">Trang chủ</a>
                     </li>
-                   <?php 
-                        $categories = $product->getData('categories');
-                        ?>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                Danh mục
-                            </a>
-                            <div class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <?php foreach ($categories as $category): ?>
-                                    <a class="dropdown-item" href="./category.php?cate_id=<?php echo $category['id'] ?>"><?= $category['name']; ?></a>
-                                <?php endforeach; ?>
-                            </div>
-                        </li>
                     <li class="nav-item">
                         <a class="nav-link" href="./blog.php">Blog</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="./order.php">Đơn hàng</a>
+                        <a class="nav-link" href="./order.php">Đặt sân</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="./personal.php">Hồ sơ cá nhân</a>
@@ -167,13 +154,6 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                             <button class="btn btn-primary search-btn" type="submit">Tìm kiếm</button>
                         </div>
                     </div>
-                </form>
-                <form action="#" class="font-size-14 font-rale">
-                    <a href="cart.php" class="py-2 rounded-pill color-primary-bg">
-                        <span class="font-size-16 px-2 text-white"><i class="fas fa-shopping-cart"></i></span>
-                        <span
-                            class="px-3 py-2 rounded-pill text-dark bg-light"><?php echo count($product->getCartData($user_id ?? 0)); ?></span>
-                    </a>
                 </form>
             </div>
         </nav>

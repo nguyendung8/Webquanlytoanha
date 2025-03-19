@@ -9,103 +9,101 @@ if (!isset($admin_id)) {
     exit();
 }
 
-// Thêm sản phẩm mới
-if (isset($_POST['add_product'])) {
-    $item_name = mysqli_real_escape_string($conn, $_POST['item_name']);
-    $item_category = $_POST['item_category'];
-    $select_category = mysqli_query($conn, "SELECT name FROM `categories` WHERE id = '$item_category'") or die('Query failed');
-    $category = mysqli_fetch_assoc($select_category);
-    $item_brand = $category['name'];
-    $item_desc = mysqli_real_escape_string($conn, $_POST['item_desc']);
-    $item_quantity = mysqli_real_escape_string($conn, $_POST['item_quantity']);
-    $item_price = mysqli_real_escape_string($conn, $_POST['item_price']);
+// Thêm sân bóng mới
+if (isset($_POST['add_field'])) {
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $description = mysqli_real_escape_string($conn, $_POST['description']);
+    $field_type = $_POST['field_type'];
+    $rental_price = mysqli_real_escape_string($conn, $_POST['rental_price']);
+    $status = $_POST['status'];
+    $phone_number = mysqli_real_escape_string($conn, $_POST['phone_number']);
 
-    // Upload hình ảnh sản phẩm
-    $item_image_name = $_FILES['item_image']['name'];
-    $item_image_tmp_name = $_FILES['item_image']['tmp_name'];
-    $item_image_folder = '../assets/products/' . $item_image_name;
+    // Upload hình ảnh sân bóng
+    $image_name = $_FILES['image']['name'];
+    $image_tmp_name = $_FILES['image']['tmp_name'];
+    $image_folder = '../assets/fields/' . $image_name;
 
-    if (move_uploaded_file($item_image_tmp_name, $item_image_folder)) {
-        $insert_product_query = mysqli_query($conn, "INSERT INTO `products` (item_brand, item_category, item_name, item_desc, item_quantity, item_price, item_image) 
-        VALUES ('$item_brand', '$item_category', '$item_name', '$item_desc', '$item_quantity', '$item_price', '$item_image_name')") or die('Query failed');
+    if (move_uploaded_file($image_tmp_name, $image_folder)) {
+        $insert_field_query = mysqli_query($conn, "INSERT INTO `football_fields` (name, address, description, field_type, rental_price, status, image, phone_number) 
+        VALUES ('$name', '$address', '$description', '$field_type', '$rental_price', '$status', '$image_name', '$phone_number')") or die('Query failed');
 
-        if ($insert_product_query) {
-            $message[] = 'Thêm sản phẩm thành công!';
+        if ($insert_field_query) {
+            $message[] = 'Thêm sân bóng thành công!';
         } else {
-            $message[] = 'Thêm sản phẩm thất bại!';
+            $message[] = 'Thêm sân bóng thất bại!';
         }
     } else {
         $message[] = 'Lỗi khi tải ảnh!';
     }
 }
 
-// Xóa sản phẩm
+// Xóa sân bóng
 if (isset($_GET['delete'])) {
     $delete_id = $_GET['delete'];
-    $delete_image_query = mysqli_query($conn, "SELECT item_image FROM `products` WHERE item_id = '$delete_id'") or die('Query failed');
+    $delete_image_query = mysqli_query($conn, "SELECT image FROM `football_fields` WHERE id = '$delete_id'") or die('Query failed');
     $fetch_image = mysqli_fetch_assoc($delete_image_query);
-    unlink('../assets/products/' . $fetch_image['item_image']);
-    mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0") or die('Query failed to disable foreign key checks');
+    unlink('../assets/fields/' . $fetch_image['image']);
 
-    $delete_query = mysqli_query($conn, "DELETE FROM `products` WHERE item_id = '$delete_id'") or die('Query failed');
-    mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1") or die('Query failed to enable foreign key checks');
+    $delete_query = mysqli_query($conn, "DELETE FROM `football_fields` WHERE id = '$delete_id'") or die('Query failed');
 
     if ($delete_query) {
-        $message[] = 'Xóa sản phẩm thành công!';
+        $message[] = 'Xóa sân bóng thành công!';
     } else {
-        $message[] = 'Xóa sản phẩm thất bại!';
+        $message[] = 'Xóa sân bóng thất bại!';
     }
 }
 
-// Cập nhật sản phẩm
-if (isset($_POST['update_product'])) {
+// Cập nhật sân bóng
+if (isset($_POST['update_field'])) {
     $update_id = $_POST['update_id'];
-    $item_name = mysqli_real_escape_string($conn, $_POST['item_name']);
-    $item_category = $_POST['item_category'];
-    $select_category = mysqli_query($conn, "SELECT name FROM `categories` WHERE id = '$item_category'") or die('Query failed');
-    $category = mysqli_fetch_assoc($select_category);
-    $item_brand = $category['name'];
-    $item_desc = mysqli_real_escape_string($conn, $_POST['item_desc']);
-    $item_quantity = mysqli_real_escape_string($conn, $_POST['item_quantity']);
-    $item_price = mysqli_real_escape_string($conn, $_POST['item_price']);
+    $name = mysqli_real_escape_string($conn, $_POST['name']);
+    $address = mysqli_real_escape_string($conn, $_POST['address']);
+    $description = mysqli_real_escape_string($conn, $_POST['description']);
+    $field_type = $_POST['field_type'];
+    $rental_price = mysqli_real_escape_string($conn, $_POST['rental_price']);
+    $status = $_POST['status'];
+    $phone_number = mysqli_real_escape_string($conn, $_POST['phone_number']);
 
-    $update_query = "UPDATE `products` SET item_name = '$item_name', item_category = '$item_category', item_brand = '$item_brand',
-                    item_desc = '$item_desc', item_quantity = '$item_quantity', item_price = '$item_price'";
+    $update_query = "UPDATE `football_fields` SET 
+                    name = '$name', 
+                    address = '$address',
+                    description = '$description',
+                    field_type = '$field_type',
+                    rental_price = '$rental_price',
+                    status = '$status',
+                    phone_number = '$phone_number'";
 
-    if (!empty($_FILES['item_image']['name'])) {
-        $item_image_name = $_FILES['item_image']['name'];
-        $item_image_tmp_name = $_FILES['item_image']['tmp_name'];
-        $item_image_folder = '../assets/products/' . $item_image_name;
+    if (!empty($_FILES['image']['name'])) {
+        $image_name = $_FILES['image']['name'];
+        $image_tmp_name = $_FILES['image']['tmp_name'];
+        $image_folder = '../assets/fields/' . $image_name;
 
-        move_uploaded_file($item_image_tmp_name, $item_image_folder);
-        $update_query .= ", item_image = '$item_image_name'";
+        move_uploaded_file($image_tmp_name, $image_folder);
+        $update_query .= ", image = '$image_name'";
     }
-    mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0") or die('Query failed to disable foreign key checks');
-    $update_query .= " WHERE item_id = '$update_id'";
-    $update_result = mysqli_query($conn, $update_query) or die('Query failed');
-    mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1") or die('Query failed to enable foreign key checks');
 
+    $update_query .= " WHERE id = '$update_id'";
+    $update_result = mysqli_query($conn, $update_query) or die('Query failed');
 
     if ($update_result) {
-        $message[] = 'Cập nhật sản phẩm thành công!';
+        $message[] = 'Cập nhật sân bóng thành công!';
     } else {
-        $message[] = 'Cập nhật sản phẩm thất bại!';
+        $message[] = 'Cập nhật sân bóng thất bại!';
     }
 }
 
 // Phân trang
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $limit = 6;
-$offset = ($page - 1) * $limit; 
+$offset = ($page - 1) * $limit;
 
-$total_products_query = mysqli_query($conn, "SELECT COUNT(*) AS total FROM `products`") or die('Query failed');
-$total_products = mysqli_fetch_assoc($total_products_query)['total'];
+$total_fields_query = mysqli_query($conn, "SELECT COUNT(*) AS total FROM `football_fields`") or die('Query failed');
+$total_fields = mysqli_fetch_assoc($total_fields_query)['total'];
 
-$select_products = mysqli_query($conn, "SELECT p.*, c.name AS category_name FROM `products` p 
-LEFT JOIN `categories` c ON p.item_category = c.id 
-ORDER BY p.created_at DESC LIMIT $limit OFFSET $offset") or die('Query failed');
+$select_fields = mysqli_query($conn, "SELECT * FROM `football_fields` ORDER BY id DESC LIMIT $limit OFFSET $offset") or die('Query failed');
 
-$total_pages = ceil($total_products / $limit);
+$total_pages = ceil($total_fields / $limit);
 ?>
 
 <!DOCTYPE html>
@@ -114,7 +112,7 @@ $total_pages = ceil($total_products / $limit);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý sản phẩm</title>
+    <title>Quản lý sân bóng</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -139,109 +137,119 @@ $total_pages = ceil($total_products / $limit);
             }
             ?>
             <div class="bg-primary text-white text-center py-2 mb-4 shadow">
-                <h1 class="mb-0">Quản Lý Sản Phẩm</h1>
+                <h1 class="mb-0">Quản Lý Sân Bóng</h1>
             </div>
             <section class="add-products mb-4">
                 <form action="" method="post" enctype="multipart/form-data">
-                    <h3>Thêm sản phẩm mới</h3>
+                    <h3>Thêm sân bóng mới</h3>
                     <div class="mb-3">
-                        <input type="text" name="item_name" class="form-control" placeholder="Tên sản phẩm" required>
+                        <input type="text" name="name" class="form-control" placeholder="Tên sân bóng" required>
                     </div>
                     <div class="mb-3">
-                        <select name="item_category" class="form-control" required>
-                            <?php
-                            $categories = mysqli_query($conn, "SELECT * FROM `categories`") or die('Query failed');
-                            while ($category = mysqli_fetch_assoc($categories)) {
-                                echo "<option value='{$category['id']}'>{$category['name']}</option>";
-                            }
-                            ?>
+                        <input type="text" name="address" class="form-control" placeholder="Địa chỉ" required>
+                    </div>
+                    <div class="mb-3">
+                        <textarea name="description" class="form-control" placeholder="Mô tả" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <select name="field_type" class="form-control" required>
+                            <option value="5">Sân 5</option>
+                            <option value="7">Sân 7</option>
+                            <option value="11">Sân 11</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <textarea name="item_desc" class="form-control" placeholder="Mô tả sản phẩm" rows="5" required></textarea>
+                        <input type="number" name="rental_price" class="form-control" placeholder="Giá thuê" required>
                     </div>
                     <div class="mb-3">
-                        <input type="number" name="item_quantity" class="form-control" placeholder="Số lượng" required>
+                        <select name="status" class="form-control" required>
+                            <option value="Đang trống">Đang trống</option>
+                            <option value="Đã đặt">Đã đặt</option>
+                            <option value="Bảo trì">Bảo trì</option>
+                        </select>
                     </div>
                     <div class="mb-3">
-                        <input type="number" name="item_price" class="form-control" placeholder="Giá sản phẩm" required>
+                        <input type="text" name="phone_number" class="form-control" placeholder="Số điện thoại">
                     </div>
                     <div class="mb-3">
-                        <input type="file" name="item_image" class="form-control" accept="image/*" required>
+                        <input type="file" name="image" class="form-control" accept="image/*" required>
                     </div>
-                    <button type="submit" name="add_product" class="btn btn-primary">Thêm sản phẩm</button>
+                    <button type="submit" name="add_field" class="btn btn-primary">Thêm sân bóng</button>
                 </form>
             </section>
 
-            <section class="show-products">
+            <section class="show-fields">
                 <div class="container">
                     <table class="table table-striped table-bordered">
                         <thead>
                             <tr>
                                 <th>ID</th>
                                 <th>Hình ảnh</th>
-                                <th>Tên sản phẩm</th>
-                                <th>Danh mục</th>
-                                <th>Số lượng</th>
-                                <th>Giá</th>
+                                <th>Tên sân</th>
+                                <th>Loại sân</th>
+                                <th>Giá thuê</th>
+                                <th>Trạng thái</th>
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
                         <?php
-                            if (mysqli_num_rows($select_products) > 0) {
-                                while ($product = mysqli_fetch_assoc($select_products)) {
+                            if (mysqli_num_rows($select_fields) > 0) {
+                                while ($field = mysqli_fetch_assoc($select_fields)) {
                             ?>
                                     <tr>
-                                        <td><?php echo $product['item_id']; ?></td>
-                                        <td><img src="../assets/products/<?php echo $product['item_image']; ?>" alt="" width="50"></td>
-                                        <td><?php echo $product['item_name']; ?></td>
-                                        <td><?php echo $product['item_brand']; ?></td>
-                                        <td><?php echo $product['item_quantity']; ?></td>
-                                        <td><?php echo number_format($product['item_price'], 0, ',', '.'); ?> đ</td>
+                                        <td><?php echo $field['id']; ?></td>
+                                        <td><img src="../assets/fields/<?php echo $field['image']; ?>" width="50" alt=""></td>
+                                        <td><?php echo $field['name']; ?></td>
+                                        <td>Sân <?php echo $field['field_type']; ?></td>
+                                        <td><?php echo number_format($field['rental_price'], 0, ',', '.'); ?> đ</td>
+                                        <td><?php echo $field['status']; ?></td>
                                         <td>
                                             <!-- Modal trigger button -->
-                                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?php echo $product['item_id']; ?>">Sửa</button>
+                                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal<?php echo $field['id']; ?>">Sửa</button>
                                             <!-- Modal -->
-                                            <div class="modal fade" id="editModal<?php echo $product['item_id']; ?>" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+                                            <div class="modal fade" id="editModal<?php echo $field['id']; ?>" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
                                                 <div class="modal-dialog">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
-                                                            <h5 class="modal-title" id="editModalLabel">Sửa sản phẩm</h5>
+                                                            <h5 class="modal-title" id="editModalLabel">Sửa sân bóng</h5>
                                                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                         </div>
                                                         <form action="" method="post" enctype="multipart/form-data">
                                                             <div class="modal-body">
-                                                                <input type="hidden" name="update_id" value="<?php echo $product['item_id']; ?>">
-                                                                <input type="text" name="item_name" class="form-control mb-3" value="<?php echo $product['item_name']; ?>" required>
-                                                                <select name="item_category" class="form-control mb-3" required>
-                                                                    <?php
-                                                                    $categories = mysqli_query($conn, "SELECT * FROM `categories`") or die('Query failed');
-                                                                    while ($category = mysqli_fetch_assoc($categories)) {
-                                                                        echo "<option value='{$category['id']}'" . ($category['id'] == $product['item_category'] ? ' selected' : '') . ">{$category['name']}</option>";
-                                                                    }
-                                                                    ?>
+                                                                <input type="hidden" name="update_id" value="<?php echo $field['id']; ?>">
+                                                                <input type="text" name="name" class="form-control mb-3" value="<?php echo $field['name']; ?>" required>
+                                                                <input type="text" name="address" class="form-control mb-3" value="<?php echo $field['address']; ?>" required>
+                                                                <textarea name="description" class="form-control mb-3" rows="3" required><?php echo $field['description']; ?></textarea>
+                                                                <select name="field_type" class="form-control mb-3" required>
+                                                                    <option value="5" <?php echo $field['field_type'] == 5 ? 'selected' : ''; ?>>Sân 5</option>
+                                                                    <option value="7" <?php echo $field['field_type'] == 7 ? 'selected' : ''; ?>>Sân 7</option>
+                                                                    <option value="11" <?php echo $field['field_type'] == 11 ? 'selected' : ''; ?>>Sân 11</option>
                                                                 </select>
-                                                                <textarea name="item_desc" class="form-control mb-3" rows="5" required><?php echo $product['item_desc']; ?></textarea>
-                                                                <input type="number" name="item_quantity" class="form-control mb-3" value="<?php echo $product['item_quantity']; ?>" required>
-                                                                <input type="number" name="item_price" class="form-control mb-3" value="<?php echo $product['item_price']; ?>" required>
+                                                                <input type="number" name="rental_price" class="form-control mb-3" value="<?php echo $field['rental_price']; ?>" required>
+                                                                <select name="status" class="form-control mb-3" required>
+                                                                    <option value="Đang trống" <?php echo $field['status'] == 'Đang trống' ? 'selected' : ''; ?>>Đang trống</option>
+                                                                    <option value="Đã đặt" <?php echo $field['status'] == 'Đã đặt' ? 'selected' : ''; ?>>Đã đặt</option>
+                                                                    <option value="Bảo trì" <?php echo $field['status'] == 'Bảo trì' ? 'selected' : ''; ?>>Bảo trì</option>
+                                                                </select>
+                                                                <input type="text" name="phone_number" class="form-control mb-3" value="<?php echo $field['phone_number']; ?>">
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                                                <button type="submit" name="update_product" class="btn btn-primary">Cập nhật</button>
+                                                                <button type="submit" name="update_field" class="btn btn-primary">Cập nhật</button>
                                                             </div>
                                                         </form>
                                                     </div>
                                                 </div>
                                             </div>
                                             <!-- End Modal -->
-                                            <a href="admin_products.php?delete=<?php echo $product['item_id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa sản phẩm này?');">Xóa</a>
+                                            <a href="?delete=<?php echo $field['id']; ?>" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa sân bóng này?');">Xóa</a>
                                         </td>
                                     </tr>
                             <?php
                                 }
                             } else {
-                                echo '<tr><td colspan="8" class="text-center">Chưa có sản phẩm nào.</td></tr>';
+                                echo '<tr><td colspan="8" class="text-center">Chưa có sân bóng nào.</td></tr>';
                             }
                             ?>
                         </tbody>
@@ -250,17 +258,17 @@ $total_pages = ceil($total_products / $limit);
                     <nav aria-label="Page navigation">
                         <ul class="pagination justify-content-center">
                             <li class="page-item <?php echo $page <= 1 ? 'disabled' : ''; ?>">
-                                <a class="page-link" href="admin_products.php?page=<?php echo $page - 1; ?>" aria-label="Previous">
+                                <a class="page-link" href="?page=<?php echo $page - 1; ?>" aria-label="Previous">
                                     <span aria-hidden="true">&laquo;</span>
                                 </a>
                             </li>
                             <?php for ($i = 1; $i <= $total_pages; $i++) { ?>
                                 <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
-                                    <a class="page-link" href="admin_products.php?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                    <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
                                 </li>
                             <?php } ?>
                             <li class="page-item <?php echo $page >= $total_pages ? 'disabled' : ''; ?>">
-                                <a class="page-link" href="admin_products.php?page=<?php echo $page + 1; ?>" aria-label="Next">
+                                <a class="page-link" href="?page=<?php echo $page + 1; ?>" aria-label="Next">
                                     <span aria-hidden="true">&raquo;</span>
                                 </a>
                             </li>

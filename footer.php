@@ -6,13 +6,13 @@
     <div class="container">
         <div class="row">
             <div class="col-lg-2 col-12">
-                <img width="110" src="./assets/logo_shoes.png" alt="logo" class="logo">
+                <img width="110" src="./assets/logo-fb.png" alt="logo" class="logo">
             </div>
             <div class="col-lg-4 col-12">
                 <h4 class="font-rubik font-size-20">About</h4>
                 <div class="d-flex flex-column flex-wrap">
                     <p class="font-size-14 font-rale text-white-50">
-                        Kevi’s Shoes thành lập năm 2025. Chúng tôi là cửa hàng bán giày dép uy tín tại Việt Nam , chuyên cung cấp các sản phẩm quần áo đẹp, chất lượng, giá rẻ nhất thị trường.
+                        Mchien Football thành lập năm 2025. Chúng tôi là nơi cho thuê sân bóng đá uy tín tại Việt Nam, chuyên cung cấp các sản phẩm sân bóng đá chất lượng, giá rẻ nhất thị trường.
                     </p>
                 </div>
 
@@ -20,7 +20,7 @@
             <div class="col-lg-3 col-12">
                 <h4 class="font-rubik font-size-20">Feature</h4>
                 <div class="d-flex flex-column flex-wrap">
-                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Giỏ hàng</a>
+                    <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Hồ sơ cá nhân</a>
                     <a href="#" class="font-rale font-size-14 text-white-50 pb-1">Blog</a>
                 </div>
             </div>
@@ -35,7 +35,7 @@
     </div>
 </footer>
 <div class="copyright text-center bg-dark text-white py-2">
-    <p class="font-rale font-size-14">&copy; Copyrights 2025. Desing By <span class="color-second">Kevi’s Shoes</span></p>
+    <p class="font-rale font-size-14">&copy; Copyrights 2025. Desing By <span class="color-second">Mchien Football</span></p>
 </div>
 <!-- !start #footer -->
 
