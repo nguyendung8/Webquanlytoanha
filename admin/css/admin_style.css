@@ -5,7 +5,7 @@
 }
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
+  font-family: Arial, sans-serif; 
 }
 .background {
   background: rgb(50, 2, 2);
@@ -17,7 +17,8 @@ body {
   );
 }
 .manage-container {
-    /* background:  #cae5ff; */
+    background: url('../../assets/bg-login.jpg') no-repeat center center fixed;
+    background-size: cover;
     width: calc(100% - 250px);
 }
 .sidebar {
@@ -34,7 +35,9 @@ body {
   display: block;
   margin: 0 auto 15px;
 }
-
+.add-products {
+  background-color: #86eb86 !important;
+}
 .sidebar a {
   display: block;
   color: #ffffff;
@@ -49,12 +52,12 @@ body {
 }
 
 .sidebar a:hover {
-  background-color: #007bff; /* Primary Bootstrap color */
+  background-color: #0f0c239c; /* Primary Bootstrap color */
   color: white;
 }
 
 .sidebar a.active {
-  background-color: #007bff; /* Primary Bootstrap color */
+  background-color: #0f0c239c; /* Primary Bootstrap color */
   color: white;
 }
 

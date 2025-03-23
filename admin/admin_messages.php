@@ -80,11 +80,13 @@ $users_query = mysqli_query($conn, "
 <body>
     <div class="d-flex">
         <?php include 'admin_navbar.php'; ?>
-        <div class="container mt-4">
-            <h1 class="text-center mb-4">Quản Lý Tin Nhắn</h1>
+        <div class="container">
+            <div style="background-color: #28a745" class="text-white text-center py-2 mb-4 shadow">
+                <h1 class="text-center mb-4">Quản Lý Tin Nhắn</h1>
+            </div>
 
             <!-- Danh sách người gửi -->
-            <div class="row">
+            <div class="row  mt-4">
                 <div class="col-md-4">
                     <h3>Danh sách tin nhắn</h3>
                     <ul class="list-group">

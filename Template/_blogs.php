@@ -7,7 +7,7 @@
 <!-- Blogs -->
 <section id="blogs">
     <div class="container py-4">
-        <h4 class="font-rubik font-size-20">Latest Blogs</h4>
+        <h4 class="font-rubik font-size-20">Blogs</h4>
         <hr>
 
         <div class="owl-carousel owl-theme">

@@ -78,6 +78,11 @@ if (isset($_GET['un_block'])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="css/admin_style.css">
+    <style>
+        th {
+            background-color: #86eb86 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -96,12 +101,11 @@ if (isset($_GET['un_block'])) {
                 }
             }
             ?>
-            <div class="bg-primary text-white text-center py-2 mb-4 shadow">
+            <div style="background-color: #28a745" class="text-white text-center py-2 mb-4 shadow">
                 <h1 class="mb-0">Quản lý Tài khoản</h1>
             </div>
-            <section class="show-users">
+            <section  class="show-users">
                 <div class="container">
-                    <h1 class="text-center">Danh sách tài khoản người dùng</h1>
                     <table class="table table-striped table-bordered">
                         <thead>
                             <tr>

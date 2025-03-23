@@ -90,6 +90,11 @@ if (isset($_POST['update_blog'])) {
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="css/admin_style.css">
     <script src="https://cdn.ckeditor.com/4.16.2/standard/ckeditor.js"></script>
+    <style>
+        th {
+            background-color: #86eb86 !important;
+        }
+    </style>
 </head>
 
 <body>
@@ -108,10 +113,10 @@ if (isset($_POST['update_blog'])) {
                 }
             }
             ?>
-            <div class="bg-primary text-white text-center py-2 mb-4 shadow">
+            <div style="background-color: #28a745" class="text-white text-center py-2 mb-4 shadow">
                 <h1 class="mb-0">Quản lý Blog</h1>
             </div>
-            <section class="add-products mb-4">
+            <section style="background-color: #86eb86" class="add-products mb-4">
                 <form action="" method="post" enctype="multipart/form-data">
                     <h3>Thêm blog mới</h3>
                     <div class="mb-3">

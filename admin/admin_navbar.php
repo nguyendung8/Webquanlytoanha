@@ -7,12 +7,12 @@
    <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <title>Admin Navbar</title>
    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-   <link rel="stylesheet" href="./admin_style.css">
+   <link rel="stylesheet" href=".css/admin_style.css">
 </head>
 
 <body>
 
-   <div class="sidebar" style="background-color: #667791;">
+   <div class="sidebar" style="background-color: #28a745;">
       <div class="logo">
          <img src="../assets/logo-fb.png" alt="Logo" width="110">
       </div>
@@ -20,7 +20,7 @@
          <i class="menu-icon fa fa-box"></i> Sân bóng
       </a>
       <a style="margin-bottom: 5px;" href="admin_orders.php">
-         <i class="menu-icon fa fa-shopping-cart"></i> Đặt sân
+         <i class="menu-icon fa fa-shopping-cart"></i> Đơn đặt sân
       </a>
       <a style="margin-bottom: 5px;" href="admin_blogs.php">
          <i class="menu-icon fa fa-newspaper"></i> Tin tức

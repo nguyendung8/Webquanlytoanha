@@ -4,6 +4,7 @@ include 'database/DBController.php';
 if (isset($_POST['submit'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $phone = mysqli_real_escape_string($conn, $_POST['phone']);
     $password = mysqli_real_escape_string($conn, md5($_POST['password']));
     $confirm_password = mysqli_real_escape_string($conn, md5($_POST['confirm_password']));
 
@@ -17,7 +18,7 @@ if (isset($_POST['submit'])) {
             $message[] = 'Mật khẩu không khớp!';
         } else {
             // Thêm tài khoản vào bảng `users`
-            mysqli_query($conn, "INSERT INTO `users` (username, email, password) VALUES('$name', '$email', '$password')") or die('Query failed');
+            mysqli_query($conn, "INSERT INTO `users` (username, email, password, phone) VALUES('$name', '$email', '$password', '$phone')") or die('Query failed');
             $message[] = 'Đăng ký thành công!';
             header('location:login.php');
         }

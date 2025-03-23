@@ -27,6 +27,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
 
     <!-- Custom CSS file -->
     <link rel="stylesheet" href="style.css">
+    
 
     <?php
     // require functions.php file
@@ -78,6 +79,12 @@ $user_id = @$_SESSION['user_id'] ?? 1;
             right: 49px;
             border-radius: 0;
             height: -webkit-fill-available;
+            background-color: #29312a;
+            color: white;
+            border: none;
+        }
+        .nav-link:hover {
+            color: #000 !important;
         }
     </style>
 
@@ -102,7 +109,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         }
         ?>
         <div class="strip d-flex justify-content-between px-4 py-1 bg-light">
-            <p class="font-rale font-size-12 text-black-50 m-0">Mchien Football - 0763651041 - Hoàng Mai - Hà Nội - Việt Nam</p>
+            <p class="font-rale font-size-12 text-black-50 m-0">Mchien Football - 0941201816 - Hoàng Mai - Hà Nội - Việt Nam</p>
             <?php if ($user_id && $user_id != 1) { ?>
                 <div class="user-dropdown" style="position: relative; display: inline-block;">
                     <i class="fas fa-user-circle" style="font-size: 30px; cursor: pointer;" id="userIcon"></i>
@@ -123,7 +130,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         </div>
 
         <!-- Primary Navigation -->
-        <nav style=" background: #d83131;" class="navbar navbar-expand-lg navbar-dark color-header-bg">
+        <nav style=" background: #28a745;" class="navbar navbar-expand-lg navbar-dark color-header-bg">
             <a class="navbar-brand" href="./index.php">
                 <img width="90" src="./assets/logo-fb.png" alt="logo" class="logo">
             </a>
@@ -140,7 +147,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                         <a class="nav-link" href="./blog.php">Blog</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="./order.php">Đặt sân</a>
+                        <a class="nav-link" href="./my-bookings.php">Đơn đặt sân</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="./personal.php">Hồ sơ cá nhân</a>
@@ -151,7 +158,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                         <?php $keyword = $_GET['keyword'] ?? ''; ?>
                         <input type="text" name="keyword" class="form-control search-product" placeholder="Search" value="<?php echo $keyword; ?>">
                         <div class="input-group-append">
-                            <button class="btn btn-primary search-btn" type="submit">Tìm kiếm</button>
+                            <button class="btn px-2 py-1 search-btn" type="submit">Tìm kiếm</button>
                         </div>
                     </div>
                 </form>

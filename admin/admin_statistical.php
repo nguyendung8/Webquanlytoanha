@@ -10,173 +10,261 @@ if (!isset($admin_id)) {
     exit();
 }
 
-// Thống kê dữ liệu
-$total_orders = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count FROM `orders`"))['count'];
-$total_products = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count FROM `products`"))['count'];
-$total_categories = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count FROM `categories`"))['count'];
-$total_users = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) AS count FROM `users` WHERE role='user'"))['count'];
+// Lấy tháng và năm hiện tại
+$current_month = date('m');
+$current_year = date('Y');
 
-// Doanh thu trong tháng hiện tại
-$current_month = date('Y-m');
-$total_revenue = mysqli_fetch_assoc(mysqli_query($conn, "SELECT SUM(total_price) AS revenue FROM `orders` WHERE status = 3 AND DATE_FORMAT(created_at, '%Y-%m') = '$current_month'"))['revenue'];
+// Thống kê doanh thu tháng hiện tại
+$monthly_revenue_query = mysqli_query($conn, "
+    SELECT 
+        DATE(booking_date) as date,
+        COUNT(*) as total_bookings,
+        SUM(total_price) as daily_revenue
+    FROM bookings 
+    WHERE MONTH(booking_date) = '$current_month' 
+    AND YEAR(booking_date) = '$current_year'
+    AND status = 'Đã xác nhận'
+    GROUP BY DATE(booking_date)
+    ORDER BY date DESC
+") or die('Query failed');
 
-// Thống kê số lượng đơn hàng theo trạng thái
-$order_status_data = mysqli_query($conn, "SELECT status, COUNT(*) AS count FROM `orders` GROUP BY status");
-$order_status_chart = [];
-while ($row = mysqli_fetch_assoc($order_status_data)) {
-    $order_status_chart[] = ['status' => $row['status'], 'count' => $row['count']];
-}
+// Thống kê doanh thu tổng theo từng tháng
+$total_revenue_query = mysqli_query($conn, "
+    SELECT 
+        YEAR(booking_date) as year,
+        MONTH(booking_date) as month,
+        COUNT(*) as total_bookings,
+        SUM(total_price) as monthly_revenue
+    FROM bookings 
+    WHERE status = 'Đã xác nhận'
+    GROUP BY YEAR(booking_date), MONTH(booking_date)
+    ORDER BY year DESC, month DESC
+") or die('Query failed');
 
-// Thống kê số lượng sản phẩm theo danh mục
-$product_category_data = mysqli_query($conn, "SELECT c.name AS category, COUNT(p.item_id) AS count 
-    FROM `products` p JOIN `categories` c ON p.item_category = c.id GROUP BY c.id");
-$product_category_chart = [];
-while ($row = mysqli_fetch_assoc($product_category_data)) {
-    $product_category_chart[] = ['category' => $row['category'], 'count' => $row['count']];
-}
+// Tính tổng doanh thu của tháng hiện tại
+$current_month_total = mysqli_query($conn, "
+    SELECT SUM(total_price) as total
+    FROM bookings 
+    WHERE MONTH(booking_date) = '$current_month' 
+    AND YEAR(booking_date) = '$current_year'
+    AND status = 'Đã xác nhận'
+") or die('Query failed');
+$current_month_revenue = mysqli_fetch_assoc($current_month_total)['total'] ?? 0;
+
+// Tính tổng doanh thu từ trước đến nay
+$all_time_total = mysqli_query($conn, "
+    SELECT SUM(total_price) as total
+    FROM bookings 
+    WHERE status = 'Đã xác nhận'
+") or die('Query failed');
+$all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
+
 ?>
 
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thống kê</title>
+    <title>Dashboard</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="css/admin_style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
 <body>
     <div class="d-flex">
         <?php include 'admin_navbar.php'; ?>
         <div class="manage-container">
-            <div class="bg-primary text-white text-center py-2 mb-4 shadow">
-                <h1 class="mb-0">Trang quản lý thống kê</h1>
+            <div style="background-color: #28a745" class="text-white text-center py-2 mb-4 shadow">
+                <h1 class="mb-0">Thống kê doanh thu</h1>
             </div>
 
-            <div class="row mb-4  p-4">
-                <div class="col-md-3">
-                    <div class="card text-center bg-primary text-white">
-                        <div class="card-body">
-                            <h3><?php echo $total_orders; ?></h3>
-                            <p>Đơn hàng</p>
+            <div class="container">
+                <!-- Tổng quan doanh thu -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Doanh thu tháng <?php echo $current_month ?>/<?php echo $current_year ?></h5>
+                                <h3 class="card-text"><?php echo number_format($current_month_revenue, 0, ',', '.'); ?> đ</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Tổng doanh thu</h5>
+                                <h3 class="card-text"><?php echo number_format($all_time_revenue, 0, ',', '.'); ?> đ</h3>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card text-center bg-success text-white">
-                        <div class="card-body">
-                            <h3><?php echo $total_products; ?></h3>
-                            <p>Sản phẩm</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center bg-warning text-white">
-                        <div class="card-body">
-                            <h3><?php echo $total_categories; ?></h3>
-                            <p>Danh mục</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-center bg-danger text-white">
-                        <div class="card-body">
-                            <h3><?php echo $total_users; ?></h3>
-                            <p>Người dùng</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title text-center">Thống kê trạng thái đơn hàng</h5>
-                            <canvas id="orderStatusChart"></canvas>
+                <!-- Biểu đồ doanh thu -->
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0">Biểu đồ doanh thu tháng <?php echo $current_month ?>/<?php echo $current_year ?></h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="monthlyRevenueChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-6 mb-4">
-                    <div class="card">
-                        <div class="card-body">
-                            <h5 class="card-title text-center">Số lượng sản phẩm theo danh mục</h5>
-                            <canvas id="productCategoryChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="card-title">Doanh thu tháng này</h5>
-                    <h3><?php echo number_format($total_revenue ?? 0, 0, ',', '.'); ?> VND</h3>
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Biểu đồ doanh thu theo tháng</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="yearlyRevenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bảng chi tiết -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Chi tiết doanh thu</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Tháng/Năm</th>
+                                                <th>Số đơn</th>
+                                                <th>Doanh thu</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                            mysqli_data_seek($total_revenue_query, 0);
+                                            while ($row = mysqli_fetch_assoc($total_revenue_query)) {
+                                                echo "<tr>";
+                                                echo "<td>" . $row['month'] . "/" . $row['year'] . "</td>";
+                                                echo "<td>" . $row['total_bookings'] . "</td>";
+                                                echo "<td>" . number_format($row['monthly_revenue'], 0, ',', '.') . " đ</td>";
+                                                echo "</tr>";
+                                            }
+                                            ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        // Biểu đồ trạng thái đơn hàng
-        const orderStatusData = <?php echo json_encode($order_status_chart); ?>;
-        const orderStatusLabels = orderStatusData.map(item => {
-            const status = parseInt(item.status); // Chuyển đổi sang số nguyên
-            switch (status) {
-                case 0:
-                    return 'Chờ xác nhận';
-                case 1:
-                    return 'Đã xác nhận';
-                case 2:
-                    return 'Đang vận chuyển';
-                case 3:
-                    return 'Hoàn thành';
-                case 4:
-                    return 'Đã hủy';
-                default:
-                    return 'Không xác định';
-            }
-        });
-        const orderStatusCounts = orderStatusData.map(item => item.count);
+        // Dữ liệu cho biểu đồ doanh thu tháng hiện tại
+        const monthlyData = {
+            labels: [
+                <?php
+                mysqli_data_seek($monthly_revenue_query, 0);
+                while ($row = mysqli_fetch_assoc($monthly_revenue_query)) {
+                    echo "'" . date('d/m', strtotime($row['date'])) . "',";
+                }
+                ?>
+            ],
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: [
+                    <?php
+                    mysqli_data_seek($monthly_revenue_query, 0);
+                    while ($row = mysqli_fetch_assoc($monthly_revenue_query)) {
+                        echo $row['daily_revenue'] . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderColor: 'rgb(40, 167, 69)',
+                borderWidth: 1
+            }]
+        };
 
-        new Chart(document.getElementById('orderStatusChart'), {
-            type: 'pie',
-            data: {
-                labels: orderStatusLabels,
-                datasets: [{
-                    data: orderStatusCounts,
-                    backgroundColor: ['#007bff', '#28a745', '#ffc107', '#dc3545']
-                }]
-            }
-        });
+        // Dữ liệu cho biểu đồ doanh thu theo tháng
+        const yearlyData = {
+            labels: [
+                <?php
+                mysqli_data_seek($total_revenue_query, 0);
+                while ($row = mysqli_fetch_assoc($total_revenue_query)) {
+                    echo "'" . $row['month'] . "/" . $row['year'] . "',";
+                }
+                ?>
+            ],
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: [
+                    <?php
+                    mysqli_data_seek($total_revenue_query, 0);
+                    while ($row = mysqli_fetch_assoc($total_revenue_query)) {
+                        echo $row['monthly_revenue'] . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: 'rgba(0, 123, 255, 0.2)',
+                borderColor: 'rgb(0, 123, 255)',
+                borderWidth: 1
+            }]
+        };
 
-        // Biểu đồ số lượng sản phẩm theo danh mục
-        const productCategoryData = <?php echo json_encode($product_category_chart); ?>;
-        const productCategoryLabels = productCategoryData.map(item => item.category);
-        const productCategoryCounts = productCategoryData.map(item => item.count);
-
-        new Chart(document.getElementById('productCategoryChart'), {
-            type: 'bar',
-            data: {
-                labels: productCategoryLabels,
-                datasets: [{
-                    label: 'Số lượng sản phẩm',
-                    data: productCategoryCounts,
-                    backgroundColor: '#17a2b8'
-                }]
+        // Cấu hình chung cho biểu đồ
+        const options = {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+                        }
+                    }
+                }
             },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: {
-                        display: false
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return 'Doanh thu: ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' đ';
+                        }
                     }
                 }
             }
-        });
+        };
+
+        // Khởi tạo biểu đồ
+        new Chart(
+            document.getElementById('monthlyRevenueChart'),
+            {
+                type: 'bar',
+                data: monthlyData,
+                options: options
+            }
+        );
+
+        new Chart(
+            document.getElementById('yearlyRevenueChart'),
+            {
+                type: 'line',
+                data: yearlyData,
+                options: options
+            }
+        );
     </script>
 </body>
-
 </html>

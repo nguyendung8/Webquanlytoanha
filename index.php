@@ -14,17 +14,17 @@ include('header.php');
 include('Template/_banner-area.php');
 /*  include banner area  */
 
-// /*  include top sale section */
-// include('Template/_top-sale.php');
-// /*  include top sale section */
+/*  include top sale section */
+include('Template/_top-sale.php');
+/*  include top sale section */
 
 // /*  include special price section  */
 // include('Template/_special-price.php');
 // /*  include special price section  */
 
-// /*  include banner ads  */
-// include('Template/_banner-ads.php');
-// /*  include banner ads  */
+/*  include banner ads  */
+include('Template/_banner-ads.php');
+/*  include banner ads  */
 
 // /*  include new phones section  */
 // include('Template/_new-phones.php');
@@ -48,7 +48,7 @@ include('Template/_blogs.php');
  <?php
     if (isset($_SESSION['user_id'])) {
 ?>
-    <div id="chat-icon" onclick="toggleChat()" style="position: fixed; bottom: 20px; right: 20px; background: #007bff; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000;">
+    <div id="chat-icon" onclick="toggleChat()" style="position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000;">
         <i class="fas fa-comment-dots" style="font-size: 24px;"></i>
     </div>
 <?php } ?>
