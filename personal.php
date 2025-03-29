@@ -15,7 +15,9 @@ $user = mysqli_fetch_assoc($query);
 
 // Xử lý cập nhật thông tin
 $message = "";
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+// Xử lý form cập nhật thông tin cá nhân
+if (isset($_POST['update_profile'])) {
     $username = trim($_POST['username']);
     $email = trim($_POST['email']);
     $current_password = md5($_POST['current_password']); // Mã hóa MD5 để so sánh
@@ -31,13 +33,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if ($new_password !== $confirm_password) {
                 $message = "<div class='alert alert-danger'>Mật khẩu mới và xác nhận không khớp!</div>";
             } else {
-                $hashed_password = md5($new_password); // Mã hóa MD5 mật khẩu mới
+                $hashed_password = md5($new_password);
                 $update_query = "UPDATE `users` SET username = '$username', email = '$email', password = '$hashed_password' WHERE user_id = $user_id";
-
-                        // Thực thi truy vấn cập nhật
+                
                 if (mysqli_query($conn, $update_query)) {
                     $message = "<div class='alert alert-success'>Cập nhật thông tin thành công!</div>";
-                    // Cập nhật lại thông tin sau khi thay đổi
                     $query = mysqli_query($conn, "SELECT * FROM `users` WHERE user_id = $user_id");
                     $user = mysqli_fetch_assoc($query);
                 } else {
@@ -46,17 +46,36 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         } else {
             $update_query = "UPDATE `users` SET username = '$username', email = '$email' WHERE user_id = $user_id";
-                    // Thực thi truy vấn cập nhật
             if (mysqli_query($conn, $update_query)) {
                 $message = "<div class='alert alert-success'>Cập nhật thông tin thành công!</div>";
-                // Cập nhật lại thông tin sau khi thay đổi
                 $query = mysqli_query($conn, "SELECT * FROM `users` WHERE user_id = $user_id");
                 $user = mysqli_fetch_assoc($query);
             } else {
                 $message = "<div class='alert alert-danger'>Lỗi cập nhật thông tin!</div>";
             }
         }
+    }
+}
 
+// Xử lý form cập nhật thông tin ngân hàng
+if(isset($_POST['update_bank'])) {
+    $bank_name = mysqli_real_escape_string($conn, $_POST['bank_name']);
+    $bank_account_number = mysqli_real_escape_string($conn, $_POST['bank_account_number']);
+    $bank_account_name = mysqli_real_escape_string($conn, $_POST['bank_account_name']);
+    
+    $update_query = "UPDATE users SET 
+        bank_name = '$bank_name',
+        bank_account_number = '$bank_account_number',
+        bank_account_name = '$bank_account_name'
+    WHERE user_id = '$user_id'";
+    
+    if(mysqli_query($conn, $update_query)) {
+        $message = "<div class='alert alert-success'>Cập nhật thông tin tài khoản ngân hàng thành công!</div>";
+        // Cập nhật lại thông tin người dùng
+        $query = mysqli_query($conn, "SELECT * FROM `users` WHERE user_id = $user_id");
+        $user = mysqli_fetch_assoc($query);
+    } else {
+        $message = "<div class='alert alert-danger'>Có lỗi xảy ra khi cập nhật thông tin ngân hàng!</div>";
     }
 }
 ?>
@@ -105,7 +124,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <input type="password" class="form-control" id="confirm_password" name="confirm_password">
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100">Cập nhật</button>
+                <button type="submit" name="update_profile" class="btn btn-primary w-100">Cập nhật</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Thêm phần form thông tin tài khoản -->
+    <div class="card my-4">
+        <div class="card-header">
+            <h5>Thông tin tài khoản ngân hàng</h5>
+            <small class="text-muted">*Dùng để hoàn tiền khi hủy đặt sân</small>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="">
+                <div class="mb-3">
+                    <label class="form-label">Tên ngân hàng</label>
+                    <input type="text" class="form-control" name="bank_name" 
+                           value="<?php echo $user['bank_name'] ?? ''; ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Số tài khoản</label>
+                    <input type="text" class="form-control" name="bank_account_number" 
+                           value="<?php echo $user['bank_account_number'] ?? ''; ?>" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tên chủ tài khoản</label>
+                    <input type="text" class="form-control" name="bank_account_name" 
+                           value="<?php echo $user['bank_account_name'] ?? ''; ?>" required>
+                </div>
+                <button type="submit" name="update_bank" class="btn btn-primary">Cập nhật thông tin</button>
             </form>
         </div>
     </div>

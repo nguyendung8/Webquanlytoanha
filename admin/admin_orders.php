@@ -36,6 +36,49 @@ if (isset($_POST['update_status'])) {
     }
 }
 
+// Xử lý hủy đơn
+if(isset($_POST['cancel_booking'])) {
+    $booking_id = $_POST['booking_id'];
+    $field_id = $_POST['field_id'];
+    $cancel_reason = mysqli_real_escape_string($conn, $_POST['cancel_reason']);
+    
+    // Xử lý upload ảnh bill hoàn cọc
+    if(isset($_FILES['refund_image']) && $_FILES['refund_image']['error'] === 0) {
+        $image = $_FILES['refund_image'];
+        $image_name = time() . '_refund_' . $image['name'];
+        $target_path = '../assets/refund/' . $image_name;
+
+        // Tạo thư mục nếu chưa tồn tại
+        if (!file_exists('../assets/refund')) {
+            mkdir('../assets/refund', 0777, true);
+        }
+
+        if(move_uploaded_file($image['tmp_name'], $target_path)) {
+            // Cập nhật trạng thái đơn
+            $update_query = "UPDATE bookings SET 
+                status = 'Đã hủy',
+                cancel_reason = '$cancel_reason',
+                refund_image = '$image_name',
+                cancel_date = NOW()
+            WHERE id = '$booking_id'";
+
+            if(mysqli_query($conn, $update_query)) {
+                // Cập nhật trạng thái sân
+                mysqli_query($conn, "UPDATE football_fields SET status = 'Đang trống' WHERE id = '$field_id'");
+                $message[] = 'Đã hủy đơn và lưu thông tin hoàn cọc!';
+            } else {
+                $message[] = 'Có lỗi xảy ra khi hủy đơn!';
+                // Xóa ảnh nếu cập nhật database thất bại
+                unlink($target_path);
+            }
+        } else {
+            $message[] = 'Lỗi upload ảnh hoàn tiền!';
+        }
+    } else {
+        $message[] = 'Vui lòng upload ảnh bill hoàn cọc!';
+    }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -118,29 +161,90 @@ if (isset($_POST['update_status'])) {
                                 echo $services ? implode(', ', $services) : 'Không có';
                                 ?>
                             </td>
-                            <td><?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</td>
                             <td>
-                                <?php if ($booking['status'] == 'Đã hủy'): ?>
-                                    <span class="badge bg-danger">Đã hủy</span>
+                                <span>Tổng: <?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</span>
+                                <br>
+                                <span>Đã cọc: <?php echo number_format($booking['total_price'] * 0.5, 0, ',', '.'); ?> đ</span>
+                            </td>
+                            <td>
+                                <?php if ($booking['status'] == 'Chờ xác nhận'): ?>
+                                    <form action="" method="POST" class="d-flex gap-2">
+                                        <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
+                                        <input type="hidden" name="field_id" value="<?php echo $booking['field_id']; ?>">
+                                        <input type="hidden" name="status" value="Đã xác nhận">
+                                        <button type="submit" name="update_status" class="btn btn-success btn-sm">
+                                            <i class="fas fa-check"></i> Xác nhận
+                                        </button>
+                                        <button type="button" class="btn btn-danger btn-sm" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#cancelModal_<?php echo $booking['id']; ?>">
+                                            <i class="fas fa-times"></i> Hủy đơn
+                                        </button>
+                                    </form>
+
+                                    <!-- Modal Hủy đơn -->
+                                    <div class="modal fade" id="cancelModal_<?php echo $booking['id']; ?>" tabindex="-1">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Hủy đơn đặt sân #<?php echo $booking['id']; ?></h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form action="" method="POST" enctype="multipart/form-data">
+                                                    <div class="modal-body">
+                                                        <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
+                                                        <input type="hidden" name="field_id" value="<?php echo $booking['field_id']; ?>">
+                                                        
+                                                        <!-- Thông tin đơn hàng -->
+                                                        <div class="booking-info mb-3">
+                                                            <h6>Thông tin đơn hàng:</h6>
+                                                            <p><strong>Tổng tiền:</strong> <?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</p>
+                                                            <p><strong>Tiền cọc đã nhận:</strong> <?php echo number_format($booking['total_price'] * 0.5, 0, ',', '.'); ?> đ</p>
+                                                        </div>
+
+                                                        <!-- Thông tin tài khoản user -->
+                                                        <?php
+                                                        $user_query = mysqli_query($conn, "SELECT * FROM users WHERE user_id = '{$booking['user_id']}'");
+                                                        $user_data = mysqli_fetch_assoc($user_query);
+                                                        ?>
+                                                        <div class="bank-info mb-3">
+                                                            <h6>Thông tin hoàn tiền:</h6>
+                                                            <?php if(!empty($user_data['bank_account_number'])): ?>
+                                                                <p><strong>Ngân hàng:</strong> <?php echo $user_data['bank_name']; ?></p>
+                                                                <p><strong>Số tài khoản:</strong> <?php echo $user_data['bank_account_number']; ?></p>
+                                                                <p><strong>Chủ tài khoản:</strong> <?php echo $user_data['bank_account_name']; ?></p>
+                                                            <?php else: ?>
+                                                                <div class="alert alert-warning">
+                                                                    Người dùng chưa cập nhật thông tin tài khoản ngân hàng!
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Lý do hủy <span class="text-danger">*</span></label>
+                                                            <textarea name="cancel_reason" class="form-control" required></textarea>
+                                                        </div>
+
+                                                        <div class="mb-3">
+                                                            <label class="form-label">Ảnh bill hoàn cọc <span class="text-danger">*</span></label>
+                                                            <input type="file" class="form-control" name="refund_image" accept="image/*" required>
+                                                            <div class="form-text">Upload ảnh chụp màn hình chuyển khoản hoàn tiền</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                                        <button type="submit" name="cancel_booking" class="btn btn-danger">
+                                                            Xác nhận hủy đơn
+                                                        </button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php elseif ($booking['status'] == 'Đã xác nhận'): ?>
+                                    <span class="badge bg-success">Đã xác nhận</span>
                                 <?php else: ?>
-                                <form action="" method="POST">
-                                    <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
-                                    <input type="hidden" name="field_id" value="<?php echo $booking['field_id']; ?>">
-                                    <select name="status" class="form-select form-select-sm mb-2">
-                                        <option value="Chờ xác nhận" <?php echo ($booking['status'] == 'Chờ xác nhận') ? 'selected' : ''; ?>>
-                                            Chờ xác nhận
-                                        </option>
-                                        <option value="Đã xác nhận" <?php echo ($booking['status'] == 'Đã xác nhận') ? 'selected' : ''; ?>>
-                                            Đã xác nhận
-                                        </option>
-                                        <option value="Đã hủy" <?php echo ($booking['status'] == 'Đã hủy') ? 'selected' : ''; ?>>
-                                            Hủy đơn
-                                        </option>
-                                    </select>
-                                    <button type="submit" name="update_status" class="btn btn-primary btn-sm w-100">
-                                        Cập nhật
-                                    </button>
-                                </form>
+                                    <span class="badge bg-danger">Đã hủy</span>
                                 <?php endif; ?>
                             </td>
                             <td>
@@ -197,6 +301,11 @@ if (isset($_POST['update_status'])) {
                                                         <tr class="table-success">
                                                             <th>Tổng cộng</th>
                                                             <th><?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</th>
+                                                            <th>Đã cọc: <?php echo number_format($booking['total_price'] * 0.5, 0, ',', '.'); ?> đ</th>
+                                                        </tr>
+                                                        <tr>
+                                                            <td>Ảnh bill thanh toán cọc</td>
+                                                            <td><img src="../assets/bill/<?php echo $booking['payment_image']; ?>" alt="<?php echo $booking['user_name']; ?>" style="width: 100%; height: auto;"></td>
                                                         </tr>
                                                     </table>
                                                 </div>

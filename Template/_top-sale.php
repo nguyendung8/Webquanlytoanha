@@ -41,7 +41,7 @@ $fields = mysqli_fetch_all($select_fields, MYSQLI_ASSOC);
                                     <?php echo number_format($field['rental_price'], 0, ',', '.'); ?> đ/giờ
                                 </span>
                             </div>
-                            <div class="status">
+                            <!-- <div class="status">
                                 <?php 
                                 $statusClass = '';
                                 switch($field['status']) {
@@ -60,37 +60,17 @@ $fields = mysqli_fetch_all($select_fields, MYSQLI_ASSOC);
                                     <i class="fas fa-circle"></i> 
                                     <?php echo $field['status']; ?>
                                 </span>
-                            </div>
+                            </div> -->
                         </div>
                         <div class="field-actions">
                             <a href="field-detail.php?id=<?php echo $field['id']; ?>" 
                             class="btn btn-info font-size-12">
                                 <i class="fas fa-info-circle"></i> Xem chi tiết
                             </a>
-                            <?php
-                            // Kiểm tra xem user hiện tại đã đặt sân này chưa
-                            $field_id = $field['id'];
-                            $check_booking = mysqli_query($conn, "SELECT status FROM bookings 
-                                WHERE user_id = '$user_id' 
-                                AND field_id = '$field_id'
-                                AND status IN ('Chờ xác nhận', 'Đã xác nhận')
-                                AND booking_date >= CURDATE()") or die('Query failed');
-
-                            if($field['status'] == 'Đang trống'): ?>
-                                <?php if($user_id && mysqli_num_rows($check_booking) > 0): ?>
-                                    <button class="btn btn-warning font-size-12" disabled>
-                                        Đã đặt
-                                    </button>
-                                <?php else: ?>
-                                    <a href="booking.php?field_id=<?php echo $field['id']; ?>" class="btn btn-success font-size-12 mt-2">
-                                        Đặt sân
-                                    </a>
-                                <?php endif; ?>
-                            <?php else: ?>
-                                <button class="btn btn-secondary font-size-12" disabled>
-                                    <?php echo $field['status']; ?>
-                                </button>
-                            <?php endif; ?>
+                           
+                            <a href="booking.php?field_id=<?php echo $field['id']; ?>" class="btn btn-success font-size-12 mt-2">
+                                Đặt sân
+                            </a>
                         </div>
                     </div>
                 </div>

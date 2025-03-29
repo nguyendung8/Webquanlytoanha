@@ -88,17 +88,15 @@ $rating_stats = mysqli_fetch_assoc($avg_rating_query);
                             <i class="fas fa-money-bill"></i> 
                             <?php echo number_format($field['rental_price'], 0, ',', '.'); ?> đ/giờ
                         </p>
-                        <p class="status">
+                        <!-- <p class="status">
                             <i class="fas fa-circle <?php echo $field['status'] == 'Đang trống' ? 'text-success' : 'text-danger'; ?>"></i>
                             <?php echo $field['status']; ?>
-                        </p>
+                        </p> -->
                     </div>
-                    <?php if($field['status'] == 'Đang trống'): ?>
                         <a href="booking.php?field_id=<?php echo $field['id']; ?>" 
                            class="btn btn-success btn-lg mt-3">
                             <i style="color: white;" class="fas fa-calendar-alt"></i> Đặt sân ngay
                         </a>
-                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -20,45 +20,103 @@ $field_query = mysqli_query($conn, "SELECT * FROM football_fields WHERE id = '$f
 $field = mysqli_fetch_assoc($field_query);
 
 // Xử lý đặt sân
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
-    $booking_date = $_POST['booking_date'];
-    $start_time = $_POST['start_time'];
-    $duration = floatval($_POST['duration']);
-    $rent_ball = isset($_POST['rent_ball']) ? 1 : 0;
-    $rent_uniform = isset($_POST['rent_uniform']) ? 1 : 0;
-    $payment_method = $_POST['payment_method'];
-    
-    // Tính các loại giá
-    $field_price = $field['rental_price'] * $duration;
-    $total_price = $field_price;
-    if ($rent_ball) $total_price += 100000;
-    if ($rent_uniform) $total_price += 100000;
-    
-    // Tính tiền đặt cọc (50% tổng tiền)
-    $deposit_amount = $total_price * 0.5;
-    
-    // Lưu thông tin đặt sân tạm thời vào session
-    $_SESSION['temp_booking'] = [
-        'field_id' => $field_id,
-        'booking_date' => $booking_date,
-        'start_time' => $start_time,
-        'duration' => $duration,
-        'rent_ball' => $rent_ball,
-        'rent_uniform' => $rent_uniform,
-        'field_price' => $field_price,
-        'total_price' => $total_price,
-        'deposit_amount' => $deposit_amount,
-        'note' => $_POST['note']
-    ];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
+    // Kiểm tra file ảnh
+    if (!isset($_FILES['payment_image']) || $_FILES['payment_image']['error'] !== 0) {
+        echo "<script>
+            alert('Vui lòng upload ảnh bill thanh toán!');
+            history.back();
+        </script>";
+        exit();
+    }
 
-    // Chuyển hướng đến trang thanh toán tương ứng
-    if ($payment_method == 'momo') {
-        $_POST['deposit_amount'] = $deposit_amount;
-        $_POST['booking_data'] = json_encode($_SESSION['temp_booking']);
-        include 'payment/momo_payment.php';
-    } else if ($payment_method == 'vnpay') {
-        $_POST['deposit_amount'] = $deposit_amount;
-        include 'payment/vnpay_payment.php';
+    // Xử lý upload ảnh
+    $image = $_FILES['payment_image'];
+    $image_name = time() . '_' . $image['name'];
+    $target_path = 'assets/bill/' . $image_name;
+
+    // Kiểm tra và tạo thư mục nếu chưa tồn tại
+    if (!file_exists('assets/bill')) {
+        mkdir('assets/bill', 0777, true);
+    }
+
+    if (move_uploaded_file($image['tmp_name'], $target_path)) {
+        // Tiếp tục xử lý insert booking với ảnh
+        $user_id = $_SESSION['user_id'];
+        $field_id = $_POST['field_id'];
+        $booking_date = $_POST['booking_date'];
+        $start_time = $_POST['start_time'];
+        $duration = floatval($_POST['duration']);
+        $rent_ball = isset($_POST['rent_ball']) ? 1 : 0;
+        $rent_uniform = isset($_POST['rent_uniform']) ? 1 : 0;
+        $payment_method = $_POST['payment_method'];
+        $note = $_POST['note'] ?? '';
+
+        // Tính thời gian kết thúc
+        $start_timestamp = strtotime("$booking_date $start_time");
+        $duration_seconds = $duration * 3600;
+        $end_timestamp = $start_timestamp + $duration_seconds;
+        $end_time = date('H:i', $end_timestamp);
+
+        // Kiểm tra trùng lịch
+        $check_query = "SELECT b.*, f.name as field_name 
+                       FROM bookings b
+                       JOIN football_fields f ON b.field_id = f.id
+                       WHERE b.field_id = '$field_id' 
+                       AND b.booking_date = '$booking_date'
+                       AND b.status IN ('Chờ xác nhận', 'Đã xác nhận')
+                       AND ((b.start_time <= '$start_time' AND b.end_time > '$start_time')
+                       OR (b.start_time < '$end_time' AND b.end_time >= '$end_time')
+                       OR (b.start_time >= '$start_time' AND b.end_time <= '$end_time'))";
+
+        $check_booking = mysqli_query($conn, $check_query);
+
+        if(mysqli_num_rows($check_booking) > 0) {
+            $existing_booking = mysqli_fetch_assoc($check_booking);
+            $error_message = "Sân " . $existing_booking['field_name'] . " đã được đặt trong khung giờ " . 
+                            $existing_booking['start_time'] . " - " . $existing_booking['end_time'] . 
+                            " ngày " . date('d/m/Y', strtotime($existing_booking['booking_date'])) . 
+                            ". Vui lòng chọn khung giờ khác!";
+        } else {
+            // Nếu không trùng lịch thì tiếp tục xử lý và insert
+            $field_query = mysqli_query($conn, "SELECT * FROM football_fields WHERE id = '$field_id'");
+            $field = mysqli_fetch_assoc($field_query);
+            $field_price = $field['rental_price'] * $duration;
+            $total_price = $field_price;
+            if ($rent_ball) $total_price += 100000;
+            if ($rent_uniform) $total_price += 100000;
+            $deposit_amount = $total_price * 0.5;
+
+            // Thêm tên file ảnh vào câu query insert
+            $insert_query = "INSERT INTO bookings 
+                (user_id, field_id, booking_date, start_time, end_time, duration,
+                 field_price, rent_ball, rent_uniform, total_price, note, status,
+                 payment_method, deposit_amount, payment_status, payment_image) 
+                VALUES (
+                    '$user_id', '$field_id', '$booking_date', '$start_time', '$end_time',
+                    '$duration', '$field_price', '$rent_ball', '$rent_uniform', '$total_price',
+                    '$note', 'Chờ xác nhận', '$payment_method', '$deposit_amount', 'Đã đặt cọc',
+                    '$image_name'
+                )";
+
+            if (mysqli_query($conn, $insert_query)) {
+                echo "<script>
+                    alert('Đặt sân thành công!');
+                    window.location.href = 'my-bookings.php';
+                </script>";
+                exit();
+            } else {
+                $error_message = "Có lỗi xảy ra khi đặt sân. Vui lòng thử lại!";
+                // Xóa file ảnh nếu insert thất bại
+                unlink($target_path);
+            }
+        }
+    } else {
+        echo "<script>
+            alert('Có lỗi khi upload ảnh. Vui lòng thử lại!');
+            history.back();
+        </script>";
+        exit();
     }
 }
 ?>
@@ -66,6 +124,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
 <?php include 'header.php'; ?>
 <!-- Trong phần head -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Thêm jQuery trước Bootstrap JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <div class="booking-container py-5">
@@ -91,7 +152,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
             <div class="col-lg-8">
                 <div class="booking-form-card">
                     <h2 class="form-title">Đặt Sân</h2>
+                    <div class="col-12">
+                        <?php if (isset($error_message)): ?>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <?php echo $error_message; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        <?php endif; ?>
+                    </div>
                     <form method="POST" id="bookingForm">
+                        <input type="hidden" name="field_id" value="<?php echo $field_id; ?>">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label>Ngày đặt sân</label>
@@ -188,7 +258,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
                                 </div>
                             </div>
                         </div>
-                        <button type="submit" name="submit_booking" class="btn btn-booking mt-4">
+                        <button type="button" class="btn btn-booking mt-4" onclick="showPaymentModal()">
                             Đặt sân
                         </button>
                     </form>
@@ -198,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
     </div>
 </div>
 
-<!-- Thêm modal thanh toán -->
+<!-- Modal thanh toán với form riêng -->
 <div class="modal fade" id="paymentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -206,45 +276,71 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_booking'])) {
                 <h5 class="modal-title">Thanh toán đặt cọc</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div class="payment-info">
-                    <div class="amount-info mb-4">
-                        <h6>Thông tin thanh toán:</h6>
-                        <p>Tổng tiền: <span id="modalTotalPrice">0 đ</span></p>
-                        <p>Số tiền đặt cọc (50%): <span id="modalDepositAmount">0 đ</span></p>
-                    </div>
-
-                    <div id="momoPayment" style="display: none;">
-                        <h6>Quét mã QR để thanh toán MOMO</h6>
-                        <div class="text-center">
-                            <img src="assets/images/momo-qr.png" alt="MOMO QR" style="width: 200px;">
+            <form id="paymentForm" method="POST" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <!-- Copy tất cả hidden fields từ form chính -->
+                    <input type="hidden" name="field_id" id="modal_field_id">
+                    <input type="hidden" name="booking_date" id="modal_booking_date">
+                    <input type="hidden" name="start_time" id="modal_start_time">
+                    <input type="hidden" name="duration" id="modal_duration">
+                    <input type="hidden" name="rent_ball" id="modal_rent_ball">
+                    <input type="hidden" name="rent_uniform" id="modal_rent_uniform">
+                    <input type="hidden" name="note" id="modal_note">
+                    <input type="hidden" name="payment_method" id="modal_payment_method">
+                    
+                    <div class="payment-info">
+                        <div class="amount-info mb-4">
+                            <h6>Thông tin thanh toán:</h6>
+                            <p>Tổng tiền: <span id="modalTotalPrice">0 đ</span></p>
+                            <p>Số tiền đặt cọc (50%): <span id="modalDepositAmount">0 đ</span></p>
                         </div>
-                    </div>
 
-                    <div id="vnpayPayment" style="display: none;">
-                        <h6>Quét mã QR để thanh toán VNPay</h6>
-                        <div class="text-center">
-                            <img src="assets/images/vnpay-qr.png" alt="VNPay QR" style="width: 200px;">
+                        <!-- Phần hiển thị phương thức thanh toán -->
+                        <div id="momoPayment" style="display: none;">
+                            <h6>Quét mã QR để thanh toán MOMO</h6>
+                            <div class="text-center">
+                                <img src="assets/images/momo-qr.png" alt="MOMO QR" style="width: 200px;">
+                            </div>
                         </div>
-                    </div>
 
-                    <div id="bankPayment" style="display: none;">
-                        <h6>Thông tin chuyển khoản:</h6>
-                        <div class="bank-details">
-                            <p><strong>Ngân hàng:</strong> Vietcombank</p>
-                            <p><strong>Số tài khoản:</strong> 1234567890</p>
-                            <p><strong>Chủ tài khoản:</strong> NGUYEN VAN A</p>
-                            <p><strong>Nội dung CK:</strong> <span id="transferContent"></span></p>
+                        <div id="vnpayPayment" style="display: none;">
+                            <h6>Quét mã QR để thanh toán VNPay</h6>
+                            <div class="text-center">
+                                <img src="assets/images/vnpay-qr.png" alt="VNPay QR" style="width: 200px;">
+                            </div>
+                        </div>
+
+                        <div id="bankPayment" style="display: none;">
+                            <h6>Thông tin chuyển khoản:</h6>
+                            <div class="bank-details">
+                                <p><strong>Ngân hàng:</strong> Vietcombank</p>
+                                <p><strong>Số tài khoản:</strong> 1234567890</p>
+                                <p><strong>Chủ tài khoản:</strong> NGUYEN VAN A</p>
+                                <p><strong>Nội dung CK:</strong> <span id="transferContent"></span></p>
+                            </div>
+                        </div>
+
+                        <!-- Phần upload ảnh bill -->
+                        <div class="mt-4">
+                            <h6>Upload ảnh bill thanh toán:</h6>
+                            <div class="mb-3">
+                                <input style="padding: 0;" type="file" class="form-control" id="paymentImage" name="payment_image" 
+                                       accept="image/*" required>
+                                <div class="form-text">Vui lòng upload ảnh chụp màn hình bill thanh toán</div>
+                            </div>
+                            <div id="imagePreview" class="mt-2 text-center" style="display: none;">
+                                <img src="" alt="Preview" style="max-width: 200px; max-height: 200px;">
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-success" onclick="simulatePayment()">
-                    Đã thanh toán
-                </button>
-            </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" name="submit_booking" class="btn btn-primary">
+                        Xác nhận thanh toán
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -443,7 +539,27 @@ label {
 </style>
 
 <script>
+function validateBooking() {
+    const startTime = document.querySelector('input[name="start_time"]').value;
+    const duration = parseFloat(document.querySelector('select[name="duration"]').value);
+    
+    // Chuyển start_time sang timestamp
+    const [hours, minutes] = startTime.split(':');
+    const startHour = parseInt(hours);
+    const endHour = startHour + Math.floor(duration);
+    const endMinutes = minutes === '30' ? (duration % 1) * 60 + 30 : (duration % 1) * 60;
+    
+    // Kiểm tra thời gian đặt sân
+    if (startHour < 6 || endHour > 22 || (endHour === 22 && endMinutes > 0)) {
+        alert('Thời gian đặt sân phải từ 6:00 đến 22:00');
+        return false;
+    }
+    
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Cập nhật giá khi thay đổi thời gian hoặc dịch vụ
     const form = document.getElementById('bookingForm');
     const durationSelect = form.querySelector('[name="duration"]');
     const rentBallCheckbox = document.getElementById('rentBall');
@@ -452,114 +568,95 @@ document.addEventListener('DOMContentLoaded', function() {
     const totalPriceSpan = document.getElementById('totalPrice');
     const ballPriceRow = document.getElementById('ballPriceRow');
     const uniformPriceRow = document.getElementById('uniformPriceRow');
-    const paymentModal = new bootstrap.Modal(document.getElementById('paymentModal'));
     
-    const pricePerHour = <?php echo $field['rental_price']; ?>;
-    const ballPrice = 100000;
-    const uniformPrice = 100000;
-
-    function updateTotalPrice() {
+    function updatePrice() {
         const duration = parseFloat(durationSelect.value);
-        const fieldPrice = pricePerHour * duration;
-        let total = fieldPrice;
-
-        // Hiển thị tiền sân
+        const rentalPrice = <?php echo $field['rental_price']; ?>;
+        const rentBall = rentBallCheckbox.checked;
+        const rentUniform = rentUniformCheckbox.checked;
+        
+        // Tính tiền sân
+        const fieldPrice = duration * rentalPrice;
         fieldPriceSpan.textContent = fieldPrice.toLocaleString('vi-VN') + ' đ';
-
-        // Tính thêm tiền thuê bóng
-        if (rentBallCheckbox.checked) {
-            total += ballPrice;
-            ballPriceRow.style.display = 'flex';
-        } else {
-            ballPriceRow.style.display = 'none';
-        }
-
-        // Tính thêm tiền thuê áo
-        if (rentUniformCheckbox.checked) {
-            total += uniformPrice;
-            uniformPriceRow.style.display = 'flex';
-        } else {
-            uniformPriceRow.style.display = 'none';
-        }
-
-        // Hiển thị tổng tiền
-        totalPriceSpan.textContent = total.toLocaleString('vi-VN') + ' đ';
-    }
-
-    // Gắn sự kiện cho các input
-    durationSelect.addEventListener('change', updateTotalPrice);
-    rentBallCheckbox.addEventListener('change', updateTotalPrice);
-    rentUniformCheckbox.addEventListener('change', updateTotalPrice);
-
-    // Cập nhật giá ban đầu
-    updateTotalPrice();
-
-    // Xử lý submit form
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
         
-        // Validate time
-        const timeInput = form.querySelector('[name="start_time"]');
-        const time = timeInput.value;
-        const [hours, minutes] = time.split(':').map(Number);
+        // Hiển thị/ẩn các dòng giá dịch vụ
+        ballPriceRow.style.display = rentBall ? 'flex' : 'none';
+        uniformPriceRow.style.display = rentUniform ? 'flex' : 'none';
         
-        if (hours < 6 || (hours === 22 && minutes > 0) || hours > 22) {
-            alert('Vui lòng chọn giờ đặt sân từ 6:00 đến 22:00');
-            return;
-        }
-
-        // Lấy phương thức thanh toán
-        const paymentMethod = form.querySelector('input[name="payment_method"]:checked').value;
+        // Tính tổng tiền
+        let totalPrice = fieldPrice;
+        if (rentBall) totalPrice += 100000;
+        if (rentUniform) totalPrice += 100000;
         
-        // Cập nhật thông tin trong modal
-        const totalPrice = parseInt(document.getElementById('totalPrice').textContent.replace(/[^\d]/g, ''));
-        const depositAmount = Math.round(totalPrice * 0.5);
+        totalPriceSpan.textContent = totalPrice.toLocaleString('vi-VN') + ' đ';
         
+        // Cập nhật giá trong modal
         document.getElementById('modalTotalPrice').textContent = totalPrice.toLocaleString('vi-VN') + ' đ';
-        document.getElementById('modalDepositAmount').textContent = depositAmount.toLocaleString('vi-VN') + ' đ';
-        
-        // Hiển thị phương thức thanh toán tương ứng
-        document.getElementById('momoPayment').style.display = 'none';
-        document.getElementById('vnpayPayment').style.display = 'none';
-        document.getElementById('bankPayment').style.display = 'none';
-        
-        document.getElementById(paymentMethod + 'Payment').style.display = 'block';
-        
-        // Tạo nội dung chuyển khoản
-        const bookingDate = form.querySelector('[name="booking_date"]').value;
-        const transferContent = `DC${bookingDate.replace(/-/g, '')}`;
-        document.getElementById('transferContent').textContent = transferContent;
-        
-        // Hiển thị modal thanh toán
-        paymentModal.show();
-    });
+        document.getElementById('modalDepositAmount').textContent = (totalPrice * 0.5).toLocaleString('vi-VN') + ' đ';
+    }
+    
+    // Gắn sự kiện cho các trường input
+    durationSelect.addEventListener('change', updatePrice);
+    rentBallCheckbox.addEventListener('change', updatePrice);
+    rentUniformCheckbox.addEventListener('change', updatePrice);
+    
+    // Khởi tạo giá ban đầu
+    updatePrice();
 });
 
-// Hàm giả lập thanh toán thành công
-function simulatePayment() {
-    const form = document.getElementById('bookingForm');
-    const formData = new FormData(form);
+// Hàm hiển thị modal và copy dữ liệu từ form chính
+function showPaymentModal() {
+    // Validate form chính trước
+    if (!validateBooking()) {
+        return;
+    }
+
+    // Copy dữ liệu từ form chính sang form modal
+    const mainForm = document.getElementById('bookingForm');
+    document.getElementById('modal_field_id').value = mainForm.querySelector('[name="field_id"]').value;
+    document.getElementById('modal_booking_date').value = mainForm.querySelector('[name="booking_date"]').value;
+    document.getElementById('modal_start_time').value = mainForm.querySelector('[name="start_time"]').value;
+    document.getElementById('modal_duration').value = mainForm.querySelector('[name="duration"]').value;
+    document.getElementById('modal_rent_ball').value = mainForm.querySelector('[name="rent_ball"]').checked ? 1 : 0;
+    document.getElementById('modal_rent_uniform').value = mainForm.querySelector('[name="rent_uniform"]').checked ? 1 : 0;
+    document.getElementById('modal_note').value = mainForm.querySelector('[name="note"]').value;
     
-    // Thêm trạng thái thanh toán vào form
-    formData.append('payment_status', 'Đã đặt cọc');
+    // Lấy phương thức thanh toán đã chọn
+    const selectedPayment = mainForm.querySelector('input[name="payment_method"]:checked');
+    if (selectedPayment) {
+        document.getElementById('modal_payment_method').value = selectedPayment.value;
+        // Hiển thị phương thức thanh toán tương ứng
+        showPaymentMethod(selectedPayment.value);
+    }
+
+    // Hiển thị modal
+    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
+    modal.show();
+}
+
+// Preview ảnh khi chọn file
+document.getElementById('paymentImage').addEventListener('change', function(e) {
+    const preview = document.getElementById('imagePreview');
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        preview.style.display = 'block';
+        preview.querySelector('img').src = e.target.result;
+    }
+
+    if (file) {
+        reader.readAsDataURL(file);
+    }
+});
+
+// Hiển thị phương thức thanh toán
+function showPaymentMethod(method) {
+    document.getElementById('momoPayment').style.display = 'none';
+    document.getElementById('vnpayPayment').style.display = 'none';
+    document.getElementById('bankPayment').style.display = 'none';
     
-    // Submit form
-    fetch('process_booking.php', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Đặt sân thành công!');
-            window.location.href = 'my-bookings.php';
-        } else {
-            alert('Có lỗi xảy ra: ' + data.message);
-        }
-    })
-    .catch(error => {
-        alert('Có lỗi xảy ra khi xử lý đặt sân');
-    });
+    document.getElementById(method + 'Payment').style.display = 'block';
 }
 </script>
 

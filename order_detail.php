@@ -71,6 +71,7 @@ $order_details = mysqli_fetch_all($order_details_result, MYSQLI_ASSOC);
                     <th>Số lượng</th>
                     <th>Giá</th>
                     <th>Thành tiền</th>
+                    <th>Ảnh bill thanh toán</th>
                 </tr>
             </thead>
             <tbody>
@@ -86,6 +87,9 @@ $order_details = mysqli_fetch_all($order_details_result, MYSQLI_ASSOC);
                     <td><?php echo $item['quantity']; ?></td>
                     <td><?php echo number_format($item['item_price'], 0, ',', '.'); ?> đ</td>
                     <td><?php echo number_format($item_total, 0, ',', '.'); ?> đ</td>
+                </tr>
+                <tr>
+                    <td><img src="./assets/bill/<?php echo $item['item_image']; ?>" alt="<?php echo $item['item_name']; ?>" style="width: 80px; height: auto;"></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>

@@ -112,6 +112,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_booking'])) {
         }
     }
 }
+
+// Lấy thông tin tài khoản của user
+$user_query = mysqli_query($conn, "SELECT * FROM users WHERE user_id = '$user_id'");
+$user_data = mysqli_fetch_assoc($user_query);
 ?>
 
 <?php include 'header.php'; ?>
@@ -124,6 +128,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_booking'])) {
     <div class="container">
         <h2 class="page-title">Lịch Sử Đặt Sân</h2>
         
+        <?php if(!$user_data['bank_account_number']): ?>
+            <div class="alert alert-warning">
+                <strong>Lưu ý:</strong> Vui lòng cập nhật thông tin tài khoản ngân hàng trong trang cá nhân để được hoàn tiền khi hủy đặt sân.
+                <a style="text-decoration: none;" href="./personal.php" class="alert-link">Cập nhật ngay</a>
+            </div>
+        <?php endif; ?>
+        
         <?php if(mysqli_num_rows($bookings_query) > 0): ?>
             <div class="row">
                 <?php while($booking = mysqli_fetch_assoc($bookings_query)): ?>
@@ -135,197 +146,141 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_booking'])) {
                                     <div>
                                         <h4><?php echo $booking['field_name']; ?></h4>
                                         <p><i class="fas fa-futbol"></i> Sân <?php echo $booking['field_type']; ?> người</p>
-                                        <p><i class="fas fa-map-marker-alt"></i> <?php echo $booking['address']; ?></p>
+                                        <p><i class="fas fa-calendar"></i> <?php echo date('d/m/Y', strtotime($booking['booking_date'])); ?></p>
+                                        <p><i class="fas fa-clock"></i> <?php echo date('H:i', strtotime($booking['start_time'])); ?> - <?php echo date('H:i', strtotime($booking['end_time'])); ?></p>
                                     </div>
                                 </div>
-                                <div class="booking-status <?php echo strtolower($booking['status']); ?>">
-                                    <?php echo $booking['status']; ?>
-                                </div>
-                            </div>
-                            
-                            <div class="booking-details">
-                                <div class="detail-item">
-                                    <i class="fas fa-calendar"></i>
-                                    <span>Ngày đặt: <?php echo date('d/m/Y', strtotime($booking['booking_date'])); ?></span>
-                                </div>
-                                <div class="detail-item">
-                                    <i class="fas fa-clock"></i>
-                                    <span>Thời gian: 
-                                        <?php 
-                                            $start_time = date('H:i', strtotime($booking['start_time']));
-                                            $duration = floatval($booking['duration']); // Chuyển sang float để xử lý 1.5 giờ
-                                            
-                                            // Tính thời gian kết thúc
-                                            $start_timestamp = strtotime($booking['booking_date'] . ' ' . $booking['start_time']);
-                                            $duration_seconds = $duration * 3600; // Chuyển giờ sang giây
-                                            $end_timestamp = $start_timestamp + $duration_seconds;
-                                            $end_time = date('H:i', $end_timestamp);
-                                            
-                                            echo $start_time . ' - ' . $end_time;
-                                        ?>
-                                    </span>
-                                </div>
-                                <div class="detail-item">
-                                    <i class="fas fa-hourglass-half"></i>
-                                    <span>Thời lượng: 
-                                        <?php 
-                                            // Hiển thị thời lượng dạng "1.5 giờ" hoặc "1 giờ"
-                                            echo $duration == floor($duration) ? floor($duration) : number_format($duration, 1);
-                                        ?> giờ
-                                    </span>
-                                </div>
-                                
-                                <div class="services-price">
-                                    <div class="price-item">
-                                        <span>Tiền sân:</span>
-                                        <span><?php echo number_format($booking['field_price'], 0, ',', '.'); ?> đ</span>
+                                <div class="booking-actions-top">
+                                    <div class="booking-status <?php echo strtolower($booking['status']); ?>">
+                                        <?php echo $booking['status']; ?>
                                     </div>
-                                    <?php if($booking['rent_ball']): ?>
-                                    <div class="price-item">
-                                        <span>Thuê bóng:</span>
-                                        <span>100.000 đ</span>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?php if($booking['rent_uniform']): ?>
-                                    <div class="price-item">
-                                        <span>Thuê áo:</span>
-                                        <span>100.000 đ</span>
-                                    </div>
-                                    <?php endif; ?>
-                                    <div class="price-item total">
-                                        <span>Tổng tiền:</span>
-                                        <span><?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</span>
-                                    </div>
-                                </div>
-
-                                <?php if($booking['note']): ?>
-                                <div class="booking-note">
-                                    <i class="fas fa-sticky-note"></i>
-                                    <span><?php echo $booking['note']; ?></span>
-                                </div>
-                                <?php endif; ?>
-
-                                <div class="booking-actions">
-                                    <?php if($booking['status'] == 'Chờ xác nhận'): ?>
-                                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal<?php echo $booking['id']; ?>">
-                                            <i class="fas fa-edit"></i> Chỉnh sửa
-                                        </button>
-                                        <a href="?cancel=1&booking_id=<?php echo $booking['id']; ?>" 
-                                           class="btn btn-danger"
-                                           onclick="return confirm('Bạn có chắc chắn muốn hủy đặt sân này?')">
-                                            <i class="fas fa-times"></i> Hủy đặt sân
-                                        </a>
-                                    <?php elseif($booking['status'] == 'Đã hủy'): ?>
-                                        <span class="btn btn-secondary disabled">
-                                            <i class="fas fa-ban"></i> Đã hủy
-                                        </span>
-                                    <?php endif; ?>
-                                    <a href="field-detail.php?id=<?php echo $booking['field_id']; ?>" 
-                                       class="btn btn-info">
-                                        <i class="fas fa-info-circle"></i> Xem sân
-                                    </a>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#detailModal<?php echo $booking['id']; ?>">
+                                        <i class="fas fa-eye"></i> Xem chi tiết
+                                    </button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Đặt Modal trong cùng vòng lặp với booking card -->
-                        <div class="modal fade" id="editModal<?php echo $booking['id']; ?>" tabindex="-1">
+                        <!-- Modal Xem Chi Tiết -->
+                        <div class="modal fade" id="detailModal<?php echo $booking['id']; ?>" tabindex="-1">
                             <div class="modal-dialog modal-lg">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title">Chỉnh sửa đơn đặt sân</h5>
+                                        <h5 class="modal-title">Chi tiết đơn đặt sân #<?php echo $booking['id']; ?></h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                     </div>
-                                    <form method="POST" id="editForm<?php echo $booking['id']; ?>">
-                                        <div class="modal-body">
-                                            <input type="hidden" name="booking_id" value="<?php echo $booking['id']; ?>">
-                                            
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label>Ngày đặt sân</label>
-                                                    <input type="date" name="booking_date" class="form-control" 
-                                                           value="<?php echo $booking['booking_date']; ?>"
-                                                           min="<?php echo date('Y-m-d'); ?>" required>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label>Giờ bắt đầu</label>
-                                                    <input type="time" name="start_time" class="form-control" 
-                                                           value="<?php echo $booking['start_time']; ?>"
-                                                           min="06:00" max="22:00" required>
+                                    <div class="modal-body">
+                                        <div class="booking-details">
+                                            <!-- Thông tin sân -->
+                                            <div class="field-info mb-4">
+                                                <img src="assets/fields/<?php echo $booking['field_image']; ?>" alt="<?php echo $booking['field_name']; ?>">
+                                                <div>
+                                                    <h4><?php echo $booking['field_name']; ?></h4>
+                                                    <p><i class="fas fa-futbol"></i> Sân <?php echo $booking['field_type']; ?> người</p>
+                                                    <p><i class="fas fa-map-marker-alt"></i> <?php echo $booking['address']; ?></p>
                                                 </div>
                                             </div>
 
-                                            <div class="row mb-3">
-                                                <div class="col-md-6">
-                                                    <label>Thời gian thuê (giờ)</label>
-                                                    <select name="duration" class="form-control" required>
-                                                        <?php
-                                                        $durations = [1, 1.5, 2, 2.5, 3];
-                                                        foreach ($durations as $d) {
-                                                            $selected = ($d == $booking['duration']) ? 'selected' : '';
-                                                            echo "<option value='$d' $selected>$d giờ</option>";
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label>Dịch vụ thêm</label>
-                                                    <div class="additional-services">
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="rent_ball" 
-                                                                   id="rentBall<?php echo $booking['id']; ?>" value="1" 
-                                                                   <?php echo $booking['rent_ball'] ? 'checked' : ''; ?>>
-                                                            <label class="form-check-label" for="rentBall<?php echo $booking['id']; ?>">
-                                                                Thuê bóng (+100.000đ)
-                                                            </label>
-                                                        </div>
-                                                        <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" name="rent_uniform" 
-                                                                   id="rentUniform<?php echo $booking['id']; ?>" value="1"
-                                                                   <?php echo $booking['rent_uniform'] ? 'checked' : ''; ?>>
-                                                            <label class="form-check-label" for="rentUniform<?php echo $booking['id']; ?>">
-                                                                Thuê áo pitch (+100.000đ)
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                            <!-- Thông tin đặt sân -->
+                                            <div class="detail-item">
+                                                <i class="fas fa-calendar"></i>
+                                                <span>Ngày đặt: <?php echo date('d/m/Y', strtotime($booking['booking_date'])); ?></span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <i class="fas fa-clock"></i>
+                                                <span>Thời gian: <?php echo date('H:i', strtotime($booking['start_time'])); ?> - <?php echo date('H:i', strtotime($booking['end_time'])); ?></span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <i class="fas fa-hourglass-half"></i>
+                                                <span>Thời lượng: <?php echo $booking['duration'] == floor($booking['duration']) ? floor($booking['duration']) : number_format($booking['duration'], 1); ?> giờ</span>
                                             </div>
 
-                                            <div class="price-summary mb-3">
+                                            <!-- Thông tin giá -->
+                                            <div class="services-price">
                                                 <div class="price-item">
                                                     <span>Tiền sân:</span>
-                                                    <span id="fieldPrice<?php echo $booking['id']; ?>">
-                                                        <?php echo number_format($booking['field_price'], 0, ',', '.'); ?> đ
-                                                    </span>
+                                                    <span><?php echo number_format($booking['field_price'], 0, ',', '.'); ?> đ</span>
                                                 </div>
-                                                <div class="price-item" id="ballPriceRow<?php echo $booking['id']; ?>" 
-                                                     style="display: <?php echo $booking['rent_ball'] ? 'flex' : 'none'; ?>">
+                                                <?php if($booking['rent_ball']): ?>
+                                                <div class="price-item">
                                                     <span>Thuê bóng:</span>
                                                     <span>100.000 đ</span>
                                                 </div>
-                                                <div class="price-item" id="uniformPriceRow<?php echo $booking['id']; ?>"
-                                                     style="display: <?php echo $booking['rent_uniform'] ? 'flex' : 'none'; ?>">
-                                                    <span>Thuê áo pitch:</span>
+                                                <?php endif; ?>
+                                                <?php if($booking['rent_uniform']): ?>
+                                                <div class="price-item">
+                                                    <span>Thuê áo:</span>
                                                     <span>100.000 đ</span>
+                                                </div>
+                                                <?php endif; ?>
+                                                <div class="price-item">
+                                                    <span>Đã đặt cọc:</span>
+                                                    <span><?php echo number_format($booking['total_price'] * 0.5, 0, ',', '.'); ?> đ</span>
                                                 </div>
                                                 <div class="price-item total">
                                                     <span>Tổng tiền:</span>
-                                                    <span id="totalPrice<?php echo $booking['id']; ?>">
-                                                        <?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ
-                                                    </span>
+                                                    <span><?php echo number_format($booking['total_price'], 0, ',', '.'); ?> đ</span>
                                                 </div>
                                             </div>
 
-                                            <div class="mb-3">
-                                                <label>Ghi chú</label>
-                                                <textarea name="note" class="form-control" rows="3"><?php echo $booking['note']; ?></textarea>
+                                            <!-- Thông tin hủy đơn -->
+                                            <?php if($booking['status'] == 'Đã hủy'): ?>
+                                                <div class="cancel-info">
+                                                    <h6 class="cancel-title">Thông tin hủy đơn</h6>
+                                                    <?php if($booking['cancel_reason']): ?>
+                                                        <div class="cancel-reason">
+                                                            <i class="fas fa-info-circle"></i>
+                                                            <span>Lý do hủy: <?php echo $booking['cancel_reason']; ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if($booking['refund_image']): ?>
+                                                        <div class="refund-image">
+                                                            <h6>Ảnh bill hoàn cọc:</h6>
+                                                            <img src="assets/refund/<?php echo $booking['refund_image']; ?>" 
+                                                                 alt="Bill hoàn cọc" 
+                                                                 onclick="window.open(this.src)">
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php if($booking['cancel_date']): ?>
+                                                        <div class="cancel-date">
+                                                            <i class="fas fa-calendar-times"></i>
+                                                            <span>Ngày hủy: <?php echo date('d/m/Y H:i', strtotime($booking['cancel_date'])); ?></span>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <!-- Ghi chú -->
+                                            <?php if($booking['note']): ?>
+                                                <div class="booking-note">
+                                                    <i class="fas fa-sticky-note"></i>
+                                                    <span>Ghi chú: <?php echo $booking['note']; ?></span>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <!-- Các nút thao tác -->
+                                            <div class="booking-actions">
+                                                <?php if($booking['status'] == 'Chờ xác nhận'): ?>
+                                                    <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal<?php echo $booking['id']; ?>">
+                                                        <i class="fas fa-edit"></i> Chỉnh sửa
+                                                    </button>
+                                                    <a href="?cancel=1&booking_id=<?php echo $booking['id']; ?>" 
+                                                       class="btn btn-danger"
+                                                       onclick="return confirm('Bạn có chắc chắn muốn hủy đặt sân này?')">
+                                                        <i class="fas fa-times"></i> Hủy đặt sân
+                                                    </a>
+                                                <?php endif; ?>
+                                                <a href="field-detail.php?id=<?php echo $booking['field_id']; ?>" 
+                                                   class="btn btn-info">
+                                                    <i class="fas fa-info-circle"></i> Xem sân
+                                                </a>
                                             </div>
                                         </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                                            <button type="submit" name="update_booking" class="btn btn-primary">Cập nhật</button>
-                                        </div>
-                                    </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -432,7 +387,6 @@ while($booking = mysqli_fetch_assoc($bookings_query)):
 
 .booking-header {
     padding: 20px;
-    border-bottom: 1px solid #eee;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -444,47 +398,62 @@ while($booking = mysqli_fetch_assoc($bookings_query)):
 }
 
 .field-info img {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
     object-fit: cover;
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .field-info h4 {
     color: #1B4D3E;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
+    font-size: 16px;
 }
 
 .field-info p {
-    margin-bottom: 5px;
+    margin-bottom: 4px;
     color: #666;
-}
-
-.field-info i {
-    width: 20px;
-    color: #28a745;
-}
-
-.booking-status {
-    padding: 8px 15px;
-    border-radius: 20px;
-    font-weight: 500;
     font-size: 14px;
 }
 
-.booking-status.chờ-xác-nhận {
-    background: #ffc107;
-    color: #000;
+.field-info i {
+    width: 16px;
+    color: #28a745;
+    margin-right: 5px;
 }
 
-.booking-status.đã-xác-nhận {
-    background: #28a745;
+.booking-actions-top {
+    text-align: right;
+}
+
+.booking-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 500;
+    font-size: 13px;
+    display: inline-block;
+}
+
+.btn-outline-primary {
+    border-color: #1B4D3E;
+    color: #1B4D3E;
+}
+
+.btn-outline-primary:hover {
+    background-color: #1B4D3E;
     color: white;
 }
 
-.booking-status.đã-hủy {
-    background: #dc3545;
-    color: white;
+/* Modal styles */
+.modal-body .field-info {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-body .field-info img {
+    width: 100px;
+    height: 100px;
 }
 
 .booking-details {
@@ -575,6 +544,60 @@ while($booking = mysqli_fetch_assoc($bookings_query)):
 .no-bookings p {
     color: #666;
     margin-bottom: 20px;
+}
+
+.cancel-info {
+    background: #f8d7da;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.cancel-title {
+    color: #721c24;
+    margin-bottom: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.cancel-reason {
+    margin-bottom: 10px;
+    color: #721c24;
+}
+
+.cancel-reason i {
+    margin-right: 8px;
+}
+
+.refund-image {
+    margin: 10px 0;
+}
+
+.refund-image h6 {
+    color: #721c24;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.refund-image img {
+    max-width: 200px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.refund-image img:hover {
+    transform: scale(1.05);
+}
+
+.cancel-date {
+    color: #721c24;
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+.cancel-date i {
+    margin-right: 8px;
 }
 </style>
 

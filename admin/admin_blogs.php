@@ -116,7 +116,7 @@ if (isset($_POST['update_blog'])) {
             <div style="background-color: #28a745" class="text-white text-center py-2 mb-4 shadow">
                 <h1 class="mb-0">Quản lý Blog</h1>
             </div>
-            <section style="background-color: #86eb86" class="add-products mb-4">
+            <section class="add-products mb-4">
                 <form action="" method="post" enctype="multipart/form-data">
                     <h3>Thêm blog mới</h3>
                     <div class="mb-3">

@@ -59,6 +59,29 @@ $all_time_total = mysqli_query($conn, "
 ") or die('Query failed');
 $all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
 
+// Thống kê sân được thuê nhiều nhất
+$popular_fields_query = mysqli_query($conn, "
+    SELECT 
+        f.name as field_name,
+        COUNT(*) as booking_count
+    FROM bookings b
+    JOIN football_fields f ON b.field_id = f.id
+    WHERE b.status = 'Đã xác nhận'
+    GROUP BY b.field_id, f.name
+    ORDER BY booking_count DESC
+") or die('Query failed');
+
+// Thống kê khung giờ được thuê nhiều nhất
+$popular_times_query = mysqli_query($conn, "
+    SELECT 
+        start_time,
+        COUNT(*) as time_count
+    FROM bookings
+    WHERE status = 'Đã xác nhận'
+    GROUP BY start_time
+    ORDER BY time_count DESC
+") or die('Query failed');
+
 ?>
 
 <!DOCTYPE html>
@@ -102,9 +125,10 @@ $all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
                     </div>
                 </div>
 
-                <!-- Biểu đồ doanh thu -->
+                <!-- Thay thế phần biểu đồ doanh thu cũ bằng layout mới -->
                 <div class="row mb-4">
-                    <div class="col-md-12">
+                    <!-- Biểu đồ doanh thu tháng hiện tại -->
+                    <div class="col-md-6">
                         <div class="card">
                             <div class="card-header bg-success text-white">
                                 <h5 class="mb-0">Biểu đồ doanh thu tháng <?php echo $current_month ?>/<?php echo $current_year ?></h5>
@@ -114,16 +138,39 @@ $all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="row mb-4">
-                    <div class="col-md-12">
+                    <!-- Biểu đồ doanh thu theo tháng -->
+                    <div class="col-md-6">
                         <div class="card">
                             <div class="card-header bg-primary text-white">
                                 <h5 class="mb-0">Biểu đồ doanh thu theo tháng</h5>
                             </div>
                             <div class="card-body">
                                 <canvas id="yearlyRevenueChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Biểu đồ thống kê sân và giờ -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="mb-0">Sân được thuê nhiều nhất</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="popularFieldsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0">Khung giờ được thuê nhiều nhất</h5>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="popularTimesChart"></canvas>
                             </div>
                         </div>
                     </div>
@@ -263,6 +310,116 @@ $all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
                 type: 'line',
                 data: yearlyData,
                 options: options
+            }
+        );
+
+        // Dữ liệu cho biểu đồ sân phổ biến
+        const fieldData = {
+            labels: [
+                <?php
+                mysqli_data_seek($popular_fields_query, 0);
+                while ($row = mysqli_fetch_assoc($popular_fields_query)) {
+                    echo "'" . $row['field_name'] . "',";
+                }
+                ?>
+            ],
+            datasets: [{
+                label: 'Số lần được thuê',
+                data: [
+                    <?php
+                    mysqli_data_seek($popular_fields_query, 0);
+                    while ($row = mysqli_fetch_assoc($popular_fields_query)) {
+                        echo $row['booking_count'] . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: [
+                    'rgba(255, 193, 7, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    'rgba(255, 205, 86, 0.2)',
+                    'rgba(255, 231, 166, 0.2)',
+                ],
+                borderColor: [
+                    'rgb(255, 193, 7)',
+                    'rgb(255, 159, 64)',
+                    'rgb(255, 205, 86)',
+                    'rgb(255, 231, 166)',
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        // Dữ liệu cho biểu đồ giờ phổ biến
+        const timeData = {
+            labels: [
+                <?php
+                mysqli_data_seek($popular_times_query, 0);
+                while ($row = mysqli_fetch_assoc($popular_times_query)) {
+                    echo "'" . $row['start_time'] . "',";
+                }
+                ?>
+            ],
+            datasets: [{
+                label: 'Số lần được đặt',
+                data: [
+                    <?php
+                    mysqli_data_seek($popular_times_query, 0);
+                    while ($row = mysqli_fetch_assoc($popular_times_query)) {
+                        echo $row['time_count'] . ",";
+                    }
+                    ?>
+                ],
+                backgroundColor: 'rgba(23, 162, 184, 0.2)',
+                borderColor: 'rgb(23, 162, 184)',
+                borderWidth: 1
+            }]
+        };
+
+        // Cấu hình cho biểu đồ sân
+        const fieldOptions = {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Thống kê sân được thuê nhiều nhất'
+                }
+            }
+        };
+
+        // Cấu hình cho biểu đồ giờ
+        const timeOptions = {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Thống kê khung giờ được thuê nhiều nhất'
+                }
+            }
+        };
+
+        // Khởi tạo biểu đồ sân phổ biến
+        new Chart(
+            document.getElementById('popularFieldsChart'),
+            {
+                type: 'pie',
+                data: fieldData,
+                options: fieldOptions
+            }
+        );
+
+        // Khởi tạo biểu đồ giờ phổ biến
+        new Chart(
+            document.getElementById('popularTimesChart'),
+            {
+                type: 'bar',
+                data: timeData,
+                options: timeOptions
             }
         );
     </script>

@@ -40,7 +40,7 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         }
 
         .search-product {
-            width: 300px;
+            width: 300px !important;
             margin-right: 50px;
         }
 
@@ -79,12 +79,49 @@ $user_id = @$_SESSION['user_id'] ?? 1;
             right: 49px;
             border-radius: 0;
             height: -webkit-fill-available;
-            background-color: #29312a;
-            color: white;
-            border: none;
+            background-color: #29312a !important;
+            color: white !important;
+            border: none !important;
         }
         .nav-link:hover {
             color: #000 !important;
+        }
+        .filter-buttons .dropdown-menu {
+            min-width: 300px;
+            left: -133px !important;
+        }
+
+        .filter-buttons .btn {
+            background-color: #fff;
+            border: 1px solid #ddd;
+        }
+
+        .filter-buttons .dropdown-toggle::after {
+            margin-left: 0.5em;
+        }
+
+        .filter-buttons .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .filter-buttons label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .filter-buttons .form-control {
+            font-size: 14px;
+        }
+
+        .filter-buttons .btn-primary {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+
+        .filter-buttons .btn-primary:hover {
+            background-color: #218838;
+            border-color: #1e7e34;
         }
     </style>
 
@@ -153,15 +190,60 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                         <a class="nav-link" href="./personal.php">Hồ sơ cá nhân</a>
                     </li>
                 </ul>
-                <form method="get" action="./search.php" class="">
-                    <div class="input-group">
-                        <?php $keyword = $_GET['keyword'] ?? ''; ?>
-                        <input type="text" name="keyword" class="form-control search-product" placeholder="Search" value="<?php echo $keyword; ?>">
-                        <div class="input-group-append">
-                            <button class="btn px-2 py-1 search-btn" type="submit">Tìm kiếm</button>
+                <div class="filter-buttons ml-2">
+                    <form method="get" action="./search.php" class="d-flex align-items-center">
+                        <div class="filter-buttons">
+                            <div class="dropdown">
+                                <button type="button" class="btn btn-light" data-toggle="dropdown">
+                                    <i class="fas fa-filter"></i> Lọc sân trống
+                                </button>
+                                <div class="dropdown-menu p-3" style="min-width: 300px;">
+                                    <div class="form-group">
+                                        <label>Ngày</label>
+                                        <input type="date" name="date" class="form-control" 
+                                               value="<?php echo $_GET['date'] ?? date('Y-m-d'); ?>"
+                                               min="<?php echo date('Y-m-d'); ?>">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Thời gian</label>
+                                        <select name="time_slot" class="form-control">
+                                            <option value="">Tất cả các giờ</option>
+                                            <option value="morning" <?php echo (@$_GET['time_slot'] == 'morning') ? 'selected' : ''; ?>>
+                                                Sáng (6:00 - 11:00)
+                                            </option>
+                                            <option value="afternoon" <?php echo (@$_GET['time_slot'] == 'afternoon') ? 'selected' : ''; ?>>
+                                                Chiều (13:00 - 17:00)
+                                            </option>
+                                            <option value="evening" <?php echo (@$_GET['time_slot'] == 'evening') ? 'selected' : ''; ?>>
+                                                Tối (17:00 - 22:00)
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Loại sân</label>
+                                        <select name="field_type" class="form-control">
+                                            <option value="">Tất cả loại sân</option>
+                                            <option value="5" <?php echo (@$_GET['field_type'] == '5') ? 'selected' : ''; ?>>Sân 5 người</option>
+                                            <option value="7" <?php echo (@$_GET['field_type'] == '7') ? 'selected' : ''; ?>>Sân 7 người</option>
+                                            <option value="11" <?php echo (@$_GET['field_type'] == '11') ? 'selected' : ''; ?>>Sân 11 người</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Trạng thái</label>
+                                        <select name="status" class="form-control">
+                                            <option value="">Tất cả trạng thái</option>
+                                            <option value="available" <?php echo (@$_GET['status'] == 'available') ? 'selected' : ''; ?>>Còn trống</option>
+                                            <option value="booked" <?php echo (@$_GET['status'] == 'booked') ? 'selected' : ''; ?>>Đã đặt</option>
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-success btn-block mt-3">
+                                        <i class="fas fa-search"></i> Tìm sân
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </nav>
         <!-- !Primary Navigation -->
