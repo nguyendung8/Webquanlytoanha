@@ -128,6 +128,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Trong header.php -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <div class="booking-container py-5">
     <div class="container">
@@ -269,12 +272,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
 </div>
 
 <!-- Modal thanh toán với form riêng -->
-<div class="modal fade" id="paymentModal" tabindex="-1">
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Thanh toán đặt cọc</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="paymentModalLabel">Thanh toán đặt cọc</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="paymentForm" method="POST" enctype="multipart/form-data">
                 <div class="modal-body">
@@ -324,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_booking'])) {
                         <div class="mt-4">
                             <h6>Upload ảnh bill thanh toán:</h6>
                             <div class="mb-3">
-                                <input style="padding: 0;" type="file" class="form-control" id="paymentImage" name="payment_image" 
+                                <input style="padding: 6px;" type="file" class="form-control" id="paymentImage" name="payment_image" 
                                        accept="image/*" required>
                                 <div class="form-text">Vui lòng upload ảnh chụp màn hình bill thanh toán</div>
                             </div>
@@ -536,6 +539,27 @@ label {
     color: #28a745;
     font-weight: bold;
 }
+
+.modal-header .btn-close {
+    opacity: 1;
+    padding: 0.5rem;
+    margin: -0.5rem -0.5rem -0.5rem auto;
+}
+
+.modal-header .btn-close:hover {
+    opacity: 0.75;
+}
+
+.modal-footer .btn-secondary {
+    background-color: #6c757d;
+    border-color: #6c757d;
+    color: white;
+}
+
+.modal-footer .btn-secondary:hover {
+    background-color: #5a6268;
+    border-color: #545b62;
+}
 </style>
 
 <script>
@@ -604,7 +628,37 @@ document.addEventListener('DOMContentLoaded', function() {
     updatePrice();
 });
 
-// Hàm hiển thị modal và copy dữ liệu từ form chính
+// Khởi tạo modal khi trang được load
+let paymentModal;
+document.addEventListener('DOMContentLoaded', function() {
+    // Khởi tạo modal
+    const modalElement = document.getElementById('paymentModal');
+    paymentModal = new bootstrap.Modal(modalElement);
+
+    // Xử lý nút đóng và dấu X
+    const closeButtons = document.querySelectorAll('[data-bs-dismiss="modal"]');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            paymentModal.hide();
+        });
+    });
+
+    // Xử lý đóng modal khi click ra ngoài
+    modalElement.addEventListener('click', function(event) {
+        if (event.target === modalElement) {
+            paymentModal.hide();
+        }
+    });
+
+    // Xử lý phím ESC
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && modalElement.classList.contains('show')) {
+            paymentModal.hide();
+        }
+    });
+});
+
+// Cập nhật hàm showPaymentModal
 function showPaymentModal() {
     // Validate form chính trước
     if (!validateBooking()) {
@@ -629,9 +683,8 @@ function showPaymentModal() {
         showPaymentMethod(selectedPayment.value);
     }
 
-    // Hiển thị modal
-    const modal = new bootstrap.Modal(document.getElementById('paymentModal'));
-    modal.show();
+    // Hiển thị modal sử dụng biến toàn cục đã khởi tạo
+    paymentModal.show();
 }
 
 // Preview ảnh khi chọn file

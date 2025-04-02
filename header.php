@@ -89,10 +89,14 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         .filter-buttons .dropdown-menu {
             min-width: 300px;
             left: -133px !important;
+            display: none;
+        }
+
+        .filter-buttons .dropdown-menu.show {
+            display: block;
         }
 
         .filter-buttons .btn {
-            background-color: #fff;
             border: 1px solid #ddd;
         }
 
@@ -122,6 +126,15 @@ $user_id = @$_SESSION['user_id'] ?? 1;
         .filter-buttons .btn-primary:hover {
             background-color: #218838;
             border-color: #1e7e34;
+        }
+
+        .filter-buttons .dropdown {
+            position: relative;
+        }
+
+        .filter-buttons .dropdown-menu {
+            position: absolute;
+            z-index: 1000;
         }
     </style>
 
@@ -194,10 +207,10 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                     <form method="get" action="./search.php" class="d-flex align-items-center">
                         <div class="filter-buttons">
                             <div class="dropdown">
-                                <button type="button" class="btn btn-light" data-toggle="dropdown">
-                                    <i class="fas fa-filter"></i> Lọc sân trống
+                                <button type="button" class="btn btn-light dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
+                                    <i class="fas fa-filter"></i> Tìm kiếm sân
                                 </button>
-                                <div class="dropdown-menu p-3" style="min-width: 300px;">
+                                <div class="dropdown-menu p-3" style="min-width: 300px;" data-bs-auto-close="false">
                                     <div class="form-group">
                                         <label>Ngày</label>
                                         <input type="date" name="date" class="form-control" 
@@ -267,5 +280,19 @@ $user_id = @$_SESSION['user_id'] ?? 1;
                 if (e.target !== dropdown && e.target !== userIcon) {
                     dropdown.style.display = 'none';
                 }
+            });
+
+            document.querySelector('.dropdown-menu').addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            $(document).ready(function() {
+                $('.filter-buttons .dropdown').on('show.bs.dropdown', function () {
+                    $(this).find('.dropdown-menu').first().stop(true, true).show();
+                });
+
+                $('.filter-buttons .dropdown-menu').click(function(e) {
+                    e.stopPropagation();
+                });
             });
         </script>

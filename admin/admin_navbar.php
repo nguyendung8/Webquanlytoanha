@@ -28,6 +28,9 @@
       <a style="margin-bottom: 5px;" href="admin_accounts.php">
          <i class="menu-icon fa fa-user"></i> Tài khoản
       </a>
+      <a style="margin-bottom: 5px;" href="admin_feedback.php">
+         <i class="menu-icon fa fa-comments"></i> Phản hồi / Đánh giá
+      </a>
       <a style="margin-bottom: 5px;" href="admin_messages.php">
          <i class="menu-icon fa fa-comments"></i> Tin nhắn
       </a>

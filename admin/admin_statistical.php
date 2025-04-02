@@ -14,60 +14,144 @@ if (!isset($admin_id)) {
 $current_month = date('m');
 $current_year = date('Y');
 
-// Thống kê doanh thu tháng hiện tại
+// Thống kê doanh thu tháng hiện tại từ cả đặt sân thường và định kỳ
 $monthly_revenue_query = mysqli_query($conn, "
     SELECT 
-        DATE(booking_date) as date,
-        COUNT(*) as total_bookings,
-        SUM(total_price) as daily_revenue
-    FROM bookings 
-    WHERE MONTH(booking_date) = '$current_month' 
-    AND YEAR(booking_date) = '$current_year'
-    AND status = 'Đã xác nhận'
-    GROUP BY DATE(booking_date)
+        date,
+        SUM(total_bookings) as total_bookings,
+        SUM(daily_revenue) as daily_revenue
+    FROM (
+        -- Doanh thu từ đặt sân thường
+        SELECT 
+            DATE(booking_date) as date,
+            COUNT(*) as total_bookings,
+            SUM(total_price) as daily_revenue
+        FROM bookings 
+        WHERE MONTH(booking_date) = '$current_month' 
+        AND YEAR(booking_date) = '$current_year'
+        AND status = 'Đã xác nhận'
+        GROUP BY DATE(booking_date)
+        
+        UNION ALL
+        
+        -- Doanh thu từ đặt sân định kỳ
+        SELECT 
+            DATE(start_date) as date,
+            COUNT(*) as total_bookings,
+            SUM(total_price) as daily_revenue
+        FROM recurring_bookings 
+        WHERE MONTH(start_date) = '$current_month' 
+        AND YEAR(start_date) = '$current_year'
+        AND status = 'Đã xác nhận'
+        GROUP BY DATE(start_date)
+    ) as combined
+    GROUP BY date
     ORDER BY date DESC
 ") or die('Query failed');
 
 // Thống kê doanh thu tổng theo từng tháng
 $total_revenue_query = mysqli_query($conn, "
     SELECT 
-        YEAR(booking_date) as year,
-        MONTH(booking_date) as month,
-        COUNT(*) as total_bookings,
-        SUM(total_price) as monthly_revenue
-    FROM bookings 
-    WHERE status = 'Đã xác nhận'
-    GROUP BY YEAR(booking_date), MONTH(booking_date)
+        year,
+        month,
+        SUM(total_bookings) as total_bookings,
+        SUM(monthly_revenue) as monthly_revenue
+    FROM (
+        -- Doanh thu từ đặt sân thường
+        SELECT 
+            YEAR(booking_date) as year,
+            MONTH(booking_date) as month,
+            COUNT(*) as total_bookings,
+            SUM(total_price) as monthly_revenue
+        FROM bookings 
+        WHERE status = 'Đã xác nhận'
+        GROUP BY YEAR(booking_date), MONTH(booking_date)
+        
+        UNION ALL
+        
+        -- Doanh thu từ đặt sân định kỳ
+        SELECT 
+            YEAR(start_date) as year,
+            MONTH(start_date) as month,
+            COUNT(*) as total_bookings,
+            SUM(total_price) as monthly_revenue
+        FROM recurring_bookings 
+        WHERE status = 'Đã xác nhận'
+        GROUP BY YEAR(start_date), MONTH(start_date)
+    ) as combined
+    GROUP BY year, month
     ORDER BY year DESC, month DESC
 ") or die('Query failed');
 
 // Tính tổng doanh thu của tháng hiện tại
 $current_month_total = mysqli_query($conn, "
-    SELECT SUM(total_price) as total
-    FROM bookings 
-    WHERE MONTH(booking_date) = '$current_month' 
-    AND YEAR(booking_date) = '$current_year'
-    AND status = 'Đã xác nhận'
+    SELECT SUM(total) as total
+    FROM (
+        -- Doanh thu từ đặt sân thường
+        SELECT SUM(total_price) as total
+        FROM bookings 
+        WHERE MONTH(booking_date) = '$current_month' 
+        AND YEAR(booking_date) = '$current_year'
+        AND status = 'Đã xác nhận'
+        
+        UNION ALL
+        
+        -- Doanh thu từ đặt sân định kỳ
+        SELECT SUM(total_price) as total
+        FROM recurring_bookings 
+        WHERE MONTH(start_date) = '$current_month' 
+        AND YEAR(start_date) = '$current_year'
+        AND status = 'Đã xác nhận'
+    ) as combined
 ") or die('Query failed');
 $current_month_revenue = mysqli_fetch_assoc($current_month_total)['total'] ?? 0;
 
 // Tính tổng doanh thu từ trước đến nay
 $all_time_total = mysqli_query($conn, "
-    SELECT SUM(total_price) as total
-    FROM bookings 
-    WHERE status = 'Đã xác nhận'
+    SELECT SUM(total) as total
+    FROM (
+        -- Tổng doanh thu từ đặt sân thường
+        SELECT SUM(total_price) as total
+        FROM bookings 
+        WHERE status = 'Đã xác nhận'
+        
+        UNION ALL
+        
+        -- Tổng doanh thu từ đặt sân định kỳ
+        SELECT SUM(total_price) as total
+        FROM recurring_bookings 
+        WHERE status = 'Đã xác nhận'
+    ) as combined
 ") or die('Query failed');
 $all_time_revenue = mysqli_fetch_assoc($all_time_total)['total'] ?? 0;
 
 // Thống kê sân được thuê nhiều nhất
 $popular_fields_query = mysqli_query($conn, "
     SELECT 
-        f.name as field_name,
-        COUNT(*) as booking_count
-    FROM bookings b
-    JOIN football_fields f ON b.field_id = f.id
-    WHERE b.status = 'Đã xác nhận'
-    GROUP BY b.field_id, f.name
+        field_name,
+        SUM(booking_count) as booking_count
+    FROM (
+        -- Số lượt đặt từ đặt sân thường
+        SELECT 
+            f.name as field_name,
+            COUNT(*) as booking_count
+        FROM bookings b
+        JOIN football_fields f ON b.field_id = f.id
+        WHERE b.status = 'Đã xác nhận'
+        GROUP BY b.field_id, f.name
+        
+        UNION ALL
+        
+        -- Số lượt đặt từ đặt sân định kỳ
+        SELECT 
+            f.name as field_name,
+            COUNT(*) as booking_count
+        FROM recurring_bookings rb
+        JOIN football_fields f ON rb.field_id = f.id
+        WHERE rb.status = 'Đã xác nhận'
+        GROUP BY rb.field_id, f.name
+    ) as combined
+    GROUP BY field_name
     ORDER BY booking_count DESC
 ") or die('Query failed');
 
@@ -75,9 +159,26 @@ $popular_fields_query = mysqli_query($conn, "
 $popular_times_query = mysqli_query($conn, "
     SELECT 
         start_time,
-        COUNT(*) as time_count
-    FROM bookings
-    WHERE status = 'Đã xác nhận'
+        SUM(time_count) as time_count
+    FROM (
+        -- Khung giờ từ đặt sân thường
+        SELECT 
+            start_time,
+            COUNT(*) as time_count
+        FROM bookings
+        WHERE status = 'Đã xác nhận'
+        GROUP BY start_time
+        
+        UNION ALL
+        
+        -- Khung giờ từ đặt sân định kỳ
+        SELECT 
+            start_time,
+            COUNT(*) as time_count
+        FROM recurring_bookings
+        WHERE status = 'Đã xác nhận'
+        GROUP BY start_time
+    ) as combined
     GROUP BY start_time
     ORDER BY time_count DESC
 ") or die('Query failed');

@@ -93,10 +93,16 @@ $rating_stats = mysqli_fetch_assoc($avg_rating_query);
                             <?php echo $field['status']; ?>
                         </p> -->
                     </div>
+                    <div class="booking-buttons mt-3">
                         <a href="booking.php?field_id=<?php echo $field['id']; ?>" 
-                           class="btn btn-success btn-lg mt-3">
+                           class="btn btn-success btn-lg">
                             <i style="color: white;" class="fas fa-calendar-alt"></i> Đặt sân ngay
                         </a>
+                        <a href="recurring-booking.php?field_id=<?php echo $field['id']; ?>" 
+                           class="btn btn-primary btn-lg ms-2">
+                            <i style="color: white;" class="fas fa-calendar-week"></i> Đặt sân định kỳ
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>

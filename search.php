@@ -1,24 +1,6 @@
 <?php
-ob_start();
+include 'database/DBController.php';
 session_start();
-
-// include header.php file
-include ('header.php');
-include './database/DBController.php';
-
-// Kết nối cơ sở dữ liệu
-include './database/DBController.php';
-
-$user_id = $_SESSION['user_id'] ?? 1;
-
-// request method post
-if($_SERVER['REQUEST_METHOD'] == "POST"){
-    if (isset($_POST['search_submit'])){
-        // call method addToCart
-        $Cart->addToCart($_POST['user_id'], $_POST['item_id']);
-        header('Location: ' . $_SERVER['REQUEST_URI']);
-    }
-}
 
 // Khởi tạo các biến filter từ GET parameters
 $date = $_GET['date'] ?? date('Y-m-d');
@@ -28,49 +10,94 @@ $status = $_GET['status'] ?? '';
 
 // Xây dựng câu query cơ bản
 $sql = "SELECT DISTINCT f.* FROM football_fields f 
-        LEFT JOIN bookings b ON f.id = b.field_id 
         WHERE 1=1";
 $params = [];
 $types = "";
 
-// Thêm điều kiện filter theo loại sân
+// Filter theo loại sân
 if (!empty($field_type)) {
     $sql .= " AND f.field_type = ?";
     $params[] = $field_type;
     $types .= "s";
 }
 
-// Thêm điều kiện filter theo trạng thái
+// Filter theo trạng thái sân
 if (!empty($status)) {
     if ($status == 'available') {
-        $sql .= " AND (f.status = 'Đang trống' OR f.status IS NULL)";
+        // Kiểm tra sân trống trong khung giờ đã chọn
+        $sql .= " AND f.id NOT IN (
+            SELECT field_id FROM bookings 
+            WHERE booking_date = ? 
+            AND status != 'Đã hủy'";
+        
+        if (!empty($time_slot)) {
+            switch($time_slot) {
+                case 'morning':
+                    $sql .= " AND ((start_time >= '06:00' AND start_time < '11:00') 
+                             OR (end_time > '06:00' AND end_time <= '11:00'))";
+                    break;
+                case 'afternoon':
+                    $sql .= " AND ((start_time >= '13:00' AND start_time < '17:00') 
+                             OR (end_time > '13:00' AND end_time <= '17:00'))";
+                    break;
+                case 'evening':
+                    $sql .= " AND ((start_time >= '17:00' AND start_time < '22:00') 
+                             OR (end_time > '17:00' AND end_time <= '22:00'))";
+                    break;
+            }
+        }
+        $sql .= ")";
+        $params[] = $date;
+        $types .= "s";
     } elseif ($status == 'booked') {
-        $sql .= " AND f.status = 'Đã đặt'";
+        // Kiểm tra sân đã được đặt trong khung giờ đã chọn
+        $sql .= " AND f.id IN (
+            SELECT field_id FROM bookings 
+            WHERE booking_date = ? 
+            AND status = 'Đã xác nhận'";
+        
+        if (!empty($time_slot)) {
+            switch($time_slot) {
+                case 'morning':
+                    $sql .= " AND ((start_time >= '06:00' AND start_time < '11:00') 
+                             OR (end_time > '06:00' AND end_time <= '11:00'))";
+                    break;
+                case 'afternoon':
+                    $sql .= " AND ((start_time >= '13:00' AND start_time < '17:00') 
+                             OR (end_time > '13:00' AND end_time <= '17:00'))";
+                    break;
+                case 'evening':
+                    $sql .= " AND ((start_time >= '17:00' AND start_time < '22:00') 
+                             OR (end_time > '17:00' AND end_time <= '22:00'))";
+                    break;
+            }
+        }
+        $sql .= ")";
+        $params[] = $date;
+        $types .= "s";
     }
-}
-
-// Thêm điều kiện filter theo thời gian
-if (!empty($time_slot)) {
-    $sql .= " AND NOT EXISTS (
-        SELECT 1 FROM bookings b2 
-        WHERE b2.field_id = f.id 
-        AND b2.booking_date = ? 
-        AND b2.status != 'Đã hủy'
-        AND (";
+} else if (!empty($time_slot)) {
+    // Nếu chỉ filter theo khung giờ
+    $sql .= " AND f.id NOT IN (
+        SELECT field_id FROM bookings 
+        WHERE booking_date = ? 
+        AND status != 'Đã hủy'";
     
     switch($time_slot) {
         case 'morning':
-            $sql .= "b2.start_time >= '06:00' AND b2.start_time < '11:00'";
+            $sql .= " AND ((start_time >= '06:00' AND start_time < '11:00') 
+                     OR (end_time > '06:00' AND end_time <= '11:00'))";
             break;
         case 'afternoon':
-            $sql .= "b2.start_time >= '13:00' AND b2.start_time < '17:00'";
+            $sql .= " AND ((start_time >= '13:00' AND start_time < '17:00') 
+                     OR (end_time > '13:00' AND end_time <= '17:00'))";
             break;
         case 'evening':
-            $sql .= "b2.start_time >= '17:00' AND b2.start_time < '22:00'";
+            $sql .= " AND ((start_time >= '17:00' AND start_time < '22:00') 
+                     OR (end_time > '17:00' AND end_time <= '22:00'))";
             break;
     }
-    
-    $sql .= "))";
+    $sql .= ")";
     $params[] = $date;
     $types .= "s";
 }
@@ -85,41 +112,10 @@ $result = mysqli_stmt_get_result($stmt);
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kết quả tìm kiếm</title>
-    <style>
-        .card {
-            transition: transform 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        }
-
-        .badge {
-            padding: 8px 12px;
-            font-size: 12px;
-        }
-
-        .badge-success {
-            background-color: #28a745;
-        }
-
-        .badge-danger {
-            background-color: #dc3545;
-        }
-
-        .card-text i {
-            width: 20px;
-            color: #28a745;
-            margin-right: 5px;
-        }
-    </style>
+    <title>Kết quả tìm kiếm sân</title>
+    <?php include 'header.php'; ?>
 </head>
 <body>
     <div class="container py-4">
@@ -128,17 +124,20 @@ $result = mysqli_stmt_get_result($stmt);
                 <h4 class="mb-4">
                     Danh sách sân bóng 
                     <?php 
+                    if (!empty($date)) {
+                        echo " - Ngày " . date('d/m/Y', strtotime($date));
+                    }
                     if (!empty($time_slot)) {
                         echo " - ";
                         switch($time_slot) {
                             case 'morning':
-                                echo "Buổi sáng";
+                                echo "Buổi sáng (6:00 - 11:00)";
                                 break;
                             case 'afternoon':
-                                echo "Buổi chiều";
+                                echo "Buổi chiều (13:00 - 17:00)";
                                 break;
                             case 'evening':
-                                echo "Buổi tối";
+                                echo "Buổi tối (17:00 - 22:00)";
                                 break;
                         }
                     }
@@ -147,48 +146,44 @@ $result = mysqli_stmt_get_result($stmt);
                     }
                     ?>
                 </h4>
-                <div class="d-flex flex-wrap mb-4" style="gap: 20px;">
-                    <?php if (count($products) > 0): ?>
-                        <?php foreach ($products as $item): ?>
-                        <div class="grid-item border <?php echo $item['item_brand'] ?? "Brand" ; ?>">
-                            <div class="item py-2" style="width: 200px;">
-                                <div class="product font-rale">
-                                    <a href="<?php printf('%s?item_id=%s', 'product.php', $item['item_id']); ?>">
-                                        <img src="./assets/products/<?php echo $item['item_image'] ?? "./assets/products/13.png"; ?>" alt="product1" class="img-fluid">
-                                    </a>
-                                    <div class="text-center">
-                                        <h6><?php echo $item['item_name']; ?></h6>
-                                        <div class="price py-2">
-                                            <?php echo number_format($item['item_price'], 0, ',', '.'); ?> đ
+
+                <?php if(mysqli_num_rows($result) > 0): ?>
+                    <div class="row">
+                        <?php while($field = mysqli_fetch_assoc($result)): ?>
+                            <div class="col-md-4 mb-4">
+                                <div class="card h-100">
+                                    <img src="assets/fields/<?php echo $field['image']; ?>" 
+                                         class="card-img-top" 
+                                         alt="<?php echo $field['name']; ?>"
+                                         style="height: 200px; object-fit: cover;">
+                                    <div class="card-body">
+                                        <h5 class="card-title"><?php echo $field['name']; ?></h5>
+                                        <p class="card-text">
+                                            <i class="fas fa-futbol"></i> Sân <?php echo $field['field_type']; ?> người<br>
+                                            <i class="fas fa-map-marker-alt"></i> <?php echo $field['address']; ?><br>
+                                            <i class="fas fa-money-bill"></i> <?php echo number_format($field['rental_price'], 0, ',', '.'); ?>đ/giờ
+                                        </p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="badge <?php echo $field['status'] == 'Đang trống' ? 'badge-success' : 'badge-danger'; ?>">
+                                                <?php echo $field['status']; ?>
+                                            </span>
+                                            <a href="field-detail.php?id=<?php echo $field['id']; ?>" 
+                                               class="btn btn-primary">Xem chi tiết</a>
                                         </div>
-                                        <form method="post">
-                                            <input type="hidden" name="item_id" value="<?php echo $item['item_id']; ?>">
-                                            <input type="hidden" name="user_id" value="<?php echo $user_id; ?>">
-                                            <?php
-                                                if (in_array($item['item_id'], $Cart->getCartId($product->getData('cart')) ?? [])){
-                                                    echo '<button type="submit" disabled class="btn btn-success font-size-12">Đã có trong giỏ</button>';
-                                                }else{
-                                                    echo '<button type="submit" name="search_submit" class="btn btn-warning font-size-12">Thêm vào giỏ</button>';
-                                                }
-                                            ?>
-                                        </form>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <?php endforeach; ?>
-                    <?php else: ?>
-                        <p>Không tìm thấy sản phẩm nào phù hợp với từ khóa "<?php echo htmlspecialchars($keyword); ?>"</p>
-                    <?php endif; ?>
-                </div>
+                        <?php endwhile; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-info">
+                        Không tìm thấy sân bóng nào phù hợp với tiêu chí tìm kiếm.
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
+
+    <?php include 'footer.php'; ?>
 </body>
 </html>
-
-
-<?php
-// include footer.php file
-include ('footer.php');
-?>
