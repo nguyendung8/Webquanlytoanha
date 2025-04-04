@@ -1,136 +1,199 @@
 <?php
-ob_start();
-
+include 'database/DBController.php';
 session_start();
-$user_id = @$_SESSION['user_id'];
-// include header.php file
-include './database/DBController.php';
 
-include('header.php');
-?>
-<?php
+if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submit"
+    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $password = mysqli_real_escape_string($conn, md5($_POST['password'])); // Mã hóa mật khẩu bằng md5
 
-/*  include banner area  */
-include('Template/_banner-area.php');
-/*  include banner area  */
+    // Truy vấn kiểm tra thông tin đăng nhập
+    $query = "SELECT * FROM `users` WHERE email = '$email' AND password = '$password'";
+    $result = mysqli_query($conn, $query) or die('Query failed');
 
-/*  include top sale section */
-include('Template/_top-sale.php');
-/*  include top sale section */
-
-// /*  include special price section  */
-// include('Template/_special-price.php');
-// /*  include special price section  */
-
-/*  include banner ads  */
-include('Template/_banner-ads.php');
-/*  include banner ads  */
-
-// /*  include new phones section  */
-// include('Template/_new-phones.php');
-// /*  include new phones section  */
-
-/*  include blog area  */
-include('Template/_blogs.php');
-/*  include blog area  */
-
-?>
-<style>
-    #chat-icon:hover {
-        background: #0056b3;
+    // Kiểm tra kết quả truy vấn
+    if (mysqli_num_rows($result) > 0) {
+        $user = mysqli_fetch_assoc($result);
+        $_SESSION['admin_name'] = $user['UserName'];
+        $_SESSION['admin_id'] = @$user['UserId'];
+        header('Location: admin/account/acount.php'); // Chuyển đến trang quản trị
+        exit();
+        } else {
+            $message[] = 'Tài khoản của bạn không có quyền truy cập!';
+        }
+    } else {
+        $message[] = 'Tên tài khoản hoặc mật khẩu không chính xác!';
     }
-
-    #chat-form label {
-        font-weight: bold;
-    }
-</style>
-<!-- Nút mở chat -->
- <?php
-    if (isset($_SESSION['user_id'])) {
 ?>
-    <div id="chat-icon" onclick="toggleChat()" style="position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; width: 60px; height: 60px; border-radius: 50%; display: flex; justify-content: center; align-items: center; cursor: pointer; z-index: 1000;">
-        <i class="fas fa-comment-dots" style="font-size: 24px;"></i>
-    </div>
-<?php } ?>
+<!DOCTYPE html>
+<html>
 
-<!-- Khung chat -->
-<div id="chat-box" class="card shadow-lg border-0" style="position: fixed; bottom: 90px; right: 20px; width: 350px; display: none; z-index: 1000;">
-    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">Chăm sóc khách hàng</h6>
-        <button class="btn btn-sm btn-light" onclick="toggleChat()">&times;</button>
-    </div>
-    <div class="card-body" id="chat-messages" style="height: 300px; overflow-y: auto">
-        <!-- Tin nhắn sẽ được hiển thị ở đây -->
-    </div>
-    <div class="card-footer bg-white">
-        <form id="messageForm" class="d-flex">
-            <textarea class="form-control me-2" id="message" name="message" rows="1" placeholder="Nhập tin nhắn..." required></textarea>
-            <button type="submit" class="btn btn-primary ml-1">Gửi</button>
-        </form>
-    </div>
-</div>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Đăng nhập</title>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+        }
 
-<script>
-    function toggleChat() {
-        let chatBox = document.getElementById("chat-box");
-        chatBox.style.display = (chatBox.style.display === "none" || chatBox.style.display === "") ? "block" : "none";
-    }
+        .container {
+            margin: auto;
+            display: flex;
+            justify-content: center;
+        }
 
-    function fetchMessages() {
-        $.ajax({
-            url: "fetch_messages.php",
-            type: "GET",
-            dataType: "json",
-            success: function (response) {
-                if (response.status === "success") {
-                    $("#chat-messages").html(""); // Xóa tin nhắn cũ trước khi load mới
-                    response.messages.forEach(msg => {
-                        let alignment = msg.sender_id == response.current_user ? "justify-content-end" : "justify-content-start";
-                        let bgColor = msg.sender_id == response.current_user ? "bg-primary text-white" : "bg-light";
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: url('./assets/login-bg.png') no-repeat center center fixed;
+            background-size: cover;
+        }
 
-                        $("#chat-messages").append(`
-                            <div class="d-flex ${alignment} mb-2">
-                                <div class="p-2 rounded ${bgColor}" style="max-width: 75%;">
-                                    ${msg.message}
-                                </div>
-                            </div>
-                        `);
-                    });
-                    $("#chat-messages").scrollTop($("#chat-messages")[0].scrollHeight);
+        .form-control {
+            margin-bottom: 0px !important;
+        }
+
+        .login-card {
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            width: 400px;
+            backdrop-filter: blur(10px);
+        }
+
+        .login-header {
+            color: #000;
+            padding: 20px;
+            border-radius: 15px 15px 0 0;
+            text-align: center;
+        }
+
+        .login-header h4 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .login-body {
+            padding: 30px;
+        }
+
+        .form-control {
+            border-radius: 25px;
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .form-control:focus {
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+            border-color: #899F87;
+        }
+
+        .btn-login {
+            background: #899F87;
+            border: none;
+            border-radius: 25px;
+            padding: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #899F87;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .register-link a {
+            color: #899F87;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .title-login {
+            font-weight: 400;
+            font-size: 30px;
+            line-height: 140%;
+            letter-spacing: 0%;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="container">
+            <?php
+            if (isset($message)) {
+                foreach ($message as $msg) {
+                    echo '<div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <span>' . $msg . '</span>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                          </div>';
                 }
             }
-        });
-    }
+            ?>
+            
+            <div class="login-card">
+                <div class="login-header">
+                    <img width="100px" src="./assets/logo.png" alt="logo" class="logo-img">
+                    <div class="title-login">Đăng Nhập</div>
+                </div>
+                <div class="login-body">
+                    <form action="" method="post">
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="fas fa-envelope text-muted"></i>
+                                </span>
+                                <input type="email" name="email" class="form-control border-start-0" 
+                                       placeholder="Email của bạn" required>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="fas fa-lock text-muted"></i>
+                                </span>
+                                <input type="password" name="password" class="form-control border-start-0" 
+                                       placeholder="Mật khẩu" required>
+                            </div>
+                        </div>
+                        <button type="submit" name="submit" class="btn btn-login btn-success w-100">
+                            Đăng Nhập
+                        </button>
+                    </form>
+                    <div class="register-link">
+                        <a href="register.php">Quên mật khẩu</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
 
-    $("#messageForm").submit(function (event) {
-        event.preventDefault();
-        let message = $("#message").val().trim();
-        if (message !== "") {
-            $.ajax({
-                url: "send_message.php",
-                type: "POST",
-                data: { message: message },
-                dataType: "json",
-                success: function (response) {
-                    if (response.status === "success") {
-                        fetchMessages(); // Load lại tin nhắn sau khi gửi
-                        $("#message").val("").focus();
-                    }
-                }
-            });
-        }
-    });
-
-    setInterval(fetchMessages, 3000); // Cập nhật tin nhắn mỗi 3 giây
-</script>
-
-
-<script src="./index.js"></script>
-
-<?php
-// include footer.php file
-include('footer.php');
-?>
+</html>

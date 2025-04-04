@@ -17,8 +17,6 @@ body {
   );
 }
 .manage-container {
-    background: url('../../assets/bg-login.jpg') no-repeat center center fixed;
-    background-size: cover;
     width: calc(100% - 250px);
 }
 .sidebar {
