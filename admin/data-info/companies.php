@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -269,6 +269,7 @@ if(isset($_POST['update_company'])) {
         }
 
         .manage-container {
+            background:rgb(243, 239, 239) !important;   
             width: 100%;
             padding: 20px;
         }
@@ -288,141 +289,141 @@ if(isset($_POST['update_company'])) {
             font-weight: 500;
             margin-bottom: 10px;
         }
-        .manage-container {
-            background: #fff !important;
-        }
     </style>
 </head>
 
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
+                    }
                 }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">THÔNG TIN CÔNG TY</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Công ty</span>
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">THÔNG TIN CÔNG TY</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Công ty</span>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Tab Navigation -->
-            <div class="tab-navigation">
-                <a href="#" class="tab-item active">Danh mục Công ty</a>
-                <a href="./townships.php" class="tab-item">Danh mục đô thị</a>
-                <a href="./projects.php" class="tab-item">Danh mục dự án</a>
-            </div>
-            
-            <!-- Search and Add Section -->
-            <div class="search-container">
-                <div class="d-flex">
-                    <input type="text" class="search-input" placeholder="Nhập nội dung tìm kiếm">
-                    <button class="search-btn">
-                        <i class="fas fa-search"></i> Tìm kiếm
+                
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <a href="#" class="tab-item active">Danh mục Công ty</a>
+                    <a href="./townships.php" class="tab-item">Danh mục đô thị</a>
+                    <a href="./projects.php" class="tab-item">Danh mục dự án</a>
+                </div>
+                
+                <!-- Search and Add Section -->
+                <div class="search-container">
+                    <div class="d-flex">
+                        <input type="text" class="search-input" placeholder="Nhập nội dung tìm kiếm">
+                        <button class="search-btn">
+                            <i class="fas fa-search"></i> Tìm kiếm
+                        </button>
+                    </div>
+                    <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addCompanyModal">
+                        <i class="fas fa-plus"></i> Thêm công ty
                     </button>
                 </div>
-                <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addCompanyModal">
-                    <i class="fas fa-plus"></i> Thêm công ty
-                </button>
-            </div>
-            
-            <!-- Company Table -->
-            <table class="company-table">
-                <thead>
-                    <tr>
-                        <th width="5%">STT</th>
-                        <th width="20%">Mã công ty</th>
-                        <th width="55%">Tên công ty</th>
-                        <th width="20%">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // Pagination setup
-                    $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
-                    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                    $offset = ($page - 1) * $records_per_page;
-                    
-                    // Count total records for pagination
-                    $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM `Companies`");
-                    $total_records = mysqli_fetch_assoc($count_query)['total'];
-                    $total_pages = ceil($total_records / $records_per_page);
-                    
-                    // Fetch company records with pagination
-                    $select_companies = mysqli_query($conn, "SELECT * FROM `Companies` ORDER BY CompanyId DESC LIMIT $offset, $records_per_page") 
-                                        or die('Query failed: ' . mysqli_error($conn));
-                    
-                    if (mysqli_num_rows($select_companies) > 0) {
-                        $counter = $offset + 1;
-                        while ($company = mysqli_fetch_assoc($select_companies)) {
-                            ?>
-                            <tr>
-                                <td><?php echo $counter++; ?></td>
-                                <td><?php echo $company['Code']; ?></td>
-                                <td><?php echo $company['Name']; ?></td>
-                                <td>
-                                    <div class="d-flex">
-                                        <a href="javascript:void(0);" class="action-btn edit-btn" onclick="editCompany(<?php echo $company['CompanyId']; ?>, '<?php echo $company['Code']; ?>', '<?php echo $company['Name']; ?>')"><i class="fas fa-edit"></i></a>
-                                        <a href="companies.php?delete=<?php echo $company['CompanyId']; ?>" class="action-btn delete-btn" onclick="return confirm('Bạn có chắc chắn muốn xóa công ty này?');"><i class="fas fa-trash"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
-                            <?php
+                
+                <!-- Company Table -->
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">STT</th>
+                            <th width="20%">Mã công ty</th>
+                            <th width="55%">Tên công ty</th>
+                            <th width="20%">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Pagination setup
+                        $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+                        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                        $offset = ($page - 1) * $records_per_page;
+                        
+                        // Count total records for pagination
+                        $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM `Companies`");
+                        $total_records = mysqli_fetch_assoc($count_query)['total'];
+                        $total_pages = ceil($total_records / $records_per_page);
+                        
+                        // Fetch company records with pagination
+                        $select_companies = mysqli_query($conn, "SELECT * FROM `Companies` ORDER BY CompanyId DESC LIMIT $offset, $records_per_page") 
+                                            or die('Query failed: ' . mysqli_error($conn));
+                        
+                        if (mysqli_num_rows($select_companies) > 0) {
+                            $counter = $offset + 1;
+                            while ($company = mysqli_fetch_assoc($select_companies)) {
+                                ?>
+                                <tr>
+                                    <td><?php echo $counter++; ?></td>
+                                    <td><?php echo $company['Code']; ?></td>
+                                    <td><?php echo $company['Name']; ?></td>
+                                    <td>
+                                        <div class="d-flex">
+                                            <a href="javascript:void(0);" class="action-btn edit-btn" onclick="editCompany(<?php echo $company['CompanyId']; ?>, '<?php echo $company['Code']; ?>', '<?php echo $company['Name']; ?>')"><i class="fas fa-edit"></i></a>
+                                            <a href="companies.php?delete=<?php echo $company['CompanyId']; ?>" class="action-btn delete-btn" onclick="return confirm('Bạn có chắc chắn muốn xóa công ty này?');"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        } else {
+                            echo '<tr><td colspan="4" class="text-center">Không có dữ liệu công ty</td></tr>';
                         }
-                    } else {
-                        echo '<tr><td colspan="4" class="text-center">Không có dữ liệu công ty</td></tr>';
-                    }
-                    ?>
-                </tbody>
-            </table>
-            
-            <div class="separator-line"></div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if ($page > 1): ?>
-                        <a href="companies.php?page=1&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-left"></i></a>
-                    <?php endif; ?>
-                    
-                    <?php
-                    // Calculate range of page numbers to display
-                    $start_page = max(1, $page - 2);
-                    $end_page = min($total_pages, $page + 2);
-                    
-                    for ($i = $start_page; $i <= $end_page; $i++): 
-                    ?>
-                        <a href="companies.php?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>"><?php echo $i; ?></a>
-                    <?php endfor; ?>
-                    
-                    <?php if ($page < $total_pages): ?>
-                        <a href="companies.php?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-right"></i></a>
-                    <?php endif; ?>
-                </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='companies.php?page=1&per_page='+this.value">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+                        ?>
+                    </tbody>
+                </table>
+                
+                <div class="separator-line"></div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if ($page > 1): ?>
+                            <a href="companies.php?page=1&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-left"></i></a>
+                        <?php endif; ?>
+                        
+                        <?php
+                        // Calculate range of page numbers to display
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        
+                        for ($i = $start_page; $i <= $end_page; $i++): 
+                        ?>
+                            <a href="companies.php?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                        <?php endfor; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                            <a href="companies.php?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-right"></i></a>
+                        <?php endif; ?>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='companies.php?page=1&per_page='+this.value">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

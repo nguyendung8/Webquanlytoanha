@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -293,6 +293,7 @@ if(!empty($project_id)) {
         }
 
         .manage-container {
+            background:rgb(243, 239, 239) !important;
             width: 100%;
             padding: 20px;
         }
@@ -311,9 +312,6 @@ if(!empty($project_id)) {
             display: inline-block;
             font-weight: 500;
             margin-bottom: 10px;
-        }
-        .manage-container {
-            background: #fff !important;
         }
         
         .project-select {
@@ -346,158 +344,161 @@ if(!empty($project_id)) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
+                    }
                 }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">QUẢN LÝ TÒA NHÀ</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Quản lý tòa nhà</span>
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">QUẢN LÝ TÒA NHÀ</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Quản lý tòa nhà</span>
+                    </div>
                 </div>
-            </div>
-            
-            <!-- Project Selection Dropdown -->
-            <div class="mb-4 mt-4">
-                <select class="project-select" onchange="window.location.href='building_management.php?project_id='+this.value">
-                    <option value="">Chọn dự án</option>
-                    <?php while($project = mysqli_fetch_assoc($select_projects)) { ?>
-                        <option value="<?php echo $project['ProjectID']; ?>" <?php echo ($project_id == $project['ProjectID']) ? 'selected' : ''; ?>>
-                            <?php echo $project['Name']; ?>
-                        </option>
-                    <?php } ?>
-                </select>
+                
+                <!-- Project Selection Dropdown -->
+                <div class="mb-4 mt-4">
+                    <select class="project-select" onchange="window.location.href='building_management.php?project_id='+this.value">
+                        <option value="">Chọn dự án</option>
+                        <?php while($project = mysqli_fetch_assoc($select_projects)) { ?>
+                            <option value="<?php echo $project['ProjectID']; ?>" <?php echo ($project_id == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                <?php echo $project['Name']; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
 
-                <a href="floor_management.php" style=" float: right; text-decoration: none; background-color: #476a52; color: white; width: fit-content; padding: 8px 10px; border-radius: 5px;">
-                    <span class="modal-title">Danh sách tầng</span>
-                </a>
-            </div>
-            
-            <!-- Search and Add Section -->
-            <div class="search-container">
-                <div class="d-flex">
-                    <form action="" method="GET" class="d-flex">
-                        <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
-                        <input type="text" name="search" class="search-input" placeholder="Nhập tên tòa nhà" 
-                               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                        <button type="submit" class="search-btn">
-                            <i class="fas fa-search"></i> Tìm kiếm
-                        </button>
-                    </form>
+                    <a href="floor_management.php" style=" float: right; text-decoration: none; background-color: #476a52; color: white; width: fit-content; padding: 8px 10px; border-radius: 5px;">
+                        <span class="modal-title">Danh sách tầng</span>
+                    </a>
                 </div>
-                <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addBuildingModal" <?php echo empty($project_id) ? 'disabled' : ''; ?>>
-                    <i class="fas fa-plus"></i> Thêm tòa nhà
-                </button>
-            </div>
-            
-            <!-- Buildings Table -->
-            <table class="company-table">
-                <thead>
-                    <tr>
-                        <th width="5%">STT</th>
-                        <th width="30%">Tên tòa nhà</th>
-                        <th width="20%">Trạng thái</th>
-                        <th width="20%">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    if(!empty($project_id)) {
-                        if(mysqli_num_rows($select_buildings) > 0) {
-                            $counter = 1;
-                            while($building = mysqli_fetch_assoc($select_buildings)) {
-                                ?>
-                                <tr>
-                                    <td><?php echo $counter++; ?></td>
-                                    <td><?php echo $building['Name']; ?></td>
-                                    <td>
-                                        <span class="status-badge <?php echo $building['Status'] == 'active' ? 'status-active' : 'status-inactive'; ?>">
-                                            <?php echo $building['Status'] == 'active' ? 'Mở' : 'Đóng'; ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex">
-                                            <button type='button' class='btn btn-sm btn-primary me-1' 
-                                                onclick='editBuilding(
-                                                    "<?php echo $building['ID']; ?>",
-                                                    "<?php echo $building['Name']; ?>",
-                                                    "<?php echo $building['Code']; ?>",
-                                                    "<?php echo $building['Status']; ?>"
-                                                )'>
-                                                <i class='fas fa-edit'></i>
-                                            </button>
-                                            <a href="building_management.php?project_id=<?php echo $project_id; ?>&delete=<?php echo $building['ID']; ?>" 
-                                               class="action-btn delete-btn" 
-                                               onclick="return confirm('Bạn có chắc chắn muốn xóa tòa nhà này?');">
-                                                <i class="fas fa-trash"></i>
-                                            </a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <?php
+                
+                <!-- Search and Add Section -->
+                <div class="search-container">
+                    <div class="d-flex">
+                        <form action="" method="GET" class="d-flex">
+                            <input type="hidden" name="project_id" value="<?php echo $project_id; ?>">
+                            <input type="text" name="search" class="search-input" placeholder="Nhập tên tòa nhà" 
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <button type="submit" class="search-btn">
+                                <i class="fas fa-search"></i> Tìm kiếm
+                            </button>
+                        </form>
+                    </div>
+                    <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addBuildingModal" <?php echo empty($project_id) ? 'disabled' : ''; ?>>
+                        <i class="fas fa-plus"></i> Thêm tòa nhà
+                    </button>
+                </div>
+                
+                <!-- Buildings Table -->
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">STT</th>
+                            <th width="30%">Tên tòa nhà</th>
+                            <th width="20%">Trạng thái</th>
+                            <th width="20%">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        if(!empty($project_id)) {
+                            if(mysqli_num_rows($select_buildings) > 0) {
+                                $counter = 1;
+                                while($building = mysqli_fetch_assoc($select_buildings)) {
+                                    ?>
+                                    <tr>
+                                        <td><?php echo $counter++; ?></td>
+                                        <td><?php echo $building['Name']; ?></td>
+                                        <td>
+                                            <span class="status-badge <?php echo $building['Status'] == 'active' ? 'status-active' : 'status-inactive'; ?>">
+                                                <?php echo $building['Status'] == 'active' ? 'Mở' : 'Đóng'; ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex">
+                                                <button type='button' class='btn btn-sm btn-primary me-1' 
+                                                    onclick='editBuilding(
+                                                        "<?php echo $building['ID']; ?>",
+                                                        "<?php echo $building['Name']; ?>",
+                                                        "<?php echo $building['Code']; ?>",
+                                                        "<?php echo $building['Status']; ?>"
+                                                    )'>
+                                                    <i class='fas fa-edit'></i>
+                                                </button>
+                                                <a href="building_management.php?project_id=<?php echo $project_id; ?>&delete=<?php echo $building['ID']; ?>" 
+                                                class="action-btn delete-btn" 
+                                                onclick="return confirm('Bạn có chắc chắn muốn xóa tòa nhà này?');">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                }
+                            } else {
+                                echo '<tr><td colspan="4" class="text-center">Chưa có tòa nhà nào trong dự án này</td></tr>';
                             }
                         } else {
-                            echo '<tr><td colspan="4" class="text-center">Chưa có tòa nhà nào trong dự án này</td></tr>';
+                            echo '<tr><td colspan="4" class="text-center">Vui lòng chọn dự án</td></tr>';
                         }
-                    } else {
-                        echo '<tr><td colspan="4" class="text-center">Vui lòng chọn dự án</td></tr>';
-                    }
-                    ?>
-                </tbody>
-            </table>
-            
-            <div class="separator-line"></div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if(!empty($project_id) && $total_pages > 1): ?>
-                        <?php if ($page > 1): ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                        <?php endif; ?>
-                        
-                        <?php
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
-                        
-                        for ($i = $start_page; $i <= $end_page; $i++): 
                         ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
+                    </tbody>
+                </table>
+                
+                <div class="separator-line"></div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if(!empty($project_id) && $total_pages > 1): ?>
+                            <?php if ($page > 1): ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            <?php endif; ?>
+                            
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            for ($i = $start_page; $i <= $end_page; $i++): 
+                            ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            <?php endif; ?>
                         <?php endif; ?>
-                    <?php endif; ?>
-                </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='?project_id=<?php echo $project_id; ?>&page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='?project_id=<?php echo $project_id; ?>&page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

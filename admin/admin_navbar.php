@@ -38,6 +38,7 @@
          transition: all 0.3s;
          margin: 2px 15px;
          border-radius: 8px;
+         font-size: 15px !important;
       }
 
       .sidebar a:hover {

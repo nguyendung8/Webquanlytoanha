@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -290,6 +290,7 @@ $select_floors = mysqli_query($conn, "SELECT f.*, b.Name as BuildingName, p.Name
         }
 
         .manage-container {
+            background:rgb(243, 239, 239) !important;
             width: 100%;
             padding: 20px;
         }
@@ -308,9 +309,6 @@ $select_floors = mysqli_query($conn, "SELECT f.*, b.Name as BuildingName, p.Name
             display: inline-block;
             font-weight: 500;
             margin-bottom: 10px;
-        }
-        .manage-container {
-            background: #fff !important;
         }
         
         .project-select {
@@ -343,136 +341,139 @@ $select_floors = mysqli_query($conn, "SELECT f.*, b.Name as BuildingName, p.Name
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
-                }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH TẦNG</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="building_management.php">Tổng quan dự án</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="building_management.php">Quản lý tòa nhà</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Danh sách tầng</span>
-                </div>
-            </div>
-        
-            
-            <!-- Search and Add Section -->
-            <div class="search-container">
-                <div class="d-flex">
-                    <form action="" method="GET" class="d-flex">
-                        <input type="text" name="search" class="search-input" placeholder="Nhập tên tầng, mã tầng" 
-                               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                        <button type="submit" class="search-btn">
-                            <i class="fas fa-search"></i> Tìm kiếm
-                        </button>
-                    </form>
-                </div>
-                <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addFloorModal">
-                    <i class="fas fa-plus"></i> Thêm mới tầng
-                </button>
-            </div>
-            
-            <!-- Floors Table -->
-            <table class="company-table">
-                <thead>
-                    <tr>
-                        <th width="5%">STT</th>
-                        <th width="25%">Tòa nhà</th>
-                        <th width="25%">Tên tầng</th>
-                        <th width="20%">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    if(mysqli_num_rows($select_floors) > 0) {
-                        $counter = 1;
-                        while($floor = mysqli_fetch_assoc($select_floors)) {
-                            ?>
-                            <tr>
-                                <td><?php echo $counter++; ?></td>
-                                <td><?php echo $floor['ProjectName'] . ' - ' . $floor['BuildingName']; ?></td>
-                                <td><?php echo $floor['Name']; ?></td>
-                                <td>
-                                    <button type="button" class="action-btn btn-edit" 
-                                        onclick="editFloor(
-                                            '<?php echo $floor['ID']; ?>',
-                                            '<?php echo $floor['Name']; ?>',
-                                            '<?php echo $floor['Code']; ?>',
-                                            '<?php echo $floor['BuildingId']; ?>'
-                                        )">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <a href="floor_management.php?delete=<?php echo $floor['ID']; ?>" 
-                                       class="action-btn btn-delete"
-                                       onclick="return confirm('Bạn có chắc chắn muốn xóa tầng này?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php
-                        }
-                    } else {
-                        echo '<tr><td colspan="4" class="text-center">Không có tầng nào</td></tr>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
                     }
-                    ?>
-                </tbody>
-            </table>
-            
-            <div class="separator-line"></div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if($total_pages > 1): ?>
-                        <?php if ($page > 1): ?>
-                            <a href="?page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                        <?php endif; ?>
-                        
-                        <?php
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
-                        
-                        for ($i = $start_page; $i <= $end_page; $i++): 
-                        ?>
-                            <a href="?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                }
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH TẦNG</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="building_management.php">Tổng quan dự án</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="building_management.php">Quản lý tòa nhà</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Danh sách tầng</span>
+                    </div>
                 </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='?page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+            
+                
+                <!-- Search and Add Section -->
+                <div class="search-container">
+                    <div class="d-flex">
+                        <form action="" method="GET" class="d-flex">
+                            <input type="text" name="search" class="search-input" placeholder="Nhập tên tầng, mã tầng" 
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <button type="submit" class="search-btn">
+                                <i class="fas fa-search"></i> Tìm kiếm
+                            </button>
+                        </form>
+                    </div>
+                    <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addFloorModal">
+                        <i class="fas fa-plus"></i> Thêm mới tầng
+                    </button>
+                </div>
+                
+                <!-- Floors Table -->
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">STT</th>
+                            <th width="25%">Tòa nhà</th>
+                            <th width="25%">Tên tầng</th>
+                            <th width="20%">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        if(mysqli_num_rows($select_floors) > 0) {
+                            $counter = 1;
+                            while($floor = mysqli_fetch_assoc($select_floors)) {
+                                ?>
+                                <tr>
+                                    <td><?php echo $counter++; ?></td>
+                                    <td><?php echo $floor['ProjectName'] . ' - ' . $floor['BuildingName']; ?></td>
+                                    <td><?php echo $floor['Name']; ?></td>
+                                    <td>
+                                        <button type="button" class="action-btn btn-edit" 
+                                            onclick="editFloor(
+                                                '<?php echo $floor['ID']; ?>',
+                                                '<?php echo $floor['Name']; ?>',
+                                                '<?php echo $floor['Code']; ?>',
+                                                '<?php echo $floor['BuildingId']; ?>'
+                                            )">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="floor_management.php?delete=<?php echo $floor['ID']; ?>" 
+                                        class="action-btn btn-delete"
+                                        onclick="return confirm('Bạn có chắc chắn muốn xóa tầng này?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        } else {
+                            echo '<tr><td colspan="4" class="text-center">Không có tầng nào</td></tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                
+                <div class="separator-line"></div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if($total_pages > 1): ?>
+                            <?php if ($page > 1): ?>
+                                <a href="?page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            <?php endif; ?>
+                            
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            for ($i = $start_page; $i <= $end_page; $i++): 
+                            ?>
+                                <a href="?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='?page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

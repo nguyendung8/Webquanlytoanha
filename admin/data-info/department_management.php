@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -299,6 +299,7 @@ $select_departments = mysqli_query($conn, "SELECT d.*, s.Name as ManagerName
         }
 
         .manage-container {
+            background:rgb(243, 239, 239) !important;
             width: 100%;
             padding: 20px;
         }
@@ -317,9 +318,6 @@ $select_departments = mysqli_query($conn, "SELECT d.*, s.Name as ManagerName
             display: inline-block;
             font-weight: 500;
             margin-bottom: 10px;
-        }
-        .manage-container {
-            background: #fff !important;
         }
         
         .project-select {
@@ -352,129 +350,132 @@ $select_departments = mysqli_query($conn, "SELECT d.*, s.Name as ManagerName
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
-                }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH PHÒNG BAN</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Danh sách phòng ban</span>
-                </div>
-            </div>
-            
-            <!-- Search and Add Section -->
-            <div class="search-container">
-                <div class="d-flex">
-                    <form action="" method="GET" class="d-flex">
-                        <input type="text" name="search" class="search-input" 
-                               placeholder="Nhập tên phòng ban, mã phòng ban" 
-                               value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                        <button type="submit" class="search-btn">
-                            <i class="fas fa-search"></i> Tìm kiếm
-                        </button>
-                    </form>
-                </div>
-                <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addDepartmentModal">
-                    <i class="fas fa-plus"></i> Thêm phòng ban
-                </button>
-            </div>
-            
-            <!-- Departments Table -->
-            <table class="company-table">
-                <thead>
-                    <tr>
-                        <th width="5%">STT</th>
-                        <th width="20%">Tên phòng ban</th>
-                        <th width="15%">Mã phòng ban</th>
-                        <th width="20%">Trưởng phòng</th>
-                        <th width="15%">Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    if(mysqli_num_rows($select_departments) > 0) {
-                        $counter = $offset + 1;
-                        while($department = mysqli_fetch_assoc($select_departments)) {
-                            ?>
-                            <tr>
-                                <td><?php echo $counter++; ?></td>
-                                <td><?php echo $department['Name']; ?></td>
-                                <td><?php echo $department['Code']; ?></td>
-                                <td><?php echo $department['ManagerName'] ?? 'Chưa có'; ?></td>
-                                <td>
-                                    <button type="button" class="action-btn btn-edit" 
-                                        onclick='editDepartment(<?php echo json_encode($department); ?>)'>
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <a href="?delete=<?php echo $department['ID']; ?>" 
-                                       class="action-btn btn-delete"
-                                       onclick="return confirm('Bạn có chắc chắn muốn xóa phòng ban này?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php
-                        }
-                    } else {
-                        echo '<tr><td colspan="5" class="text-center">Không có phòng ban nào</td></tr>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
                     }
-                    ?>
-                </tbody>
-            </table>
-            
-            <div class="separator-line"></div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if(!empty($project_id) && $total_pages > 1): ?>
-                        <?php if ($page > 1): ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                        <?php endif; ?>
-                        
-                        <?php
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
-                        
-                        for ($i = $start_page; $i <= $end_page; $i++): 
-                        ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
-                               class="page-item">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                }
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH PHÒNG BAN</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Danh sách phòng ban</span>
+                    </div>
                 </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='?project_id=<?php echo $project_id; ?>&page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+                
+                <!-- Search and Add Section -->
+                <div class="search-container">
+                    <div class="d-flex">
+                        <form action="" method="GET" class="d-flex">
+                            <input type="text" name="search" class="search-input" 
+                                placeholder="Nhập tên phòng ban, mã phòng ban" 
+                                value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                            <button type="submit" class="search-btn">
+                                <i class="fas fa-search"></i> Tìm kiếm
+                            </button>
+                        </form>
+                    </div>
+                    <button type="button" class="add-btn" data-bs-toggle="modal" data-bs-target="#addDepartmentModal">
+                        <i class="fas fa-plus"></i> Thêm phòng ban
+                    </button>
+                </div>
+                
+                <!-- Departments Table -->
+                <table class="company-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">STT</th>
+                            <th width="20%">Tên phòng ban</th>
+                            <th width="15%">Mã phòng ban</th>
+                            <th width="20%">Trưởng phòng</th>
+                            <th width="15%">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        if(mysqli_num_rows($select_departments) > 0) {
+                            $counter = $offset + 1;
+                            while($department = mysqli_fetch_assoc($select_departments)) {
+                                ?>
+                                <tr>
+                                    <td><?php echo $counter++; ?></td>
+                                    <td><?php echo $department['Name']; ?></td>
+                                    <td><?php echo $department['Code']; ?></td>
+                                    <td><?php echo $department['ManagerName'] ?? 'Chưa có'; ?></td>
+                                    <td>
+                                        <button type="button" class="action-btn btn-edit" 
+                                            onclick='editDepartment(<?php echo json_encode($department); ?>)'>
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <a href="?delete=<?php echo $department['ID']; ?>" 
+                                        class="action-btn btn-delete"
+                                        onclick="return confirm('Bạn có chắc chắn muốn xóa phòng ban này?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        } else {
+                            echo '<tr><td colspan="5" class="text-center">Không có phòng ban nào</td></tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                
+                <div class="separator-line"></div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if(!empty($project_id) && $total_pages > 1): ?>
+                            <?php if ($page > 1): ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=1&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" class="page-item">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            <?php endif; ?>
+                            
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            for ($i = $start_page; $i <= $end_page; $i++): 
+                            ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?project_id=<?php echo $project_id; ?>&page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>" 
+                                class="page-item">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='?project_id=<?php echo $project_id; ?>&page=1&per_page='+this.value+'<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?>'">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

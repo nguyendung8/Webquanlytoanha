@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -301,9 +301,9 @@ if(isset($_POST['update_township'])) {
         }
 
         .manage-container {
+            background:rgb(243, 239, 239) !important;
             width: 100%;
             padding: 20px;
-            background: #fff !important;
         }
         
         .project-description {
@@ -390,155 +390,158 @@ if(isset($_POST['update_township'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
-                }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH MỤC DỰ ÁN</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Danh mục dự án</span>
-                </div>
-            </div>
-            
-            <!-- Tab Navigation -->
-            <div class="tab-navigation">
-                <a href="companies.php" class="tab-item">Danh mục Công ty</a>
-                <a href="townships.php" class="tab-item">Danh mục đô thị</a>
-                <a href="projects.php" class="tab-item active">Danh mục dự án</a>
-            </div>
-            
-            <!-- Search and Add Section -->
-            <div class="search-container">
-                <div class="d-flex">
-                    <input type="text" class="search-input" placeholder="Nhập nội dung tìm kiếm">
-                    <select class="search-select">
-                        <option value="">Chọn trạng thái</option>
-                        <option value="active">Đang hoạt động</option>
-                        <option value="inactive">Không hoạt động</option>
-                    </select>
-                    <button class="search-btn">
-                        <i class="fas fa-search"></i> Tìm kiếm
-                    </button>
-                </div>
-                <a href="create_project.php" class="add-btn">
-                    <i class="fas fa-plus"></i> Thêm dự án
-                </a>
-            </div>
-            
-            <!-- Project Table -->
-            <table class="project-table">
-                <thead>
-                    <tr>
-                        <th width="5%">STT</th>
-                        <th width="10%">Khu đô thị</th>
-                        <th width="15%">Tên dự án</th>
-                        <th width="15%">Địa chỉ</th>
-                        <th width="10%">Số điện thoại</th>
-                        <th width="20%">Mô tả</th>
-                        <th width="10%">Trưởng ban quản lý</th>
-                        <th width="7%">Trạng thái</th>
-                        <th width="8%">Hành động</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    // Pagination setup
-                    $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
-                    $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-                    $offset = ($page - 1) * $records_per_page;
-                    
-                    // Count total records for pagination
-                    $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM Projects");
-                    $total_records = mysqli_fetch_assoc($count_query)['total'];
-                    $total_pages = ceil($total_records / $records_per_page);
-                    
-                    // Fetch projects with township and manager information
-                    $select_projects = mysqli_query($conn, "SELECT p.*, t.Name as TownshipName, t.Code as TownshipCode, s.Name as ManagerName 
-                                                   FROM Projects p
-                                                   LEFT JOIN Townships t ON p.TownshipId = t.TownshipId
-                                                   LEFT JOIN Staffs s ON p.ManagerId = s.ID
-                                                   ORDER BY p.ProjectID DESC LIMIT $offset, $records_per_page");
-                    
-                    if (mysqli_num_rows($select_projects) > 0) {
-                        $counter = $offset + 1;
-                        while ($project = mysqli_fetch_assoc($select_projects)) {
-                            // Determine status
-                            $is_active = isset($project['Status']) ? ($project['Status'] == 'active') : true;
-                    ?>
-                            <tr>
-                                <td><?php echo $counter++; ?></td>
-                                <td><?php echo $project['TownshipCode'] ? $project['TownshipCode'] : 'N/A'; ?></td>
-                                <td><?php echo $project['Name']; ?></td>
-                                <td><?php echo $project['Address']; ?></td>
-                                <td><?php echo $project['Phone']; ?></td>
-                                <td><div class="project-description"><?php echo nl2br($project['Description']); ?></div></td>
-                                <td><?php echo $project['ManagerName'] ? $project['ManagerName'] : 'N/A'; ?></td>
-                                <td>
-                                    <label class="switch">
-                                        <input type="checkbox" class="status-toggle" data-id="<?php echo $project['ProjectID']; ?>" <?php echo $is_active ? 'checked' : ''; ?>>
-                                        <span class="slider"></span>
-                                    </label>
-                                    <span class="status-text"><?php echo $is_active ? 'Active' : 'Inactive'; ?></span>
-                                </td>
-                                <td>
-                                    <div class="d-flex">
-                                        <a href="update_project.php?id=<?php echo $project['ProjectID']; ?>" class="action-btn edit-btn"><i class="fas fa-edit"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
-                    <?php
-                        }
-                    } else {
-                        echo '<tr><td colspan="9" class="text-center">Không có dữ liệu dự án</td></tr>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
                     }
-                    ?>
-                </tbody>
-            </table>
-            
-            <div class="separator-line"></div>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if ($page > 1): ?>
-                        <a href="projects.php?page=1&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-left"></i></a>
-                    <?php endif; ?>
-                    
-                    <?php
-                    // Calculate range of page numbers to display
-                    $start_page = max(1, $page - 2);
-                    $end_page = min($total_pages, $page + 2);
-                    
-                    for ($i = $start_page; $i <= $end_page; $i++): 
-                    ?>
-                        <a href="projects.php?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>"><?php echo $i; ?></a>
-                    <?php endfor; ?>
-                    
-                    <?php if ($page < $total_pages): ?>
-                        <a href="projects.php?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-right"></i></a>
-                    <?php endif; ?>
+                }
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH MỤC DỰ ÁN</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Danh mục dự án</span>
+                    </div>
                 </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='projects.php?page=1&per_page='+this.value">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+                
+                <!-- Tab Navigation -->
+                <div class="tab-navigation">
+                    <a href="companies.php" class="tab-item">Danh mục Công ty</a>
+                    <a href="townships.php" class="tab-item">Danh mục đô thị</a>
+                    <a href="projects.php" class="tab-item active">Danh mục dự án</a>
+                </div>
+                
+                <!-- Search and Add Section -->
+                <div class="search-container">
+                    <div class="d-flex">
+                        <input type="text" class="search-input" placeholder="Nhập nội dung tìm kiếm">
+                        <select class="search-select">
+                            <option value="">Chọn trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Không hoạt động</option>
+                        </select>
+                        <button class="search-btn">
+                            <i class="fas fa-search"></i> Tìm kiếm
+                        </button>
+                    </div>
+                    <a href="create_project.php" class="add-btn">
+                        <i class="fas fa-plus"></i> Thêm dự án
+                    </a>
+                </div>
+                
+                <!-- Project Table -->
+                <table class="project-table">
+                    <thead>
+                        <tr>
+                            <th width="5%">STT</th>
+                            <th width="10%">Khu đô thị</th>
+                            <th width="15%">Tên dự án</th>
+                            <th width="15%">Địa chỉ</th>
+                            <th width="10%">Số điện thoại</th>
+                            <th width="20%">Mô tả</th>
+                            <th width="10%">Trưởng ban quản lý</th>
+                            <th width="7%">Trạng thái</th>
+                            <th width="8%">Hành động</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        // Pagination setup
+                        $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
+                        $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+                        $offset = ($page - 1) * $records_per_page;
+                        
+                        // Count total records for pagination
+                        $count_query = mysqli_query($conn, "SELECT COUNT(*) as total FROM Projects");
+                        $total_records = mysqli_fetch_assoc($count_query)['total'];
+                        $total_pages = ceil($total_records / $records_per_page);
+                        
+                        // Fetch projects with township and manager information
+                        $select_projects = mysqli_query($conn, "SELECT p.*, t.Name as TownshipName, t.Code as TownshipCode, s.Name as ManagerName 
+                                                    FROM Projects p
+                                                    LEFT JOIN Townships t ON p.TownshipId = t.TownshipId
+                                                    LEFT JOIN Staffs s ON p.ManagerId = s.ID
+                                                    ORDER BY p.ProjectID DESC LIMIT $offset, $records_per_page");
+                        
+                        if (mysqli_num_rows($select_projects) > 0) {
+                            $counter = $offset + 1;
+                            while ($project = mysqli_fetch_assoc($select_projects)) {
+                                // Determine status
+                                $is_active = isset($project['Status']) ? ($project['Status'] == 'active') : true;
+                        ?>
+                                <tr>
+                                    <td><?php echo $counter++; ?></td>
+                                    <td><?php echo $project['TownshipCode'] ? $project['TownshipCode'] : 'N/A'; ?></td>
+                                    <td><?php echo $project['Name']; ?></td>
+                                    <td><?php echo $project['Address']; ?></td>
+                                    <td><?php echo $project['Phone']; ?></td>
+                                    <td><div class="project-description"><?php echo nl2br($project['Description']); ?></div></td>
+                                    <td><?php echo $project['ManagerName'] ? $project['ManagerName'] : 'N/A'; ?></td>
+                                    <td>
+                                        <label class="switch">
+                                            <input type="checkbox" class="status-toggle" data-id="<?php echo $project['ProjectID']; ?>" <?php echo $is_active ? 'checked' : ''; ?>>
+                                            <span class="slider"></span>
+                                        </label>
+                                        <span class="status-text"><?php echo $is_active ? 'Active' : 'Inactive'; ?></span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex">
+                                            <a href="update_project.php?id=<?php echo $project['ProjectID']; ?>" class="action-btn edit-btn"><i class="fas fa-edit"></i></a>
+                                        </div>
+                                    </td>
+                                </tr>
+                        <?php
+                            }
+                        } else {
+                            echo '<tr><td colspan="9" class="text-center">Không có dữ liệu dự án</td></tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                
+                <div class="separator-line"></div>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if ($page > 1): ?>
+                            <a href="projects.php?page=1&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-left"></i></a>
+                        <?php endif; ?>
+                        
+                        <?php
+                        // Calculate range of page numbers to display
+                        $start_page = max(1, $page - 2);
+                        $end_page = min($total_pages, $page + 2);
+                        
+                        for ($i = $start_page; $i <= $end_page; $i++): 
+                        ?>
+                            <a href="projects.php?page=<?php echo $i; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>"><?php echo $i; ?></a>
+                        <?php endfor; ?>
+                        
+                        <?php if ($page < $total_pages): ?>
+                            <a href="projects.php?page=<?php echo $total_pages; ?>&per_page=<?php echo $records_per_page; ?>" class="page-item"><i class="fas fa-angle-double-right"></i></a>
+                        <?php endif; ?>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='projects.php?page=1&per_page='+this.value">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

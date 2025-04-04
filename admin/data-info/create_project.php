@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -196,116 +196,119 @@ if (isset($_POST['submit'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
+                    }
                 }
-            }
-            ?>
-            
-            <div class="page-header">
-                <h2 class="form-title">THÊM MỚI DỰ ÁN</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="/webquanlytoanha/admin/data-info/projects.php">Danh mục dự án</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Thêm mới dự án</span>
+                ?>
+                
+                <div class="page-header">
+                    <h2 class="form-title">THÊM MỚI DỰ ÁN</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="/webquanlytoanha/admin/data-info/projects.php">Danh mục dự án</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Thêm mới dự án</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="create-form">
-                <form action="" method="post">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Khu đô thị <span class="required">*</span></label>
-                            <select name="township_id" class="form-select" required>
-                                <option value="">Chọn khu đô thị</option>
-                                <?php
-                                $select_townships = mysqli_query($conn, "SELECT * FROM `Townships` ORDER BY Name");
-                                while($township = mysqli_fetch_assoc($select_townships)) {
-                                    echo "<option value='{$township['TownShipId']}'>{$township['Name']}</option>";
-                                }
-                                ?>
-                            </select>
+                
+                <div class="create-form">
+                    <form action="" method="post">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Khu đô thị <span class="required">*</span></label>
+                                <select name="township_id" class="form-select" required>
+                                    <option value="">Chọn khu đô thị</option>
+                                    <?php
+                                    $select_townships = mysqli_query($conn, "SELECT * FROM `Townships` ORDER BY Name");
+                                    while($township = mysqli_fetch_assoc($select_townships)) {
+                                        echo "<option value='{$township['TownShipId']}'>{$township['Name']}</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Mã dự án <span class="required">*</span></label>
-                            <input type="text" name="project_code" class="form-control" placeholder="Mã dự án" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã dự án <span class="required">*</span></label>
+                                <input type="text" name="project_code" class="form-control" placeholder="Mã dự án" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã ban vận hành <span class="required">*</span></label>
+                                <input type="text" name="operation_id" class="form-control" placeholder="Mã ban vận hành" required>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Mã ban vận hành <span class="required">*</span></label>
-                            <input type="text" name="operation_id" class="form-control" placeholder="Mã ban vận hành" required>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Tên dự án <span class="required">*</span></label>
+                                <input type="text" name="project_name" class="form-control" placeholder="Tên dự án" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Tên dự án <span class="required">*</span></label>
-                            <input type="text" name="project_name" class="form-control" placeholder="Tên dự án" required>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Mô tả</label>
+                                <textarea name="description" class="form-control" placeholder="Mô tả dự án"></textarea>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Mô tả</label>
-                            <textarea name="description" class="form-control" placeholder="Mô tả dự án"></textarea>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Địa chỉ <span class="required">*</span></label>
+                                <input type="text" name="address" class="form-control" placeholder="Địa chỉ dự án" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Địa chỉ <span class="required">*</span></label>
-                            <input type="text" name="address" class="form-control" placeholder="Địa chỉ dự án" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Số điện thoại <span class="required">*</span></label>
+                                <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email dự án <span class="required">*</span></label>
+                                <input type="email" name="email" class="form-control" placeholder="Email" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Số điện thoại <span class="required">*</span></label>
-                            <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Trưởng ban quản lý <span class="required">*</span></label>
+                                <select name="manager_id" class="form-select" required>
+                                    <option value="">Chọn trưởng ban quản lý</option>
+                                    <?php
+                                    $select_managers = mysqli_query($conn, "SELECT * FROM `Staffs` WHERE Position LIKE '%Trưởng BQL%' OR Position LIKE '%Trưởng ban%' ORDER BY Name");
+                                    while($manager = mysqli_fetch_assoc($select_managers)) {
+                                        echo "<option value='{$manager['ID']}'>{$manager['Name']}</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Ngày khóa sổ kế toán <span class="required">*</span></label>
+                                <input type="date" name="deadlock" class="form-control" required>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email dự án <span class="required">*</span></label>
-                            <input type="email" name="email" class="form-control" placeholder="Email" required>
+                        
+                        <div class="btn-container">
+                            <button type="submit" name="submit" class="btn-submit">Lưu</button>
+                            <a href="projects.php" class="btn-cancel">Hủy</a>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Trưởng ban quản lý <span class="required">*</span></label>
-                            <select name="manager_id" class="form-select" required>
-                                <option value="">Chọn trưởng ban quản lý</option>
-                                <?php
-                                $select_managers = mysqli_query($conn, "SELECT * FROM `Staffs` WHERE Position LIKE '%Trưởng BQL%' OR Position LIKE '%Trưởng ban%' ORDER BY Name");
-                                while($manager = mysqli_fetch_assoc($select_managers)) {
-                                    echo "<option value='{$manager['ID']}'>{$manager['Name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Ngày khóa sổ kế toán <span class="required">*</span></label>
-                            <input type="date" name="deadlock" class="form-control" required>
-                        </div>
-                    </div>
-                    
-                    <div class="btn-container">
-                        <button type="submit" name="submit" class="btn-submit">Lưu</button>
-                        <a href="projects.php" class="btn-cancel">Hủy</a>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

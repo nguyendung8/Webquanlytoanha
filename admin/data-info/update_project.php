@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -406,196 +406,199 @@ if (isset($_POST['edit_payment'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
+                    }
                 }
-            }
-            ?>
-            
-            <div class="page-header">
-                <h2 class="form-title">CẬP NHẬT DỰ ÁN</h2>
-                <div class="breadcrumb">
-                    <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <a href="/webquanlytoanha/admin/data-info/projects.php">Danh mục dự án</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Cập nhật dự án</span>
+                ?>
+                
+                <div class="page-header">
+                    <h2 class="form-title">CẬP NHẬT DỰ ÁN</h2>
+                    <div class="breadcrumb">
+                        <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="/webquanlytoanha/admin/data-info/companies.php">Thông tin công ty</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <a href="/webquanlytoanha/admin/data-info/projects.php">Danh mục dự án</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Cập nhật dự án</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="create-form">
-                <ul class="nav nav-tabs" id="projectTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
-                            Thông tin chung
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment" type="button" role="tab" aria-controls="payment" aria-selected="false">
-                            Thông tin thanh toán
-                        </button>
-                    </li>
-                </ul>
+                
+                <div class="create-form">
+                    <ul class="nav nav-tabs" id="projectTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="info-tab" data-bs-toggle="tab" data-bs-target="#info" type="button" role="tab" aria-controls="info" aria-selected="true">
+                                Thông tin chung
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment" type="button" role="tab" aria-controls="payment" aria-selected="false">
+                                Thông tin thanh toán
+                            </button>
+                        </li>
+                    </ul>
 
-                <form action="" method="post" id="mainForm">
-                    <div class="tab-content" id="projectTabsContent">
-                        <!-- Tab Thông tin chung -->
-                        <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Khu đô thị <span class="required">*</span></label>
-                            <select name="township_id" class="form-select" required>
-                                <option value="">Chọn khu đô thị</option>
-                                <?php
-                                $select_townships = mysqli_query($conn, "SELECT * FROM `Townships` ORDER BY Name");
-                                while($township = mysqli_fetch_assoc($select_townships)) {
-                                            $selected = ($township['TownShipId'] == $project['TownShipId']) ? 'selected' : '';
-                                            echo "<option value='{$township['TownShipId']}' $selected>{$township['Name']}</option>";
-                                }
-                                ?>
-                            </select>
+                    <form action="" method="post" id="mainForm">
+                        <div class="tab-content" id="projectTabsContent">
+                            <!-- Tab Thông tin chung -->
+                            <div class="tab-pane fade show active" id="info" role="tabpanel" aria-labelledby="info-tab">
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Khu đô thị <span class="required">*</span></label>
+                                <select name="township_id" class="form-select" required>
+                                    <option value="">Chọn khu đô thị</option>
+                                    <?php
+                                    $select_townships = mysqli_query($conn, "SELECT * FROM `Townships` ORDER BY Name");
+                                    while($township = mysqli_fetch_assoc($select_townships)) {
+                                                $selected = ($township['TownShipId'] == $project['TownShipId']) ? 'selected' : '';
+                                                echo "<option value='{$township['TownShipId']}' $selected>{$township['Name']}</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Mã dự án <span class="required">*</span></label>
-                                    <input type="text" name="project_code" class="form-control" placeholder="Mã dự án" value="<?php echo $project['ProjectID']; ?>" readonly>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã dự án <span class="required">*</span></label>
+                                        <input type="text" name="project_code" class="form-control" placeholder="Mã dự án" value="<?php echo $project['ProjectID']; ?>" readonly>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Mã ban vận hành <span class="required">*</span></label>
+                                        <input type="text" name="operation_id" class="form-control" placeholder="Mã ban vận hành" value="<?php echo $project['OperationId']; ?>" required>
+                            </div>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Mã ban vận hành <span class="required">*</span></label>
-                                    <input type="text" name="operation_id" class="form-control" placeholder="Mã ban vận hành" value="<?php echo $project['OperationId']; ?>" required>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Tên dự án <span class="required">*</span></label>
+                                        <input type="text" name="project_name" class="form-control" placeholder="Tên dự án" value="<?php echo $project['Name']; ?>" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Tên dự án <span class="required">*</span></label>
-                                    <input type="text" name="project_name" class="form-control" placeholder="Tên dự án" value="<?php echo $project['Name']; ?>" required>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Mô tả</label>
+                                        <textarea name="description" class="form-control" placeholder="Mô tả dự án"><?php echo $project['Description']; ?></textarea>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Mô tả</label>
-                                    <textarea name="description" class="form-control" placeholder="Mô tả dự án"><?php echo $project['Description']; ?></textarea>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Địa chỉ <span class="required">*</span></label>
+                                        <input type="text" name="address" class="form-control" placeholder="Địa chỉ dự án" value="<?php echo $project['Address']; ?>" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-12 mb-3">
-                            <label class="form-label">Địa chỉ <span class="required">*</span></label>
-                                    <input type="text" name="address" class="form-control" placeholder="Địa chỉ dự án" value="<?php echo $project['Address']; ?>" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Số điện thoại <span class="required">*</span></label>
+                                        <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" value="<?php echo $project['Phone']; ?>" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email dự án <span class="required">*</span></label>
+                                        <input type="email" name="email" class="form-control" placeholder="Email" value="<?php echo $project['Email']; ?>" required>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Số điện thoại <span class="required">*</span></label>
-                                    <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" value="<?php echo $project['Phone']; ?>" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Email dự án <span class="required">*</span></label>
-                                    <input type="email" name="email" class="form-control" placeholder="Email" value="<?php echo $project['Email']; ?>" required>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Trưởng ban quản lý <span class="required">*</span></label>
-                            <select name="manager_id" class="form-select" required>
-                                <option value="">Chọn trưởng ban quản lý</option>
-                                <?php
-                                $select_managers = mysqli_query($conn, "SELECT * FROM `Staffs` WHERE Position LIKE '%Trưởng BQL%' OR Position LIKE '%Trưởng ban%' ORDER BY Name");
-                                while($manager = mysqli_fetch_assoc($select_managers)) {
-                                            $selected = ($manager['ID'] == $project['ManagerId']) ? 'selected' : '';
-                                            echo "<option value='{$manager['ID']}' $selected>{$manager['Name']}</option>";
-                                }
-                                ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Ngày khóa sổ kế toán <span class="required">*</span></label>
-                                    <input type="text" name="deadlock" class="form-control" value="<?php echo $project['Deadlock']; ?>" placeholder="Nhập ngày (1-31)" required>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Trưởng ban quản lý <span class="required">*</span></label>
+                                <select name="manager_id" class="form-select" required>
+                                    <option value="">Chọn trưởng ban quản lý</option>
+                                    <?php
+                                    $select_managers = mysqli_query($conn, "SELECT * FROM `Staffs` WHERE Position LIKE '%Trưởng BQL%' OR Position LIKE '%Trưởng ban%' ORDER BY Name");
+                                    while($manager = mysqli_fetch_assoc($select_managers)) {
+                                                $selected = ($manager['ID'] == $project['ManagerId']) ? 'selected' : '';
+                                                echo "<option value='{$manager['ID']}' $selected>{$manager['Name']}</option>";
+                                    }
+                                    ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Ngày khóa sổ kế toán <span class="required">*</span></label>
+                                        <input type="text" name="deadlock" class="form-control" value="<?php echo $project['Deadlock']; ?>" placeholder="Nhập ngày (1-31)" required>
+                                    </div>
+                                </div>
+
+                                <div class="btn-container mt-4">
+                                    <button type="submit" form="mainForm" name="submit" class="btn-submit">Cập nhật</button>
+                                    <a href="projects.php" class="btn-cancel">Hủy</a>
                                 </div>
                             </div>
 
-                            <div class="btn-container mt-4">
-                                <button type="submit" form="mainForm" name="submit" class="btn-submit">Cập nhật</button>
-                                <a href="projects.php" class="btn-cancel">Hủy</a>
+                            <!-- Tab Thông tin thanh toán -->
+                            <div class="tab-pane fade" id="payment" role="tabpanel" aria-labelledby="payment-tab">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="mb-0">Danh sách thông tin thanh toán</h5>
+                                    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
+                                        <i class="fas fa-plus"></i> Thêm mới thanh toán
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 50px;">STT</th>
+                                                <th>Thông tin thanh toán</th>
+                                                <th style="width: 100px;">Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php
+                                            $select_payments = mysqli_query($conn, "SELECT * FROM PaymentInformation WHERE ProjectId = '$project_id'");
+                                            $stt = 1;
+                                            while($payment = mysqli_fetch_assoc($select_payments)) {
+                                                echo "<tr>
+                                                    <td class='text-center'>{$stt}</td>
+                                                    <td>
+                                                        <strong>{$payment['Bank']}</strong><br>
+                                                        Chi nhánh: {$payment['Branch']}<br>
+                                                        STK: {$payment['AccountNumber']}<br>
+                                                        Chủ tài khoản: {$payment['AccountName']}
+                                                    </td>
+                                                    <td class='text-center'>
+                                                        <button type='button' class='btn btn-sm btn-primary me-1' 
+                                                            onclick='editPayment(\"" . $payment['Id'] . "\", 
+                                                                    \"" . $payment['AccountNumber'] . "\", 
+                                                                    \"" . $payment['Bank'] . "\", 
+                                                                    \"" . $payment['AccountName'] . "\", 
+                                                                    \"" . $payment['Branch'] . "\", 
+                                                                    \"" . ($payment['AutoTransaction'] ?? 0) . "\", 
+                                                                    \"" . ($payment['AutoReconciliation'] ?? 0) . "\")'>
+                                                            <i class='fas fa-edit'></i>
+                                                        </button>
+                                                        <a href='update_project.php?id={$project_id}&delete_payment={$payment['Id']}' 
+                                                        class='btn btn-sm btn-danger' 
+                                                        onclick='return confirm(\"Bạn có chắc chắn muốn xóa thông tin thanh toán này?\")'>
+                                                            <i class='fas fa-trash'></i>
+                                                        </a>
+                                                    </td>
+                                                </tr>";
+                                                $stt++;
+                                            }
+                                            if (mysqli_num_rows($select_payments) == 0) {
+                                                echo "<tr><td colspan='3' class='text-center'>Chưa có thông tin thanh toán</td></tr>";
+                                            }
+                                            ?>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
-
-                        <!-- Tab Thông tin thanh toán -->
-                        <div class="tab-pane fade" id="payment" role="tabpanel" aria-labelledby="payment-tab">
-                            <div class="d-flex justify-content-between align-items-center mb-4">
-                                <h5 class="mb-0">Danh sách thông tin thanh toán</h5>
-                                <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#addPaymentModal">
-                                    <i class="fas fa-plus"></i> Thêm mới thanh toán
-                                </button>
-                            </div>
-
-                            <div class="table-responsive">
-                                <table class="table table-bordered">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 50px;">STT</th>
-                                            <th>Thông tin thanh toán</th>
-                                            <th style="width: 100px;">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $select_payments = mysqli_query($conn, "SELECT * FROM PaymentInformation WHERE ProjectId = '$project_id'");
-                                        $stt = 1;
-                                        while($payment = mysqli_fetch_assoc($select_payments)) {
-                                            echo "<tr>
-                                                <td class='text-center'>{$stt}</td>
-                                                <td>
-                                                    <strong>{$payment['Bank']}</strong><br>
-                                                    Chi nhánh: {$payment['Branch']}<br>
-                                                    STK: {$payment['AccountNumber']}<br>
-                                                    Chủ tài khoản: {$payment['AccountName']}
-                                                </td>
-                                                <td class='text-center'>
-                                                    <button type='button' class='btn btn-sm btn-primary me-1' 
-                                                        onclick='editPayment(\"" . $payment['Id'] . "\", 
-                                                                   \"" . $payment['AccountNumber'] . "\", 
-                                                                   \"" . $payment['Bank'] . "\", 
-                                                                   \"" . $payment['AccountName'] . "\", 
-                                                                   \"" . $payment['Branch'] . "\", 
-                                                                   \"" . ($payment['AutoTransaction'] ?? 0) . "\", 
-                                                                   \"" . ($payment['AutoReconciliation'] ?? 0) . "\")'>
-                                                        <i class='fas fa-edit'></i>
-                                                    </button>
-                                                    <a href='update_project.php?id={$project_id}&delete_payment={$payment['Id']}' 
-                                                       class='btn btn-sm btn-danger' 
-                                                       onclick='return confirm(\"Bạn có chắc chắn muốn xóa thông tin thanh toán này?\")'>
-                                                        <i class='fas fa-trash'></i>
-                                                    </a>
-                                                </td>
-                                            </tr>";
-                                            $stt++;
-                                        }
-                                        if (mysqli_num_rows($select_payments) == 0) {
-                                            echo "<tr><td colspan='3' class='text-center'>Chưa có thông tin thanh toán</td></tr>";
-                                        }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>

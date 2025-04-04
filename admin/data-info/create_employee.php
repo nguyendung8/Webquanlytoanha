@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -299,146 +299,150 @@ if (isset($_POST['submit'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '<div class="alert alert-info alert-dismissible fade show" role="alert">
-                            <span>' . $msg . '</span>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                          </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '<div class="alert alert-info alert-dismissible fade show" role="alert">
+                                <span>' . $msg . '</span>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>';
+                    }
                 }
-            }
-            ?>
+                ?>
 
-            <div class="page-header">
-                <h2>THÊM MỚI NHÂN VIÊN</h2>
-                <div class="breadcrumb">
-                    <a href="dashboard.php">Trang chủ</a>
-                    <span>›</span>
-                    <a href="company_employees.php">Nhân viên công ty</a>
-                    <span>›</span>
-                    <span>Thêm mới</span>
+                <div class="page-header">
+                    <h2>THÊM MỚI NHÂN VIÊN</h2>
+                    <div class="breadcrumb">
+                        <a href="dashboard.php">Trang chủ</a>
+                        <span>›</span>
+                        <a href="company_employees.php">Nhân viên công ty</a>
+                        <span>›</span>
+                        <span>Thêm mới</span>
+                    </div>
                 </div>
-            </div>
 
-            <div class="form-container">
-                <form action="" method="post">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">
-                                Mã nhân viên<span class="required">*</span>
-                            </label>
-                            <input type="text" name="employee_id" class="form-control" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                Họ và tên<span class="required">*</span>
-                            </label>
-                            <input type="text" name="fullname" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">
-                                Email<span class="required">*</span>
-                            </label>
-                            <input type="email" name="email" class="form-control" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">
-                                SĐT<span class="required">*</span>
-                            </label>
-                            <input type="tel" name="phone" class="form-control" required>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">
-                                Chức vụ<span class="required">*</span>
-                            </label>
-                            <select name="position" class="form-select" required>
-                                <option value="">Chọn chức vụ</option>
-                                <option value="Quản trị hệ thống">Quản trị hệ thống</option>
-                                <option value="Kế toán ban">Kế toán ban</option>
-                                <option value="Trưởng BQL">Trưởng BQL</option>
-                                <option value="Kế toán HO">Kế toán HO</option>
-                                <option value="Phó BQL">Phó BQL</option>
-                                <option value="Nhân viên kỹ thuật">Nhân viên kỹ thuật</option>
-                                <option value="Lễ tân">Lễ tân</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Phòng ban</label>
-                            <select name="department" class="form-select">
-                                <option value="">Chọn phòng ban</option>
-                                <?php while($dept = mysqli_fetch_assoc($select_departments)) { ?>
-                                    <option value="<?php echo $dept['ID']; ?>">
-                                        <?php echo $dept['Name']; ?>
-                                    </option>
-                                <?php } ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">CCCD/CMT/Hộ chiếu</label>
-                            <input type="text" name="id_card" class="form-control">
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Địa chỉ</label>
-                            <input type="text" name="address" class="form-control">
-                        </div>
-                    </div>
-
-                    <div class="company-sections">
-                        <?php foreach ($companies as $company_id => $company) { ?>
-                            <div class="company-section">
-                                <div class="company-header">
-                                    <div class="company-title">
-                                        <?php echo htmlspecialchars($company['name']); ?>
-                                        <span class="company-code">(<?php echo htmlspecialchars($company['code']); ?>)</span>
-                                    </div>
-                                </div>
-                                <?php if (!empty($company['projects'])) { ?>
-                                    <div class="project-list">
-                                        <?php foreach ($company['projects'] as $project) { ?>
-                                            <div class="project-item">
-                                                <input type="checkbox" name="projects[]" 
-                                                       value="<?php echo $project['id']; ?>" 
-                                                       id="project-<?php echo $project['id']; ?>">
-                                                <label for="project-<?php echo $project['id']; ?>">
-                                                    <?php echo htmlspecialchars($project['name']); ?>
-                                                </label>
-                                            </div>
-                                        <?php } ?>
-                                    </div>
-                                <?php } else { ?>
-                                    <div class="no-projects">Chưa có dự án nào</div>
-                                <?php } ?>
+                <div class="form-container">
+                    <form action="" method="post">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Mã nhân viên<span class="required">*</span>
+                                </label>
+                                <input type="text" name="employee_id" class="form-control" required>
                             </div>
-                        <?php } ?>
-                    </div>
 
-                    <div class="btn-container">
-                        <button type="submit" name="submit" class="btn btn-submit">
-                            Thêm mới
-                        </button>
-                        <a href="company_employees.php" class="btn btn-cancel">
-                            Hủy bỏ
-                        </a>
-                    </div>
-                </form>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Họ và tên<span class="required">*</span>
+                                </label>
+                                <input type="text" name="fullname" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Email<span class="required">*</span>
+                                </label>
+                                <input type="email" name="email" class="form-control" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">
+                                    SĐT<span class="required">*</span>
+                                </label>
+                                <input type="tel" name="phone" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Chức vụ<span class="required">*</span>
+                                </label>
+                                <select name="position" class="form-select" required>
+                                    <option value="">Chọn chức vụ</option>
+                                    <option value="Quản trị hệ thống">Quản trị hệ thống</option>
+                                    <option value="Kế toán ban">Kế toán ban</option>
+                                    <option value="Trưởng BQL">Trưởng BQL</option>
+                                    <option value="Kế toán HO">Kế toán HO</option>
+                                    <option value="Phó BQL">Phó BQL</option>
+                                    <option value="Nhân viên kỹ thuật">Nhân viên kỹ thuật</option>
+                                    <option value="Lễ tân">Lễ tân</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Phòng ban</label>
+                                <select name="department" class="form-select">
+                                    <option value="">Chọn phòng ban</option>
+                                    <?php while($dept = mysqli_fetch_assoc($select_departments)) { ?>
+                                        <option value="<?php echo $dept['ID']; ?>">
+                                            <?php echo $dept['Name']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">CCCD/CMT/Hộ chiếu</label>
+                                <input type="text" name="id_card" class="form-control">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Địa chỉ</label>
+                                <input type="text" name="address" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="company-sections">
+                            <?php foreach ($companies as $company_id => $company) { ?>
+                                <div class="company-section">
+                                    <div class="company-header">
+                                        <div class="company-title">
+                                            <?php echo htmlspecialchars($company['name']); ?>
+                                            <span class="company-code">(<?php echo htmlspecialchars($company['code']); ?>)</span>
+                                        </div>
+                                    </div>
+                                    <?php if (!empty($company['projects'])) { ?>
+                                        <div class="project-list">
+                                            <?php foreach ($company['projects'] as $project) { ?>
+                                                <div class="project-item">
+                                                    <input type="checkbox" name="projects[]" 
+                                                        value="<?php echo $project['id']; ?>" 
+                                                        id="project-<?php echo $project['id']; ?>">
+                                                    <label for="project-<?php echo $project['id']; ?>">
+                                                        <?php echo htmlspecialchars($project['name']); ?>
+                                                    </label>
+                                                </div>
+                                            <?php } ?>
+                                        </div>
+                                    <?php } else { ?>
+                                        <div class="no-projects">Chưa có dự án nào</div>
+                                    <?php } ?>
+                                </div>
+                            <?php } ?>
+                        </div>
+
+                        <div class="btn-container">
+                            <button type="submit" name="submit" class="btn btn-submit">
+                                Thêm mới
+                            </button>
+                            <a href="company_employees.php" class="btn btn-cancel">
+                                Hủy bỏ
+                            </a>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

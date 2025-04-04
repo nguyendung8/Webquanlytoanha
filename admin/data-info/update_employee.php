@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -336,7 +336,9 @@ if (isset($_POST['submit'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
             <?php
             if (isset($message)) {
                 foreach ($message as $msg) {
@@ -477,6 +479,7 @@ if (isset($_POST['submit'])) {
                         </a>
                     </div>
                 </form>
+            </div>
             </div>
         </div>
     </div>

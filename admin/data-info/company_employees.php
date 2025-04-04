@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -389,160 +389,163 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            //nhúng vào các trang bán hàng
-            if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
-                foreach ($message as $msg) {
-                    echo '
-                    <div class=" alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
-                }
-            }
-            ?>
-            
-            <!-- Page Header -->
-            <div class="page-header">
-                <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH NHÂN VIÊN</h2>
-                <div class="breadcrumb">
-                    <a href="dashboard.php">Trang chủ</a>
-                    <span style="margin: 0 8px;">›</span>
-                    <span>Nhân viên công ty</span>
-                </div>
-            </div>
-            
-            <!-- Search and Filter Section -->
-            <div class="search-container">
-                <form action="" method="GET" class="d-flex gap-3">
-                    <input type="text" name="search" class="filter-select" 
-                           placeholder="Tên, Email, SĐT" 
-                           value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
-                    
-                    <select name="department" class="filter-select">
-                        <option value="">Phòng ban</option>
-                        <?php 
-                        mysqli_data_seek($select_departments, 0);
-                        while($dept = mysqli_fetch_assoc($select_departments)) { 
-                        ?>
-                            <option value="<?php echo $dept['ID']; ?>" 
-                                <?php echo ($department_filter == $dept['ID']) ? 'selected' : ''; ?>>
-                                <?php echo $dept['Name']; ?>
-                            </option>
-                        <?php } ?>
-                    </select>
-
-                    <select name="status" class="filter-select">
-                        <option value="">Trạng thái</option>
-                        <option value="active" <?php echo ($status_filter == 'active') ? 'selected' : ''; ?>>Active</option>
-                        <option value="inactive" <?php echo ($status_filter == 'inactive') ? 'selected' : ''; ?>>Inactive</option>
-                    </select>
-
-                    <button type="submit" class="search-btn">
-                        <i class="fas fa-search"></i> Tìm kiếm
-                    </button>
-                </form>
-
-                <a href="create_employee.php" class="btn-add">
-                    <i class="fas fa-plus"></i> Thêm nhân viên
-                </a>
-            </div>
-            
-            <!-- Staff Table -->
-            <table class="account-table">
-                <thead>
-                    <tr>
-                        <th>STT</th>
-                        <th>Mã nhân viên</th>
-                        <th>Họ và tên</th>
-                        <th>Email</th>
-                        <th>SĐT</th>
-                        <th>Phòng ban</th>
-                        <th>Status</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
-                    if(mysqli_num_rows($select_staffs) > 0) {
-                        $counter = $offset + 1;
-                        while($staff = mysqli_fetch_assoc($select_staffs)) {
-                            ?>
-                            <tr>
-                                <td><?php echo $counter++; ?></td>
-                                <td><?php echo $staff['ID']; ?></td>
-                                <td><?php echo $staff['Name']; ?></td>
-                                <td><?php echo $staff['Email']; ?></td>
-                                <td><?php echo $staff['PhoneNumber']; ?></td>
-                                <td><?php echo $staff['DepartmentName'] ?? 'Chưa phân công'; ?></td>
-                                <td style="display: flex;flex-direction: column; justify-content: center;">
-                                    <label class="status-switch">
-                                        <input type="checkbox" 
-                                               <?php echo $staff['Status'] == 'active' ? 'checked' : ''; ?>
-                                               onchange="updateStatus(<?php echo $staff['ID']; ?>, this.checked, this)">
-                                        <span class="switch-slider"></span>
-                                    </label>
-                                    <span class="status-label" id="status-label-<?php echo $staff['ID']; ?>">
-                                        <?php echo $staff['Status'] == 'active' ? 'Active' : 'Inactive'; ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <a href="update_employee.php?id=<?php echo $staff['ID']; ?>" class="action-icon"><i class="far fa-edit"></i></a>
-                                    <a href="?delete=<?php echo $staff['ID']; ?>" 
-                                       class="action-btn"
-                                       onclick="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </td>
-                            </tr>
-                            <?php
-                        }
-                    } else {
-                        echo '<tr><td colspan="8" class="text-center">Không có nhân viên nào</td></tr>';
+            <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                //nhúng vào các trang bán hàng
+                if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class=" alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
                     }
-                    ?>
-                </tbody>
-            </table>
-            
-            <!-- Pagination -->
-            <div class="pagination">
-                <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                <div class="page-controls">
-                    <?php if($total_pages > 1): ?>
-                        <?php if ($page > 1): ?>
-                            <a href="?page=1<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" class="page-item">
-                                <i class="fas fa-angle-double-left"></i>
-                            </a>
-                        <?php endif; ?>
-                        
-                        <?php
-                        $start_page = max(1, $page - 2);
-                        $end_page = min($total_pages, $page + 2);
-                        
-                        for ($i = $start_page; $i <= $end_page; $i++): 
-                        ?>
-                            <a href="?page=<?php echo $i; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" 
-                               class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                <?php echo $i; ?>
-                            </a>
-                        <?php endfor; ?>
-                        
-                        <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?php echo $total_pages; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" 
-                               class="page-item">
-                                <i class="fas fa-angle-double-right"></i>
-                            </a>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                }
+                ?>
+                
+                <!-- Page Header -->
+                <div class="page-header">
+                    <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">DANH SÁCH NHÂN VIÊN</h2>
+                    <div class="breadcrumb">
+                        <a href="dashboard.php">Trang chủ</a>
+                        <span style="margin: 0 8px;">›</span>
+                        <span>Nhân viên công ty</span>
+                    </div>
                 </div>
-                <div class="items-per-page">
-                    <span>Hiển thị</span>
-                    <select class="dropdown-per-page" onchange="window.location.href='?page=1&per_page='+this.value<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>">
-                        <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
-                        <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
-                        <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
-                    </select>
+                
+                <!-- Search and Filter Section -->
+                <div class="search-container">
+                    <form action="" method="GET" class="d-flex gap-3">
+                        <input type="text" name="search" class="filter-select" 
+                            placeholder="Tên, Email, SĐT" 
+                            value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                        
+                        <select name="department" class="filter-select">
+                            <option value="">Phòng ban</option>
+                            <?php 
+                            mysqli_data_seek($select_departments, 0);
+                            while($dept = mysqli_fetch_assoc($select_departments)) { 
+                            ?>
+                                <option value="<?php echo $dept['ID']; ?>" 
+                                    <?php echo ($department_filter == $dept['ID']) ? 'selected' : ''; ?>>
+                                    <?php echo $dept['Name']; ?>
+                                </option>
+                            <?php } ?>
+                        </select>
+
+                        <select name="status" class="filter-select">
+                            <option value="">Trạng thái</option>
+                            <option value="active" <?php echo ($status_filter == 'active') ? 'selected' : ''; ?>>Active</option>
+                            <option value="inactive" <?php echo ($status_filter == 'inactive') ? 'selected' : ''; ?>>Inactive</option>
+                        </select>
+
+                        <button type="submit" class="search-btn">
+                            <i class="fas fa-search"></i> Tìm kiếm
+                        </button>
+                    </form>
+
+                    <a href="create_employee.php" class="btn-add">
+                        <i class="fas fa-plus"></i> Thêm nhân viên
+                    </a>
+                </div>
+                
+                <!-- Staff Table -->
+                <table class="account-table">
+                    <thead>
+                        <tr>
+                            <th>STT</th>
+                            <th>Mã nhân viên</th>
+                            <th>Họ và tên</th>
+                            <th>Email</th>
+                            <th>SĐT</th>
+                            <th>Phòng ban</th>
+                            <th>Status</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        if(mysqli_num_rows($select_staffs) > 0) {
+                            $counter = $offset + 1;
+                            while($staff = mysqli_fetch_assoc($select_staffs)) {
+                                ?>
+                                <tr>
+                                    <td><?php echo $counter++; ?></td>
+                                    <td><?php echo $staff['ID']; ?></td>
+                                    <td><?php echo $staff['Name']; ?></td>
+                                    <td><?php echo $staff['Email']; ?></td>
+                                    <td><?php echo $staff['PhoneNumber']; ?></td>
+                                    <td><?php echo $staff['DepartmentName'] ?? 'Chưa phân công'; ?></td>
+                                    <td style="display: flex;flex-direction: column; justify-content: center;">
+                                        <label class="status-switch">
+                                            <input type="checkbox" 
+                                                <?php echo $staff['Status'] == 'active' ? 'checked' : ''; ?>
+                                                onchange="updateStatus(<?php echo $staff['ID']; ?>, this.checked, this)">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span class="status-label" id="status-label-<?php echo $staff['ID']; ?>">
+                                            <?php echo $staff['Status'] == 'active' ? 'Active' : 'Inactive'; ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <a href="update_employee.php?id=<?php echo $staff['ID']; ?>" class="action-icon"><i class="far fa-edit"></i></a>
+                                        <a href="?delete=<?php echo $staff['ID']; ?>" 
+                                        class="action-btn"
+                                        onclick="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <?php
+                            }
+                        } else {
+                            echo '<tr><td colspan="8" class="text-center">Không có nhân viên nào</td></tr>';
+                        }
+                        ?>
+                    </tbody>
+                </table>
+                
+                <!-- Pagination -->
+                <div class="pagination">
+                    <div class="total-count">Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <div class="page-controls">
+                        <?php if($total_pages > 1): ?>
+                            <?php if ($page > 1): ?>
+                                <a href="?page=1<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" class="page-item">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            <?php endif; ?>
+                            
+                            <?php
+                            $start_page = max(1, $page - 2);
+                            $end_page = min($total_pages, $page + 2);
+                            
+                            for ($i = $start_page; $i <= $end_page; $i++): 
+                            ?>
+                                <a href="?page=<?php echo $i; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" 
+                                class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            <?php endfor; ?>
+                            
+                            <?php if ($page < $total_pages): ?>
+                                <a href="?page=<?php echo $total_pages; ?><?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>" 
+                                class="page-item">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                    </div>
+                    <div class="items-per-page">
+                        <span>Hiển thị</span>
+                        <select class="dropdown-per-page" onchange="window.location.href='?page=1&per_page='+this.value<?php echo !empty($search_term) ? '&search='.urlencode($search_term) : ''; ?><?php echo !empty($department_filter) ? '&department='.$department_filter : ''; ?><?php echo !empty($status_filter) ? '&status='.$status_filter : ''; ?>">
+                            <option value="10" <?php echo ($records_per_page == 10) ? 'selected' : ''; ?>>10</option>
+                            <option value="20" <?php echo ($records_per_page == 20) ? 'selected' : ''; ?>>20</option>
+                            <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>

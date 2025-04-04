@@ -6,7 +6,7 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
@@ -250,7 +250,9 @@ if (isset($_GET['un_block'])) {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
             <?php
             //nhúng vào các trang bán hàng
             if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
@@ -387,6 +389,7 @@ if (isset($_GET['un_block'])) {
                         <option value="50" <?php echo ($records_per_page == 50) ? 'selected' : ''; ?>>50</option>
                     </select>
                 </div>
+            </div>
             </div>
         </div>
     </div>

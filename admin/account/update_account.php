@@ -6,13 +6,13 @@ session_start();
 $admin_id = $_SESSION['admin_id'];
 
 if (!isset($admin_id)) {
-    header('location:../login.php');
+    header('location:../index.php');
     exit();
 }
 
 // Kiểm tra ID từ URL
 if (!isset($_GET['id'])) {
-    header('location:account.php');
+    header('location:acount.php');
     exit();
 }
 
@@ -21,7 +21,7 @@ $staff_id = mysqli_real_escape_string($conn, $_GET['id']);
 // Lấy thông tin hiện tại của nhân viên
 $staff_query = mysqli_query($conn, "SELECT * FROM `staffs` WHERE ID = '$staff_id'") or die('Query failed');
 if (mysqli_num_rows($staff_query) == 0) {
-    header('location:account.php');
+    header('location:acount.php');
     exit();
 }
 $staff_data = mysqli_fetch_assoc($staff_query);
@@ -29,6 +29,43 @@ $staff_data = mysqli_fetch_assoc($staff_query);
 // Lấy thông tin từ bảng users (nếu có)
 $user_query = mysqli_query($conn, "SELECT * FROM `users` WHERE Email = '{$staff_data['Email']}'") or die('Query failed');
 $user_data = mysqli_num_rows($user_query) > 0 ? mysqli_fetch_assoc($user_query) : null;
+
+// Lấy danh sách công ty và dự án
+$select_companies = mysqli_query($conn, "
+    SELECT DISTINCT c.*, p.ProjectID, p.Name as ProjectName 
+    FROM Companies c 
+    LEFT JOIN Projects p ON p.TownShipId IN (
+        SELECT TownShipId FROM TownShips WHERE CompanyId = c.CompanyId
+    )
+    ORDER BY c.Name, p.Name
+");
+
+// Tổ chức dữ liệu thành mảng công ty và dự án
+$companies = [];
+while ($row = mysqli_fetch_assoc($select_companies)) {
+    if (!isset($companies[$row['CompanyId']])) {
+        $companies[$row['CompanyId']] = [
+            'code' => $row['Code'],
+            'name' => $row['Name'],
+            'projects' => []
+        ];
+    }
+    if ($row['ProjectID']) {
+        $companies[$row['CompanyId']]['projects'][] = [
+            'id' => $row['ProjectID'],
+            'name' => $row['ProjectName']
+        ];
+    }
+}
+
+// Lấy danh sách dự án đã được phân công cho nhân viên
+$staff_projects = [];
+$projects_query = mysqli_query($conn, "SELECT ProjectId FROM StaffProjects WHERE StaffId = '$staff_id'");
+if ($projects_query) {
+    while ($project = mysqli_fetch_assoc($projects_query)) {
+        $staff_projects[] = $project['ProjectId'];
+    }
+}
 
 // Xử lý khi form được submit
 if (isset($_POST['submit'])) {
@@ -57,8 +94,7 @@ if (isset($_POST['submit'])) {
         mysqli_begin_transaction($conn);
         
         try {
-            // Tạm thời tắt kiểm tra khóa ngoại
-            mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=0");
+            mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
             
             // Cập nhật dữ liệu vào bảng staff
             $update_staff = mysqli_query($conn, "UPDATE `staffs` SET 
@@ -97,23 +133,21 @@ if (isset($_POST['submit'])) {
                 }
             }
             
-            // Xóa các dự án cũ nếu cần
-            try {
-                mysqli_query($conn, "DELETE FROM `staff_projects` WHERE StaffID = '$staff_id'");
-                
-                // Thêm lại các dự án mới đã chọn
-                if (!empty($projects)) {
-                    foreach ($projects as $project) {
-                        mysqli_query($conn, "INSERT INTO `staff_projects` (StaffID, ProjectName) 
-                                           VALUES ('$staff_id', '$project')");
-                    }
+            // Xóa tất cả các dự án cũ của nhân viên
+            mysqli_query($conn, "DELETE FROM StaffProjects WHERE StaffId = '$staff_id'")
+                or throw new Exception('Không thể xóa dự án cũ: ' . mysqli_error($conn));
+
+            // Thêm lại các dự án mới được chọn
+            if (!empty($projects)) {
+                foreach ($projects as $project_id) {
+                    mysqli_query($conn, "
+                        INSERT INTO StaffProjects (ProjectId, StaffId) 
+                        VALUES ('$project_id', '$staff_id')
+                    ") or throw new Exception('Không thể thêm dự án cho nhân viên: ' . mysqli_error($conn));
                 }
-            } catch (Exception $e) {
-                // Bỏ qua lỗi nếu bảng không tồn tại
             }
             
-            // Bật lại kiểm tra khóa ngoại
-            mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=1");
+            mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
             
             // Commit transaction nếu tất cả đều thành công
             mysqli_commit($conn);
@@ -248,7 +282,6 @@ try {
             font-weight: 600;
             color: #4a5568;
             margin-bottom: 10px;
-            text-align: center;
         }
         
         .project-item {
@@ -300,6 +333,7 @@ try {
         }
         
         .manage-container {
+            background:rgb(243, 239, 239) !important;
             width: 100%;
             padding: 20px;
         }
@@ -309,126 +343,124 @@ try {
 <body>
     <div class="d-flex">
         <?php include '../admin_navbar.php'; ?>
-        <div class="manage-container">
-            <?php
-            if (isset($message)) {
-                foreach ($message as $msg) {
-                    echo '
-                    <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                    </div>';
+        <div style="width: 100%;">
+            <?php include '../admin_header.php'; ?>
+            <div class="manage-container">
+                <?php
+                if (isset($message)) {
+                    foreach ($message as $msg) {
+                        echo '
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <span style="font-size: 16px;">' . $msg . '</span>
+                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                        </div>';
+                    }
                 }
-            }
-            ?>
-            
-            <h2 class="form-title">CẬP NHẬT THÔNG TIN NGƯỜI DÙNG</h2>
-            
-            <div class="create-form">
-                <form action="" method="post">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Mã nhân viên <span class="required">*</span>:</label>
-                                <input type="text" name="employee_id" class="form-control" placeholder="Nhập mã nhân viên" value="<?php echo $staff_data['ID']; ?>" required>
+                ?>
+                
+                <h2 class="form-title">CẬP NHẬT THÔNG TIN NGƯỜI DÙNG</h2>
+                
+                <div class="create-form">
+                    <form action="" method="post">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Mã nhân viên <span class="required">*</span>:</label>
+                                    <input type="text" name="employee_id" class="form-control" placeholder="Nhập mã nhân viên" value="<?php echo $staff_data['ID']; ?>" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Email <span class="required">*</span>:</label>
+                                    <input type="email" name="email" class="form-control" placeholder="Email" value="<?php echo $staff_data['Email']; ?>" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Chức vụ <span class="required">*</span>:</label>
+                                    <select name="position" class="form-select" required>
+                                        <option value="">Chọn chức vụ</option>
+                                        <option value="Quản trị hệ thống" <?php if($staff_data['Position'] == 'Quản trị hệ thống') echo 'selected'; ?>>Quản trị hệ thống</option>
+                                        <option value="Kế toán ban" <?php if($staff_data['Position'] == 'Kế toán ban') echo 'selected'; ?>>Kế toán ban</option>
+                                        <option value="Trưởng BQL" <?php if($staff_data['Position'] == 'Trưởng BQL') echo 'selected'; ?>>Trưởng BQL</option>
+                                        <option value="Kế toán HO" <?php if($staff_data['Position'] == 'Kế toán HO') echo 'selected'; ?>>Kế toán HO</option>
+                                        <option value="Phó BQL" <?php if($staff_data['Position'] == 'Phó BQL') echo 'selected'; ?>>Phó BQL</option>
+                                        <option value="Nhân viên kỹ thuật" <?php if($staff_data['Position'] == 'Nhân viên kỹ thuật') echo 'selected'; ?>>Nhân viên kỹ thuật</option>
+                                        <option value="Lễ tân" <?php if($staff_data['Position'] == 'Lễ tân') echo 'selected'; ?>>Lễ tân</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">CCCD/CMT/Hộ chiếu:</label>
+                                    <input type="text" name="id_card" class="form-control" placeholder="CCCD/CMT/Hộ chiếu" value="<?php echo $staff_data['NationalID']; ?>">
+                                </div>
                             </div>
                             
-                            <div class="form-group">
-                                <label class="form-label">Email <span class="required">*</span>:</label>
-                                <input type="email" name="email" class="form-control" placeholder="Email" value="<?php echo $staff_data['Email']; ?>" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Chức vụ <span class="required">*</span>:</label>
-                                <select name="position" class="form-select" required>
-                                    <option value="">Chọn chức vụ</option>
-                                    <option value="Quản trị hệ thống" <?php if($staff_data['Position'] == 'Quản trị hệ thống') echo 'selected'; ?>>Quản trị hệ thống</option>
-                                    <option value="Kế toán ban" <?php if($staff_data['Position'] == 'Kế toán ban') echo 'selected'; ?>>Kế toán ban</option>
-                                    <option value="Trưởng BQL" <?php if($staff_data['Position'] == 'Trưởng BQL') echo 'selected'; ?>>Trưởng BQL</option>
-                                    <option value="Kế toán HO" <?php if($staff_data['Position'] == 'Kế toán HO') echo 'selected'; ?>>Kế toán HO</option>
-                                    <option value="Phó BQL" <?php if($staff_data['Position'] == 'Phó BQL') echo 'selected'; ?>>Phó BQL</option>
-                                    <option value="Nhân viên kỹ thuật" <?php if($staff_data['Position'] == 'Nhân viên kỹ thuật') echo 'selected'; ?>>Nhân viên kỹ thuật</option>
-                                    <option value="Lễ tân" <?php if($staff_data['Position'] == 'Lễ tân') echo 'selected'; ?>>Lễ tân</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">CCCD/CMT/Hộ chiếu:</label>
-                                <input type="text" name="id_card" class="form-control" placeholder="CCCD/CMT/Hộ chiếu" value="<?php echo $staff_data['NationalID']; ?>">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">Họ và tên <span class="required">*</span>:</label>
+                                    <input type="text" name="fullname" class="form-control" placeholder="Nhập tên nhân viên" value="<?php echo $staff_data['Name']; ?>" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">SĐT <span class="required">*</span>:</label>
+                                    <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" value="<?php echo $staff_data['PhoneNumber']; ?>" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Bộ phận:</label>
+                                    <select name="department" class="form-select">
+                                        <option value="">Chọn bộ phận</option>
+                                        <option value="1" <?php if($user_data && $user_data['DepartmentId'] == 1) echo 'selected'; ?>>Ban quản lý</option>
+                                        <option value="2" <?php if($user_data && $user_data['DepartmentId'] == 2) echo 'selected'; ?>>Kế toán</option>
+                                        <option value="3" <?php if($user_data && $user_data['DepartmentId'] == 3) echo 'selected'; ?>>Kỹ thuật</option>
+                                        <option value="4" <?php if($user_data && $user_data['DepartmentId'] == 4) echo 'selected'; ?>>Lễ tân</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Địa chỉ:</label>
+                                    <input type="text" name="address" class="form-control" placeholder="Nhập địa chỉ" value="<?php echo $staff_data['Address']; ?>">
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label class="form-label">Họ và tên <span class="required">*</span>:</label>
-                                <input type="text" name="fullname" class="form-control" placeholder="Nhập tên nhân viên" value="<?php echo $staff_data['Name']; ?>" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">SĐT <span class="required">*</span>:</label>
-                                <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" value="<?php echo $staff_data['PhoneNumber']; ?>" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Bộ phận:</label>
-                                <select name="department" class="form-select">
-                                    <option value="">Chọn bộ phận</option>
-                                    <option value="1" <?php if($user_data && $user_data['DepartmentId'] == 1) echo 'selected'; ?>>Ban quản lý</option>
-                                    <option value="2" <?php if($user_data && $user_data['DepartmentId'] == 2) echo 'selected'; ?>>Kế toán</option>
-                                    <option value="3" <?php if($user_data && $user_data['DepartmentId'] == 3) echo 'selected'; ?>>Kỹ thuật</option>
-                                    <option value="4" <?php if($user_data && $user_data['DepartmentId'] == 4) echo 'selected'; ?>>Lễ tân</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label class="form-label">Địa chỉ:</label>
-                                <input type="text" name="address" class="form-control" placeholder="Nhập địa chỉ" value="<?php echo $staff_data['Address']; ?>">
-                            </div>
+                        <!-- Company Sections -->
+                        <div class="company-sections">
+                            <?php foreach ($companies as $company_id => $company) { ?>
+                                <div class="company-section">
+                                    <div class="company-header">
+                                        <div class="company-title">
+                                            <?php echo htmlspecialchars($company['name']); ?>
+                                            <span class="company-code">(<?php echo htmlspecialchars($company['code']); ?>)</span>
+                                        </div>
+                                    </div>
+                                    <?php if (!empty($company['projects'])) { ?>
+                                        <div class="project-list">
+                                            <?php foreach ($company['projects'] as $project) { ?>
+                                                <div class="project-item">
+                                                    <input type="checkbox" 
+                                                        name="projects[]" 
+                                                        value="<?php echo $project['id']; ?>" 
+                                                        id="project-<?php echo $project['id']; ?>"
+                                                        <?php echo in_array($project['id'], $staff_projects) ? 'checked' : ''; ?>>
+                                                    <label for="project-<?php echo $project['id']; ?>">
+                                                        <?php echo htmlspecialchars($project['name']); ?>
+                                                    </label>
+                                                </div>
+                                            <?php } ?>
+                                        </div>
+                                    <?php } else { ?>
+                                        <div class="no-projects">Chưa có dự án nào</div>
+                                    <?php } ?>
+                                </div>
+                            <?php } ?>
                         </div>
-                    </div>
-                    
-                    <!-- Company Sections -->
-                    <div class="company-section">
-                        <div class="company-title">CÔNG TY CỔ PHẦN QUẢN LÝ BẤT ĐỘNG SẢN NAM SÀI GÒN</div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="CONG_NO_BQL" <?php if(in_array('CONG_NO_BQL', $selected_projects)) echo 'checked'; ?>> CỘNG NỢ BQL
+                        
+                        <div class="btn-container">
+                            <button type="submit" name="submit" class="btn-submit">Cập nhật</button>
+                            <a href="acount.php" class="btn-cancel">Hủy bỏ</a>
                         </div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="MY_VIEN" <?php if(in_array('MY_VIEN', $selected_projects)) echo 'checked'; ?>> Mỹ Viện
-                        </div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="HOANG_ANH_THANH_BINH" <?php if(in_array('HOANG_ANH_THANH_BINH', $selected_projects)) echo 'checked'; ?>> Hoàng Anh Thanh Bình
-                        </div>
-                    </div>
-                    
-                    <div class="company-section">
-                        <div class="company-title">CÔNG TY TNHH QUẢN LÝ TÒA NHÀ TNT</div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="DU_AN_THONG_NHAT" <?php if(in_array('DU_AN_THONG_NHAT', $selected_projects)) echo 'checked'; ?>> Dự án Thống Nhất
-                        </div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="DU_AN_CAT_TUONG_ECO" <?php if(in_array('DU_AN_CAT_TUONG_ECO', $selected_projects)) echo 'checked'; ?>> Dự án Cát Tường ECO
-                        </div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="DU_AN_CAT_TUONG_NEW" <?php if(in_array('DU_AN_CAT_TUONG_NEW', $selected_projects)) echo 'checked'; ?>> Dự án Cát Tường New
-                        </div>
-                    </div>
-                    
-                    <div class="company-section">
-                        <div class="company-title">CÔNG TY BẤT ĐỘNG SẢN THĂNG LONG</div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="CHUNG_CU_VUNG_TAU_MELODY" <?php if(in_array('CHUNG_CU_VUNG_TAU_MELODY', $selected_projects)) echo 'checked'; ?>> Chung cư Vũng Tàu Melody
-                        </div>
-                        <div class="project-item">
-                            <input type="checkbox" name="projects[]" value="CHUNG_CU_242" <?php if(in_array('CHUNG_CU_242', $selected_projects)) echo 'checked'; ?>> Chung cư 242
-                        </div>
-                    </div>
-                    
-                    <div class="btn-container">
-                        <button type="submit" name="submit" class="btn-submit">Cập nhật</button>
-                        <a href="account.php" class="btn-cancel">Hủy bỏ</a>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
