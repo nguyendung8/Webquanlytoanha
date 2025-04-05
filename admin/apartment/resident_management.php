@@ -10,6 +10,61 @@ if (!isset($admin_id)) {
     exit();
 }
 
+// Thêm code xử lý xóa vào đầu file, sau phần session
+if (isset($_GET['id'])) {
+    $resident_id = mysqli_real_escape_string($conn, $_GET['id']);
+    
+    mysqli_begin_transaction($conn);
+    try {
+        // 1. Xóa các bản ghi liên quan trong bảng vehicles
+        mysqli_query($conn, "UPDATE vehicles SET VehicleOwnerID = NULL WHERE VehicleOwnerID = '$resident_id'");
+
+        // 2. Xóa các bản ghi liên quan trong bảng contracts
+        mysqli_query($conn, "DELETE FROM contracts WHERE ResidentID = '$resident_id'");
+
+        // 3. Xóa các bản ghi liên quan trong bảng payments
+        mysqli_query($conn, "DELETE FROM payments WHERE ResidentID = '$resident_id'");
+
+        // 4. Xóa các bản ghi liên quan trong bảng receipts
+        mysqli_query($conn, "DELETE FROM receipts WHERE ResidentID = '$resident_id'");
+
+        // 5. Xóa các bản ghi liên quan trong bảng debtstatements
+        mysqli_query($conn, "DELETE FROM debtstatements WHERE ResidentID = '$resident_id'");
+
+        // 6. Xóa các bản ghi liên quan trong bảng ResidentApartment
+        mysqli_query($conn, "DELETE FROM ResidentApartment WHERE ResidentId = '$resident_id'");
+
+        // 7. Xóa user account
+        mysqli_query($conn, "DELETE FROM users WHERE ResidentID = '$resident_id'");
+
+        // 8. Cuối cùng xóa resident
+        mysqli_query($conn, "DELETE FROM resident WHERE ID = '$resident_id'");
+
+        mysqli_commit($conn);
+        $_SESSION['success_msg'] = 'Xóa cư dân thành công!';
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        $_SESSION['error_msg'] = 'Lỗi: ' . $e->getMessage();
+    }
+
+    // Redirect lại trang với các tham số tìm kiếm và phân trang
+    $redirect_url = 'resident_management.php';
+    $params = [];
+    
+    if (!empty($_GET['search'])) $params[] = 'search=' . urlencode($_GET['search']);
+    if (!empty($_GET['building'])) $params[] = 'building=' . urlencode($_GET['building']);
+    if (!empty($_GET['mobile'])) $params[] = 'mobile=' . urlencode($_GET['mobile']);
+    if (!empty($_GET['page'])) $params[] = 'page=' . urlencode($_GET['page']);
+    if (!empty($_GET['per_page'])) $params[] = 'per_page=' . urlencode($_GET['per_page']);
+    
+    if (!empty($params)) {
+        $redirect_url .= '?' . implode('&', $params);
+    }
+    
+    header("Location: $redirect_url");
+    exit();
+}
+
 // Lấy danh sách tòa nhà cho filter
 $select_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
 
@@ -290,7 +345,10 @@ $select_residents = mysqli_query($conn, "
                                     <a href="update_resident.php?id=<?php echo $resident['ID']; ?>" class="action-icon" title="Cập nhật">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="#" class="action-icon" title="Xóa" onclick="return confirm('Bạn có chắc muốn xóa cư dân này?');">
+                                    <a href="resident_management.php?id=<?php echo $resident['ID']; ?>" 
+                                       class="action-icon" 
+                                       title="Xóa" 
+                                       onclick="return confirm('Bạn có chắc muốn xóa cư dân này?');">
                                         <i class="fas fa-trash-alt"></i>
                                     </a>
                                 </td>

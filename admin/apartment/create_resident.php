@@ -1,5 +1,6 @@
 <?php
 include '../../database/DBController.php';
+require_once '../utils/Mailer.php';
 
 session_start();
 
@@ -59,7 +60,8 @@ if(isset($_POST['submit'])) {
     $relationships = isset($_POST['relationship']) ? $_POST['relationship'] : array();
 
     // Mật khẩu mặc định là 123456
-    $default_password = md5('123456');
+    $default_password = '123456';
+    $hashed_password = md5($default_password);
 
     mysqli_begin_transaction($conn);
     try {
@@ -74,32 +76,35 @@ if(isset($_POST['submit'])) {
         // 2. Thêm vào bảng users
         $insert_user = mysqli_query($conn, "
             INSERT INTO users (UserName, Email, PhoneNumber, Password, ResidentID) 
-            VALUES ('$name', '$email', '$phone', '$default_password', '$resident_id')
+            VALUES ('$name', '$email', '$phone', '$hashed_password', '$resident_id')
         ") or throw new Exception('Không thể thêm user: ' . mysqli_error($conn));
 
-        // 3. Thêm thông tin căn hộ vào bảng ResidentApartment
+        // 3. Thêm thông tin căn hộ
         if (!empty($apartment_ids)) {
             foreach($apartment_ids as $index => $apartment_id) {
                 if(!empty($apartment_id)) {
                     $relationship = mysqli_real_escape_string($conn, $relationships[$index]);
-                    
-                    // Debug: In ra thông tin trước khi insert
-                    error_log("Inserting: ResidentId=$resident_id, ApartmentId=$apartment_id, Relationship=$relationship");
-                    
                     $insert_resident_apartment = mysqli_query($conn, "
                         INSERT INTO ResidentApartment (ResidentId, ApartmentId, Relationship)
                         VALUES ('$resident_id', '$apartment_id', '$relationship')
-                    ");
-                    
-                    if (!$insert_resident_apartment) {
-                        throw new Exception('Không thể thêm thông tin căn hộ: ' . mysqli_error($conn));
-                    }
+                    ") or throw new Exception('Không thể thêm thông tin căn hộ: ' . mysqli_error($conn));
                 }
             }
         }
 
+        // 4. Gửi email thông tin tài khoản
+        $mailer = new Mailer();
+        $emailSent = $mailer->sendNewAccountEmail($name, $email, $default_password);
+
+        if (!$emailSent) {
+            // Log lỗi nhưng không rollback transaction
+            error_log("Failed to send email to user: $email");
+            $_SESSION['warning_msg'] = 'Thêm cư dân thành công nhưng không gửi được email!';
+        } else {
+            $_SESSION['success_msg'] = 'Thêm cư dân và gửi email thành công!';
+        }
+
         mysqli_commit($conn);
-        $message[] = 'Thêm cư dân thành công!';
         header('location: resident_management.php');
         exit();
     } catch (Exception $e) {
