@@ -29,6 +29,72 @@ $select_vehicle_cards = mysqli_query($conn, "
     ORDER BY vc.VehicleCardCode ASC
 ");
 
+// Đặt đoạn code này ở đầu file, trước khi output bất kỳ HTML nào
+if (isset($_POST['get_apartments']) || isset($_POST['get_owners']) || isset($_POST['get_price_list'])) {
+    // Xử lý AJAX lấy danh sách căn hộ theo tòa nhà
+    if (isset($_POST['get_apartments']) && isset($_POST['building_id'])) {
+        $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
+        $apartment_query = mysqli_query($conn, "
+            SELECT ApartmentID, Name, Code 
+            FROM apartment 
+            WHERE BuildingId = '$building_id'
+        ");
+        
+        $html = '<option value="">--Chọn căn hộ--</option>';
+        while ($apartment = mysqli_fetch_assoc($apartment_query)) {
+            $html .= '<option value="'.$apartment['ApartmentID'].'">'.$apartment['Name'].' - '.$apartment['Code'].'</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    // Xử lý AJAX lấy danh sách chủ phương tiện theo căn hộ
+    if (isset($_POST['get_owners']) && isset($_POST['apartment_id'])) {
+        $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
+        $owner_query = mysqli_query($conn, "
+            SELECT DISTINCT r.ID, r.NationalId, u.UserName, ra.Relationship
+            FROM resident r
+            INNER JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+            INNER JOIN users u ON r.ID = u.ResidentID
+            WHERE ra.ApartmentId = '$apartment_id'
+        ");
+        
+        $html = '<option value="">--Chọn chủ phương tiện--</option>';
+        while ($owner = mysqli_fetch_assoc($owner_query)) {
+            $display_text = sprintf(
+                "%s - %s (%s)", 
+                htmlspecialchars($owner['UserName']),
+                htmlspecialchars($owner['NationalId']),
+                htmlspecialchars($owner['Relationship'])
+            );
+            $html .= '<option value="'.$owner['ID'].'">'.$display_text.'</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    // Xử lý AJAX lấy danh sách bảng giá theo dịch vụ
+    if (isset($_POST['get_price_list']) && isset($_POST['service_id'])) {
+        $service_id = mysqli_real_escape_string($conn, $_POST['service_id']);
+        $price_query = mysqli_query($conn, "
+            SELECT pl.ID, pl.Name, pl.TypeOfFee, pl.Price 
+            FROM pricelist pl
+            JOIN ServicePrice sp ON pl.ID = sp.PriceId
+            WHERE sp.ServiceId = '$service_id' AND pl.Status = 'active'
+            ORDER BY pl.ApplyDate DESC
+        ");
+        
+        $html = '<option value="">--Mức ưu tiên tính phí--</option>';
+        while ($price = mysqli_fetch_assoc($price_query)) {
+            $html .= '<option value="'.$price['ID'].'">'.$price['Name'].' - '.number_format($price['Price']).' đ ('.$price['TypeOfFee'].')</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    exit;
+}
+
 // Xử lý thêm mới phương tiện
 if (isset($_POST['submit'])) {
     $code = mysqli_real_escape_string($conn, $_POST['code']);
@@ -343,7 +409,7 @@ if (isset($_POST['submit'])) {
                                 <select id="building" class="form-select" required>
                                     <option value="">--Lựa chọn tòa nhà--</option>
                                     <?php 
-                                    $buildings_query = mysqli_query($conn, "SELECT * FROM buildings WHERE Status = 'active'");
+                                    $buildings_query = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
                                     while ($building = mysqli_fetch_assoc($buildings_query)) {
                                         echo '<option value="' . $building['ID'] . '">' . 
                                             htmlspecialchars($building['Name']) . 
@@ -354,7 +420,7 @@ if (isset($_POST['submit'])) {
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Căn hộ<span class="required-mark">*</span></label>
-                                <select name="apartment_id" id="apartment_id" class="form-select" >
+                                <select name="apartment_id" id="apartment_id" class="form-select" required>
                                     <option value="">--Chọn căn hộ--</option>
                                 </select>
                             </div>
@@ -363,7 +429,7 @@ if (isset($_POST['submit'])) {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Chủ phương tiện<span class="required-mark">*</span></label>
-                                <select name="owner_id" id="owner_id" class="form-select">
+                                <select name="owner_id" id="owner_id" class="form-select" required>
                                     <option value="">--Chọn chủ phương tiện--</option>
                                 </select>
                             </div>
@@ -419,11 +485,9 @@ if (isset($_POST['submit'])) {
 
     <script>
     $(document).ready(function() {
-        // Xử lý khi thay đổi tòa nhà
         $('#building').change(function() {
             const buildingId = $(this).val();
             if (buildingId) {
-                // Lấy danh sách căn hộ theo tòa nhà
                 $.ajax({
                     url: window.location.href,
                     type: 'POST',
@@ -433,6 +497,7 @@ if (isset($_POST['submit'])) {
                     },
                     success: function(response) {
                         $('#apartment_id').html(response);
+                        $('#owner_id').html('<option value="">--Chọn chủ phương tiện--</option>');
                     }
                 });
             } else {
@@ -441,11 +506,9 @@ if (isset($_POST['submit'])) {
             }
         });
         
-        // Xử lý khi thay đổi căn hộ
         $('#apartment_id').change(function() {
             const apartmentId = $(this).val();
             if (apartmentId) {
-                // Lấy danh sách chủ căn hộ
                 $.ajax({
                     url: window.location.href,
                     type: 'POST',
@@ -462,11 +525,9 @@ if (isset($_POST['submit'])) {
             }
         });
         
-        // Xử lý khi thay đổi dịch vụ
         $('#service_id').change(function() {
             const serviceId = $(this).val();
             if (serviceId) {
-                // Lấy danh sách bảng giá theo dịch vụ
                 $.ajax({
                     url: window.location.href,
                     type: 'POST',
@@ -483,9 +544,7 @@ if (isset($_POST['submit'])) {
             }
         });
         
-        // Xử lý submit form
         $('#vehicleForm').on('submit', function(e) {
-            // Kiểm tra đã chọn chủ phương tiện chưa
             const ownerId = $('#owner_id').val();
             if (!ownerId) {
                 e.preventDefault();
@@ -493,7 +552,6 @@ if (isset($_POST['submit'])) {
                 return;
             }
             
-            // Kiểm tra ngày kết thúc phải sau ngày bắt đầu
             const applyDate = $('input[name="apply_fee_date"]').val();
             const endDate = $('input[name="end_fee_date"]').val();
             
@@ -505,54 +563,5 @@ if (isset($_POST['submit'])) {
         });
     });
     </script>
-    
-    <?php
-    // Xử lý AJAX lấy danh sách căn hộ theo tòa nhà
-    if (isset($_POST['get_apartments']) && isset($_POST['building_id'])) {
-        $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
-        $apartment_query = mysqli_query($conn, "SELECT * FROM apartment WHERE BuildingID = '$building_id'");
-        
-        echo '<option value="">--Chọn căn hộ--</option>';
-        while ($apartment = mysqli_fetch_assoc($apartment_query)) {
-            echo '<option value="'.$apartment['ID'].'">'.$apartment['ApartmentCode'].'</option>';
-        }
-        exit;
-    }
-    
-    // Xử lý AJAX lấy danh sách chủ phương tiện theo căn hộ
-    if (isset($_POST['get_owners']) && isset($_POST['apartment_id'])) {
-        $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
-        $owner_query = mysqli_query($conn, "
-            SELECT u.* 
-            FROM users u
-            JOIN apartmentusers au ON u.ID = au.UserID
-            WHERE au.ApartmentID = '$apartment_id' AND u.Status = 'active'
-        ");
-        
-        echo '<option value="">--Chọn chủ phương tiện--</option>';
-        while ($owner = mysqli_fetch_assoc($owner_query)) {
-            echo '<option value="'.$owner['ID'].'">'.$owner['Name'].'</option>';
-        }
-        exit;
-    }
-    
-    // Xử lý AJAX lấy danh sách bảng giá theo dịch vụ
-    if (isset($_POST['get_price_list']) && isset($_POST['service_id'])) {
-        $service_id = mysqli_real_escape_string($conn, $_POST['service_id']);
-        $price_query = mysqli_query($conn, "
-            SELECT pl.ID, pl.Name, pl.TypeOfFee, pl.Price 
-            FROM pricelist pl
-            JOIN ServicePrice sp ON pl.ID = sp.PriceId
-            WHERE sp.ServiceId = '$service_id' AND pl.Status = 'active'
-            ORDER BY pl.ApplyDate DESC
-        ");
-        
-        echo '<option value="">--Mức ưu tiên tính phí--</option>';
-        while ($price = mysqli_fetch_assoc($price_query)) {
-            echo '<option value="'.$price['ID'].'">'.$price['Name'].' - '.number_format($price['Price']).' đ ('.$price['TypeOfFee'].')</option>';
-        }
-        exit;
-    }
-    ?>
 </body>
 </html>

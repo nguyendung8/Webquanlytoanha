@@ -83,6 +83,59 @@ if (isset($_GET['un_block'])) {
         $message[] = 'Mở khóa tài khoản người dùng thất bại!';
     }
 }
+
+// Xây dựng query với các điều kiện lọc
+$where_conditions = [];
+$params = [];
+
+if(isset($_GET['search']) && !empty($_GET['search'])) {
+    $search = mysqli_real_escape_string($conn, $_GET['search']);
+    $where_conditions[] = "(v.VehicleName LIKE '%$search%' OR v.NumberPlate LIKE '%$search%')";
+}
+
+if(isset($_GET['apartment']) && !empty($_GET['apartment'])) {
+    $apartment = mysqli_real_escape_string($conn, $_GET['apartment']);
+    $where_conditions[] = "v.ApartmentID = '$apartment'";
+}
+
+if(isset($_GET['type']) && !empty($_GET['type'])) {
+    $type = mysqli_real_escape_string($conn, $_GET['type']);
+    $where_conditions[] = "v.TypeVehicle = '$type'";
+}
+
+if(isset($_GET['status']) && !empty($_GET['status'])) {
+    $status = mysqli_real_escape_string($conn, $_GET['status']);
+    $where_conditions[] = "v.Status = '$status'";
+}
+
+$where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
+
+// Sửa lại query chính để thêm điều kiện lọc
+$query = "
+    SELECT 
+        v.VehicleCode,
+        v.VehicleName,
+        v.TypeVehicle,
+        v.NumberPlate,
+        v.Status,
+        a.Code AS ApartmentCode,
+        a.Name AS ApartmentName,
+        sv.ApplyFeeDate,
+        sv.EndFeeDate,
+        pl.Name AS PriceName,
+        pl.Price,
+        u.UserName AS UpdatedBy
+    FROM vehicles v
+    LEFT JOIN apartment a ON v.ApartmentID = a.ApartmentID
+    LEFT JOIN ServiceVehicles sv ON v.VehicleCode = sv.VehicleCode
+    LEFT JOIN services s ON sv.ServiceId = s.ServiceCode
+    LEFT JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
+    LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
+    LEFT JOIN users u ON v.VehicleOwnerID = u.ResidentID
+    $where_clause
+    ORDER BY v.VehicleCode DESC
+";
+
 ?>
 
 <!DOCTYPE html>
@@ -395,23 +448,37 @@ if (isset($_GET['un_block'])) {
                 <!-- Search and Add Section -->
                 <div class="search-container">
                     <div class="search-box">
-                        <input type="text" class="search-input" placeholder="Nhập tên phương tiện, biển số">
-                        <select class="dropdown-select">
-                            <option value="">Căn hộ</option>
-                            <!-- Thêm options từ database -->
+                        <input type="text" id="search_text" class="search-input" placeholder="Nhập tên phương tiện, biển số">
+                        <select class="dropdown-select" id="apartment_filter">
+                            <option value="">Tất cả căn hộ</option>
+                            <?php 
+                            $apartment_query = mysqli_query($conn, "
+                                SELECT DISTINCT a.ApartmentID, a.Code, a.Name 
+                                FROM apartment a 
+                                INNER JOIN vehicles v ON a.ApartmentID = v.ApartmentID 
+                                ORDER BY a.Code
+                            ");
+                            while($apt = mysqli_fetch_assoc($apartment_query)) {
+                                echo '<option value="'.$apt['ApartmentID'].'">'
+                                    .htmlspecialchars($apt['Code'].' - '.$apt['Name']).'</option>';
+                            }
+                            ?>
                         </select>
-                        <select class="dropdown-select">
-                            <option value="">Loại phương tiện</option>
-                            <option value="Oto">Oto</option>
-                            <option value="Xe đạp">Xe đạp</option>
+                        <select class="dropdown-select" id="vehicle_type_filter">
+                            <option value="">Tất cả loại xe</option>
+                            <option value="Ô tô">Ô tô</option>
                             <option value="Xe máy">Xe máy</option>
+                            <option value="Xe đạp">Xe đạp</option>
+                            <option value="Xe máy điện">Xe máy điện</option>
+                            <option value="Ô tô điện">Ô tô điện</option>
+                            <option value="Khác">Khác</option>
                         </select>
-                        <select class="dropdown-select">
-                            <option value="">Trạng thái</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
+                        <select class="dropdown-select" id="status_filter">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="active">Đang hoạt động</option>
+                            <option value="inactive">Ngừng hoạt động</option>
                         </select>
-                        <button class="search-btn">
+                        <button class="search-btn" id="search_btn">
                             <i class="fas fa-search"></i> Tìm kiếm
                         </button>
                     </div>
@@ -440,125 +507,39 @@ if (isset($_GET['un_block'])) {
                     </thead>
                     <tbody>
                         <?php
-                        // Sample data
-                        $vehicles = [
-                            [
-                                'id' => 1,
-                                'name' => 'Oto V3',
-                                'apartment' => 'A01 - 01',
-                                'type' => 'Oto',
-                                'plate' => '29V09387',
-                                'priority' => 1,
-                                'fee' => '200000',
-                                'start_date' => '01/12/2024',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'active'
-                            ],
-                            [
-                                'id' => 2,
-                                'name' => 'Xe đạp',
-                                'apartment' => 'A01 - 02',
-                                'type' => 'Xe đạp',
-                                'plate' => '29V09387',
-                                'priority' => 1,
-                                'fee' => '50000',
-                                'start_date' => '15/01/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'inactive'
-                            ],
-                            [
-                                'id' => 3,
-                                'name' => 'Xe máy Honda',
-                                'apartment' => 'A01 - 03',
-                                'type' => 'Xe máy',
-                                'plate' => '29V09387',
-                                'priority' => 2,
-                                'fee' => '150000',
-                                'start_date' => '01/03/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'inactive'
-                            ],
-                            [
-                                'id' => 4,
-                                'name' => 'Xe đạp điện honda',
-                                'apartment' => 'A02 - 01',
-                                'type' => 'Xe đạp',
-                                'plate' => '29V09387',
-                                'priority' => 1,
-                                'fee' => '50000',
-                                'start_date' => '01/03/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'active'
-                            ],
-                            [
-                                'id' => 5,
-                                'name' => 'Xe máy yamaha',
-                                'apartment' => 'B01 - 01',
-                                'type' => 'Xe máy',
-                                'plate' => '29V09387',
-                                'priority' => 1,
-                                'fee' => '200000',
-                                'start_date' => '01/04/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'active'
-                            ],
-                            [
-                                'id' => 6,
-                                'name' => 'Oto G63',
-                                'apartment' => 'B01 - 02',
-                                'type' => 'oto',
-                                'plate' => '29V09387',
-                                'priority' => 2,
-                                'fee' => '400000',
-                                'start_date' => '01/04/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'active'
-                            ],
-                            [
-                                'id' => 7,
-                                'name' => 'Oto V3',
-                                'apartment' => 'B01 - 03',
-                                'type' => 'oto',
-                                'plate' => '29V09387',
-                                'priority' => 1,
-                                'fee' => '400000',
-                                'start_date' => '01/04/2025',
-                                'end_date' => '__/__/__',
-                                'updater' => 'Admin',
-                                'status' => 'active'
-                            ],
-                        ];
+                        // Thay thế phần dữ liệu mẫu bằng query từ database
+                        $result = mysqli_query($conn, $query);
 
-                        foreach ($vehicles as $index => $vehicle) {
+                        if (!$result) {
+                            die("Query failed: " . mysqli_error($conn));
+                        }
+
+                        // Thay thế phần hiển thị bảng
+                        $index = 1;
+                        while ($vehicle = mysqli_fetch_assoc($result)) {
                         ?>
                         <tr>
-                            <td><?php echo $index + 1; ?></td>
-                            <td><?php echo $vehicle['name']; ?></td>
-                            <td><?php echo $vehicle['apartment']; ?></td>
-                            <td><?php echo $vehicle['type']; ?></td>
-                            <td><?php echo $vehicle['plate']; ?></td>
-                            <td><?php echo $vehicle['priority']; ?></td>
-                            <td><?php echo number_format($vehicle['fee']); ?></td>
-                            <td><?php echo $vehicle['start_date']; ?></td>
-                            <td><?php echo $vehicle['end_date']; ?></td>
-                            <td><?php echo $vehicle['updater']; ?></td>
+                            <td><?php echo $index++; ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['VehicleName']); ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['ApartmentCode'] . ' - ' . $vehicle['ApartmentName']); ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['TypeVehicle']); ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['NumberPlate']); ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['PriceName'] ?? 'Chưa có'); ?></td>
+                            <td><?php echo $vehicle['Price'] ? number_format($vehicle['Price']) : '0'; ?></td>
+                            <td><?php echo $vehicle['ApplyFeeDate'] ? date('d/m/Y', strtotime($vehicle['ApplyFeeDate'])) : '__/__/__'; ?></td>
+                            <td><?php echo $vehicle['EndFeeDate'] ? date('d/m/Y', strtotime($vehicle['EndFeeDate'])) : '__/__/__'; ?></td>
+                            <td><?php echo htmlspecialchars($vehicle['UpdatedBy'] ?? 'Admin'); ?></td>
                             <td>
-                                <div class="status-toggle <?php echo $vehicle['status'] == 'active' ? 'active' : ''; ?>" 
-                                     data-vehicle="<?php echo $vehicle['id']; ?>">
+                                <div class="status-toggle <?php echo $vehicle['Status'] == 'active' ? 'active' : ''; ?>" 
+                                     data-vehicle="<?php echo htmlspecialchars($vehicle['VehicleCode']); ?>">
                                     <div class="toggle-slider"></div>
                                 </div>
                             </td>
                             <td class="action-buttons">
-                                <a href="update_vehicle.php?id=<?php echo $vehicle['id']; ?>" title="Sửa">
+                                <a href="update_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>" title="Sửa">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <a href="delete_vehicle.php?id=<?php echo $vehicle['id']; ?>" title="Xóa" 
+                                <a href="delete_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>" title="Xóa" 
                                    onclick="return confirm('Bạn có chắc chắn muốn xóa phương tiện này?');">
                                     <i class="fas fa-trash-alt"></i>
                                 </a>
@@ -570,7 +551,7 @@ if (isset($_GET['un_block'])) {
                 
                 <!-- Pagination -->
                 <div class="pagination">
-                    <div>Tổng số: 7 bản ghi</div>
+                    <div>Tổng số: <?php echo mysqli_num_rows($result); ?> bản ghi</div>
                     <div class="page-controls">
                         <div class="page-item"><i class="fas fa-angle-double-left"></i></div>
                         <div class="page-item active">1</div>
@@ -655,6 +636,59 @@ if (isset($_GET['un_block'])) {
                 $('.notification-alert').alert('close');
             }, 3000);
         }
+
+        // Xử lý sự kiện tìm kiếm
+        function performSearch() {
+            const searchText = $('#search_text').val();
+            const apartmentId = $('#apartment_filter').val();
+            const vehicleType = $('#vehicle_type_filter').val();
+            const status = $('#status_filter').val();
+            
+            // Xây dựng URL với các tham số tìm kiếm
+            let searchParams = new URLSearchParams(window.location.search);
+            
+            // Cập nhật hoặc xóa các tham số tìm kiếm
+            if(searchText) searchParams.set('search', searchText);
+            else searchParams.delete('search');
+            
+            if(apartmentId) searchParams.set('apartment', apartmentId);
+            else searchParams.delete('apartment');
+            
+            if(vehicleType) searchParams.set('type', vehicleType);
+            else searchParams.delete('type');
+            
+            if(status) searchParams.set('status', status);
+            else searchParams.delete('status');
+            
+            // Chuyển hướng đến URL mới với các tham số tìm kiếm
+            window.location.href = `${window.location.pathname}?${searchParams.toString()}`;
+        }
+
+        // Xử lý sự kiện click nút tìm kiếm
+        $('#search_btn').click(function(e) {
+            e.preventDefault();
+            performSearch();
+        });
+
+        // Xử lý sự kiện nhấn Enter trong ô tìm kiếm
+        $('#search_text').keypress(function(e) {
+            if(e.which == 13) {
+                e.preventDefault();
+                performSearch();
+            }
+        });
+
+        // Tự động submit form khi thay đổi giá trị của các dropdown
+        $('.dropdown-select').change(function() {
+            performSearch();
+        });
+
+        // Set giá trị cho các trường tìm kiếm từ URL
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('search')) $('#search_text').val(urlParams.get('search'));
+        if(urlParams.has('apartment')) $('#apartment_filter').val(urlParams.get('apartment'));
+        if(urlParams.has('type')) $('#vehicle_type_filter').val(urlParams.get('type'));
+        if(urlParams.has('status')) $('#status_filter').val(urlParams.get('status'));
     });
     </script>
 </body>

@@ -11,6 +11,58 @@ if (!isset($admin_id)) {
     exit();
 }
 
+// Kiểm tra và lấy thông tin phương tiện cần sửa
+if (!isset($_GET['id'])) {
+    header('location: vehicle_list.php');
+    exit();
+}
+
+$vehicle_code = mysqli_real_escape_string($conn, $_GET['id']);
+
+// Lấy thông tin chi tiết của phương tiện
+$vehicle_query = mysqli_query($conn, "
+    SELECT 
+        v.*,
+        sv.ServiceId,
+        sv.ApplyFeeDate,
+        sv.EndFeeDate,
+        sp.PriceId,
+        a.BuildingId,
+        a.ApartmentID,
+        r.ID as ResidentId,
+        u.UserName,
+        ra.Relationship
+    FROM vehicles v
+    LEFT JOIN apartment a ON v.ApartmentID = a.ApartmentID
+    LEFT JOIN ResidentApartment ra ON a.ApartmentID = ra.ApartmentId
+    LEFT JOIN resident r ON ra.ResidentId = r.ID
+    LEFT JOIN users u ON r.ID = u.ResidentID
+    LEFT JOIN ServiceVehicles sv ON v.VehicleCode = sv.VehicleCode
+    LEFT JOIN ServicePrice sp ON sv.ServiceId = sp.ServiceId
+    WHERE v.VehicleCode = '$vehicle_code'
+");
+
+if (!$vehicle_query || mysqli_num_rows($vehicle_query) == 0) {
+    header('location: vehicle_list.php');
+    exit();
+}
+
+$vehicle_data = mysqli_fetch_assoc($vehicle_query);
+
+// Lấy danh sách thẻ xe chưa được gán cho phương tiện nào
+$select_vehicle_cards = mysqli_query($conn, "
+    SELECT vc.* 
+    FROM vehiclecards vc
+    LEFT JOIN vehicles v ON vc.VehicleCardCode = v.VehicleCardCode 
+        AND v.VehicleCode != '$vehicle_code'
+    WHERE vc.Status != 'Hủy'
+        OR vc.VehicleCardCode = (
+            SELECT VehicleCardCode 
+            FROM vehicles 
+            WHERE VehicleCode = '$vehicle_code'
+        )
+");
+
 // Lấy danh sách căn hộ để hiển thị trong dropdown
 $select_apartments = mysqli_query($conn, "SELECT * FROM apartment");
 
@@ -20,18 +72,81 @@ $select_services = mysqli_query($conn, "SELECT * FROM services WHERE Status = 'a
 // Lấy danh sách chủ xe để hiển thị trong dropdown
 $select_owners = mysqli_query($conn, "SELECT * FROM users WHERE Position = 'Quản trị hệ thống'");
 
-// Lấy danh sách thẻ xe chưa được gán cho phương tiện nào
-$select_vehicle_cards = mysqli_query($conn, "
-    SELECT vc.* 
-    FROM vehiclecards vc
-    LEFT JOIN vehicles v ON vc.VehicleCardCode = v.VehicleCardCode
-    WHERE v.VehicleCardCode IS NULL AND vc.Status != 'Hủy'
-    ORDER BY vc.VehicleCardCode ASC
-");
+// Đặt đoạn code này ở đầu file, trước khi output bất kỳ HTML nào
+if (isset($_POST['get_apartments']) || isset($_POST['get_owners']) || isset($_POST['get_price_list'])) {
+    // Xử lý AJAX lấy danh sách căn hộ theo tòa nhà
+    if (isset($_POST['get_apartments']) && isset($_POST['building_id'])) {
+        $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
+        $apartment_query = mysqli_query($conn, "
+            SELECT ApartmentID, Name, Code 
+            FROM apartment 
+            WHERE BuildingId = '$building_id'
+        ");
+        
+        $html = '<option value="">--Chọn căn hộ--</option>';
+        while ($apartment = mysqli_fetch_assoc($apartment_query)) {
+            $html .= '<option value="'.$apartment['ApartmentID'].'">'.$apartment['Name'].' - '.$apartment['Code'].'</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    // Xử lý AJAX lấy danh sách chủ phương tiện theo căn hộ
+    if (isset($_POST['get_owners']) && isset($_POST['apartment_id'])) {
+        $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
+        $owner_query = mysqli_query($conn, "
+            SELECT DISTINCT 
+                r.ID, 
+                r.NationalId, 
+                u.UserName, 
+                ra.Relationship,
+                CASE WHEN r.ID = '{$vehicle_data['VehicleOwnerID']}' THEN 1 ELSE 0 END as is_current_owner
+            FROM resident r
+            INNER JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+            INNER JOIN users u ON r.ID = u.ResidentID
+            WHERE ra.ApartmentId = '$apartment_id'
+            ORDER BY is_current_owner DESC, u.UserName ASC
+        ");
+        
+        $html = '<option value="">--Chọn chủ phương tiện--</option>';
+        while ($owner = mysqli_fetch_assoc($owner_query)) {
+            $selected = ($owner['ID'] == $vehicle_data['VehicleOwnerID']) ? 'selected' : '';
+            $display_text = sprintf(
+                "%s - %s (%s)", 
+                htmlspecialchars($owner['UserName']),
+                htmlspecialchars($owner['NationalId']),
+                htmlspecialchars($owner['Relationship'])
+            );
+            $html .= '<option value="'.$owner['ID'].'" '.$selected.'>'.$display_text.'</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    // Xử lý AJAX lấy danh sách bảng giá theo dịch vụ
+    if (isset($_POST['get_price_list']) && isset($_POST['service_id'])) {
+        $service_id = mysqli_real_escape_string($conn, $_POST['service_id']);
+        $price_query = mysqli_query($conn, "
+            SELECT pl.ID, pl.Name, pl.TypeOfFee, pl.Price 
+            FROM pricelist pl
+            JOIN ServicePrice sp ON pl.ID = sp.PriceId
+            WHERE sp.ServiceId = '$service_id' AND pl.Status = 'active'
+            ORDER BY pl.ApplyDate DESC
+        ");
+        
+        $html = '<option value="">--Mức ưu tiên tính phí--</option>';
+        while ($price = mysqli_fetch_assoc($price_query)) {
+            $html .= '<option value="'.$price['ID'].'">'.$price['Name'].' - '.number_format($price['Price']).' đ ('.$price['TypeOfFee'].')</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    exit;
+}
 
-// Xử lý thêm mới phương tiện
+// Xử lý cập nhật thông tin
 if (isset($_POST['submit'])) {
-    $code = mysqli_real_escape_string($conn, $_POST['code']);
     $name = mysqli_real_escape_string($conn, $_POST['name']);
     $type_vehicle = mysqli_real_escape_string($conn, $_POST['type_vehicle']);
     $number_plate = mysqli_real_escape_string($conn, $_POST['number_plate']);
@@ -41,49 +156,62 @@ if (isset($_POST['submit'])) {
     $engine_number = mysqli_real_escape_string($conn, $_POST['engine_number']);
     $description = mysqli_real_escape_string($conn, $_POST['description']);
     $vehicle_card_code = mysqli_real_escape_string($conn, $_POST['vehicle_card_code']);
-    $apartment_id = 1;
-    $owner_id = 1;
+    $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
+    $owner_id = mysqli_real_escape_string($conn, $_POST['owner_id']);
     $service_id = mysqli_real_escape_string($conn, $_POST['service_id']);
     $apply_fee_date = mysqli_real_escape_string($conn, $_POST['apply_fee_date']);
     $end_fee_date = isset($_POST['end_fee_date']) && !empty($_POST['end_fee_date']) ? 
                      mysqli_real_escape_string($conn, $_POST['end_fee_date']) : NULL;
     $price_id = isset($_POST['price_id']) ? mysqli_real_escape_string($conn, $_POST['price_id']) : NULL;
-    $status = 'active';
 
-    // Kiểm tra xem code đã tồn tại chưa
-    $check_code = mysqli_query($conn, "SELECT * FROM vehicles WHERE VehicleCode = '$code'");
-    if (mysqli_num_rows($check_code) > 0) {
-        $error = 'Mã phương tiện đã tồn tại!';
-    } else {
-        try {
-            // Thêm mới vào bảng vehicles
-            mysqli_query($conn, "
-                INSERT INTO vehicles (VehicleCode, TypeVehicle, VehicleName, NumberPlate, Color, Brand, 
-                VehicleIdentificationNumber, EngineNumber, Description, Status, VehicleCardCode, VehicleOwnerID, ApartmentID) 
-                VALUES ('$code', '$type_vehicle', '$name', '$number_plate', '$color', '$brand', 
-                '$vehicle_id_number', '$engine_number', '$description', '$status', '$vehicle_card_code', '$owner_id', '$apartment_id')
-            ");
-            
-            // Cập nhật trạng thái và thông tin biển số cho thẻ xe
-            mysqli_query($conn, "
-                UPDATE vehiclecards 
-                SET Status = 'Đã cấp phát', NumberPlate = '$number_plate' 
-                WHERE VehicleCardCode = '$vehicle_card_code'
-            ");
-            
-            // Thêm vào bảng trung gian ServiceVehicles
-            $end_date_sql = $end_fee_date ? "'$end_fee_date'" : "NULL";
-            mysqli_query($conn, "
-                INSERT INTO ServiceVehicles (ServiceId, VehicleCode, ApplyFeeDate, EndFeeDate) 
-                VALUES ('$service_id', '$code', '$apply_fee_date', $end_date_sql)
-            ");
-            
-            $_SESSION['success_msg'] = 'Đã thêm phương tiện thành công!';
-            header('location: vehicle_list.php');
-            exit();
-        } catch (Exception $e) {
-            $error = 'Đã xảy ra lỗi: ' . $e->getMessage();
-        }
+    try {
+        // Bắt đầu transaction
+        mysqli_begin_transaction($conn);
+
+        // Cập nhật thông tin phương tiện
+        mysqli_query($conn, "
+            UPDATE vehicles 
+            SET TypeVehicle = '$type_vehicle',
+                VehicleName = '$name',
+                NumberPlate = '$number_plate',
+                Color = '$color',
+                Brand = '$brand',
+                VehicleIdentificationNumber = '$vehicle_id_number',
+                EngineNumber = '$engine_number',
+                Description = '$description',
+                VehicleCardCode = '$vehicle_card_code',
+                VehicleOwnerID = '$owner_id',
+                ApartmentID = '$apartment_id'
+            WHERE VehicleCode = '$vehicle_code'
+        ");
+
+        // Cập nhật thông tin thẻ xe
+        mysqli_query($conn, "
+            UPDATE vehiclecards 
+            SET NumberPlate = '$number_plate'
+            WHERE VehicleCardCode = '$vehicle_card_code'
+        ");
+
+        // Cập nhật hoặc thêm mới thông tin dịch vụ
+        $end_date_sql = $end_fee_date ? "'$end_fee_date'" : "NULL";
+        mysqli_query($conn, "
+            INSERT INTO ServiceVehicles (ServiceId, VehicleCode, ApplyFeeDate, EndFeeDate)
+            VALUES ('$service_id', '$vehicle_code', '$apply_fee_date', $end_date_sql)
+            ON DUPLICATE KEY UPDATE
+                ApplyFeeDate = '$apply_fee_date',
+                EndFeeDate = $end_date_sql
+        ");
+
+        // Commit transaction
+        mysqli_commit($conn);
+        
+        $_SESSION['success_msg'] = 'Cập nhật phương tiện thành công!';
+        header('location: vehicle_list.php');
+        exit();
+    } catch (Exception $e) {
+        // Rollback nếu có lỗi
+        mysqli_rollback($conn);
+        $error = 'Đã xảy ra lỗi: ' . $e->getMessage();
     }
 }
 ?>
@@ -94,7 +222,7 @@ if (isset($_POST['submit'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Thêm mới phương tiện</title>
+    <title>Cập nhật phương tiện</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -241,13 +369,13 @@ if (isset($_POST['submit'])) {
             <?php include '../admin_header.php'; ?>
             <div class="manage-container">
                 <div class="page-header mb-4">
-                    <h1 class="main-title">THÊM MỚI PHƯƠNG TIỆN</h1>
+                    <h1 class="main-title">CẬP NHẬT PHƯƠNG TIỆN</h1>
                     <div class="breadcrumb">
                         <a href="/webquanlytoanha/admin/dashboard.php">Trang chủ</a>
                         <span style="margin: 0 8px;">›</span>
                         <a href="/webquanlytoanha/admin/service/vehicle_list.php">Phương tiện</a>
                         <span style="margin: 0 8px;">›</span>
-                        <span>Thêm mới phương tiện</span>
+                        <span>Cập nhật phương tiện</span>
                     </div>
                 </div>
 
@@ -265,11 +393,11 @@ if (isset($_POST['submit'])) {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Mã phương tiện<span class="required-mark">*</span></label>
-                                <input type="text" name="code" class="form-control" required>
+                                <input type="text" name="code" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['VehicleCode']); ?>" readonly>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Tên phương tiện<span class="required-mark">*</span></label>
-                                <input type="text" name="name" class="form-control" required>
+                                <input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['VehicleName']); ?>" required>
                             </div>
                         </div>
                         
@@ -278,35 +406,36 @@ if (isset($_POST['submit'])) {
                                 <label class="form-label">Loại phương tiện<span class="required-mark">*</span></label>
                                 <select name="type_vehicle" class="form-select" required>
                                     <option value="">--Chọn loại phương tiện--</option>
-                                    <option value="Ô tô">Ô tô</option>
-                                    <option value="Xe máy">Xe máy</option>
-                                    <option value="Xe đạp">Xe đạp</option>
-                                    <option value="Xe máy điện">Xe máy điện</option>
-                                    <option value="Ô tô điện">Ô tô điện</option>
-                                    <option value="Khác">Khác</option>
+                                    <?php
+                                    $vehicle_types = ['Ô tô', 'Xe máy', 'Xe đạp', 'Xe máy điện', 'Ô tô điện', 'Khác'];
+                                    foreach ($vehicle_types as $type) {
+                                        $selected = ($type == $vehicle_data['TypeVehicle']) ? 'selected' : '';
+                                        echo '<option value="'.$type.'" '.$selected.'>'.$type.'</option>';
+                                    }
+                                    ?>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Biển số<span class="required-mark">*</span></label>
-                                <input type="text" name="number_plate" class="form-control" required>
+                                <input type="text" name="number_plate" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['NumberPlate']); ?>" required>
                             </div>
                         </div>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Màu sắc</label>
-                                <input type="text" name="color" class="form-control">
+                                <input type="text" name="color" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['Color']); ?>">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Số khung</label>
-                                <input type="text" name="vehicle_id_number" class="form-control">
+                                <input type="text" name="vehicle_id_number" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['VehicleIdentificationNumber']); ?>">
                             </div>
                         </div>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Số máy</label>
-                                <input type="text" name="engine_number" class="form-control">
+                                <input type="text" name="engine_number" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['EngineNumber']); ?>">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Mã thẻ xe<span class="required-mark">*</span></label>
@@ -314,10 +443,11 @@ if (isset($_POST['submit'])) {
                                     <option value="">--Chọn mã thẻ xe--</option>
                                     <?php 
                                     while ($card = mysqli_fetch_assoc($select_vehicle_cards)) {
-                                        echo '<option value="' . $card['VehicleCardCode'] . '">' . 
-                                            htmlspecialchars($card['VehicleCardCode']) . ' - ' . 
-                                            htmlspecialchars($card['VehicleType'] ?: 'Chưa xác định') . 
-                                            '</option>';
+                                        $selected = ($card['VehicleCardCode'] == $vehicle_data['VehicleCardCode']) ? 'selected' : '';
+                                        echo '<option value="'.$card['VehicleCardCode'].'" '.$selected.'>'
+                                            .htmlspecialchars($card['VehicleCardCode']).' - '
+                                            .htmlspecialchars($card['VehicleType'] ?: 'Chưa xác định')
+                                            .'</option>';
                                     }
                                     ?>
                                 </select>
@@ -327,11 +457,11 @@ if (isset($_POST['submit'])) {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Hãng xe</label>
-                                <input type="text" name="brand" class="form-control">
+                                <input type="text" name="brand" class="form-control" value="<?php echo htmlspecialchars($vehicle_data['Brand']); ?>">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Mô tả</label>
-                                <textarea name="description" class="form-control" rows="3"></textarea>
+                                <textarea name="description" class="form-control" rows="3"><?php echo htmlspecialchars($vehicle_data['Description']); ?></textarea>
                             </div>
                         </div>
                         
@@ -343,18 +473,18 @@ if (isset($_POST['submit'])) {
                                 <select id="building" class="form-select" required>
                                     <option value="">--Lựa chọn tòa nhà--</option>
                                     <?php 
-                                    $buildings_query = mysqli_query($conn, "SELECT * FROM buildings WHERE Status = 'active'");
+                                    $buildings_query = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
                                     while ($building = mysqli_fetch_assoc($buildings_query)) {
-                                        echo '<option value="' . $building['ID'] . '">' . 
-                                            htmlspecialchars($building['Name']) . 
-                                            '</option>';
+                                        $selected = ($building['ID'] == $vehicle_data['BuildingId']) ? 'selected' : '';
+                                        echo '<option value="'.$building['ID'].'" '.$selected.'>'
+                                            .htmlspecialchars($building['Name']).'</option>';
                                     }
                                     ?>
                                 </select>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Căn hộ<span class="required-mark">*</span></label>
-                                <select name="apartment_id" id="apartment_id" class="form-select" >
+                                <select name="apartment_id" id="apartment_id" class="form-select" required>
                                     <option value="">--Chọn căn hộ--</option>
                                 </select>
                             </div>
@@ -363,7 +493,7 @@ if (isset($_POST['submit'])) {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Chủ phương tiện<span class="required-mark">*</span></label>
-                                <select name="owner_id" id="owner_id" class="form-select">
+                                <select name="owner_id" id="owner_id" class="form-select" required>
                                     <option value="">--Chọn chủ phương tiện--</option>
                                 </select>
                             </div>
@@ -377,10 +507,11 @@ if (isset($_POST['submit'])) {
                                 <select name="service_id" id="service_id" class="form-select" required>
                                     <option value="">--Phí quản lý phương tiện--</option>
                                     <?php 
+                                    $select_services = mysqli_query($conn, "SELECT * FROM services WHERE Status = 'active'");
                                     while ($service = mysqli_fetch_assoc($select_services)) {
-                                        echo '<option value="' . $service['ServiceCode'] . '">' . 
-                                            htmlspecialchars($service['Name']) . 
-                                            '</option>';
+                                        $selected = ($service['ServiceCode'] == $vehicle_data['ServiceId']) ? 'selected' : '';
+                                        echo '<option value="'.$service['ServiceCode'].'" '.$selected.'>'
+                                            .htmlspecialchars($service['Name']).'</option>';
                                     }
                                     ?>
                                 </select>
@@ -390,11 +521,13 @@ if (isset($_POST['submit'])) {
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Ngày áp dụng tính phí<span class="required-mark">*</span></label>
-                                <input type="date" name="apply_fee_date" class="form-control" required>
+                                <input type="date" name="apply_fee_date" class="form-control" required 
+                                       value="<?php echo $vehicle_data['ApplyFeeDate']; ?>">
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label">Ngày kết thúc tính phí</label>
-                                <input type="date" name="end_fee_date" class="form-control">
+                                <input type="date" name="end_fee_date" class="form-control"
+                                       value="<?php echo $vehicle_data['EndFeeDate']; ?>">
                             </div>
                         </div>
                         
@@ -409,7 +542,7 @@ if (isset($_POST['submit'])) {
                         
                         <div class="mt-4 text-end">
                             <a href="vehicle_list.php" class="btn-cancel me-2">Hủy</a>
-                            <button type="submit" name="submit" class="btn-submit">Thêm mới</button>
+                            <button type="submit" name="submit" class="btn-submit">Cập nhật</button>
                         </div>
                     </div>
                 </form>
@@ -419,140 +552,77 @@ if (isset($_POST['submit'])) {
 
     <script>
     $(document).ready(function() {
+        // Lưu trữ các giá trị ban đầu
+        const initialData = {
+            buildingId: '<?php echo $vehicle_data['BuildingId']; ?>',
+            apartmentId: '<?php echo $vehicle_data['ApartmentID']; ?>',
+            ownerId: '<?php echo $vehicle_data['VehicleOwnerID']; ?>',
+            serviceId: '<?php echo $vehicle_data['ServiceId']; ?>',
+            priceId: '<?php echo $vehicle_data['PriceId']; ?>'
+        };
+
+        // Function để load căn hộ
+        function loadApartments(buildingId, callback) {
+            $.ajax({
+                url: window.location.href,
+                type: 'POST',
+                data: {
+                    get_apartments: 1,
+                    building_id: buildingId
+                },
+                success: function(response) {
+                    $('#apartment_id').html(response);
+                    if (callback) callback();
+                }
+            });
+        }
+
+        // Function để load chủ phương tiện
+        function loadOwners(apartmentId, callback) {
+            $.ajax({
+                url: window.location.href,
+                type: 'POST',
+                data: {
+                    get_owners: 1,
+                    apartment_id: apartmentId
+                },
+                success: function(response) {
+                    $('#owner_id').html(response);
+                    if (callback) callback();
+                }
+            });
+        }
+
         // Xử lý khi thay đổi tòa nhà
         $('#building').change(function() {
             const buildingId = $(this).val();
             if (buildingId) {
-                // Lấy danh sách căn hộ theo tòa nhà
-                $.ajax({
-                    url: window.location.href,
-                    type: 'POST',
-                    data: {
-                        get_apartments: 1,
-                        building_id: buildingId
-                    },
-                    success: function(response) {
-                        $('#apartment_id').html(response);
+                loadApartments(buildingId, function() {
+                    if (buildingId == initialData.buildingId) {
+                        $('#apartment_id').val(initialData.apartmentId);
+                        $('#apartment_id').trigger('change');
                     }
                 });
-            } else {
-                $('#apartment_id').html('<option value="">--Chọn căn hộ--</option>');
-                $('#owner_id').html('<option value="">--Chọn chủ phương tiện--</option>');
             }
         });
-        
+
         // Xử lý khi thay đổi căn hộ
         $('#apartment_id').change(function() {
             const apartmentId = $(this).val();
             if (apartmentId) {
-                // Lấy danh sách chủ căn hộ
-                $.ajax({
-                    url: window.location.href,
-                    type: 'POST',
-                    data: {
-                        get_owners: 1,
-                        apartment_id: apartmentId
-                    },
-                    success: function(response) {
-                        $('#owner_id').html(response);
+                loadOwners(apartmentId, function() {
+                    if (apartmentId == initialData.apartmentId) {
+                        $('#owner_id').val(initialData.ownerId);
                     }
                 });
-            } else {
-                $('#owner_id').html('<option value="">--Chọn chủ phương tiện--</option>');
             }
         });
-        
-        // Xử lý khi thay đổi dịch vụ
-        $('#service_id').change(function() {
-            const serviceId = $(this).val();
-            if (serviceId) {
-                // Lấy danh sách bảng giá theo dịch vụ
-                $.ajax({
-                    url: window.location.href,
-                    type: 'POST',
-                    data: {
-                        get_price_list: 1,
-                        service_id: serviceId
-                    },
-                    success: function(response) {
-                        $('#price_id').html(response);
-                    }
-                });
-            } else {
-                $('#price_id').html('<option value="">--Mức ưu tiên tính phí--</option>');
-            }
-        });
-        
-        // Xử lý submit form
-        $('#vehicleForm').on('submit', function(e) {
-            // Kiểm tra đã chọn chủ phương tiện chưa
-            const ownerId = $('#owner_id').val();
-            if (!ownerId) {
-                e.preventDefault();
-                alert('Vui lòng chọn chủ phương tiện');
-                return;
-            }
-            
-            // Kiểm tra ngày kết thúc phải sau ngày bắt đầu
-            const applyDate = $('input[name="apply_fee_date"]').val();
-            const endDate = $('input[name="end_fee_date"]').val();
-            
-            if (endDate && new Date(endDate) <= new Date(applyDate)) {
-                e.preventDefault();
-                alert('Ngày kết thúc phải sau ngày áp dụng');
-                return;
-            }
-        });
+
+        // Trigger initial load khi trang được tải
+        if (initialData.buildingId) {
+            $('#building').trigger('change');
+        }
     });
     </script>
-    
-    <?php
-    // Xử lý AJAX lấy danh sách căn hộ theo tòa nhà
-    if (isset($_POST['get_apartments']) && isset($_POST['building_id'])) {
-        $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
-        $apartment_query = mysqli_query($conn, "SELECT * FROM apartment WHERE BuildingID = '$building_id'");
-        
-        echo '<option value="">--Chọn căn hộ--</option>';
-        while ($apartment = mysqli_fetch_assoc($apartment_query)) {
-            echo '<option value="'.$apartment['ID'].'">'.$apartment['ApartmentCode'].'</option>';
-        }
-        exit;
-    }
-    
-    // Xử lý AJAX lấy danh sách chủ phương tiện theo căn hộ
-    if (isset($_POST['get_owners']) && isset($_POST['apartment_id'])) {
-        $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
-        $owner_query = mysqli_query($conn, "
-            SELECT u.* 
-            FROM users u
-            JOIN apartmentusers au ON u.ID = au.UserID
-            WHERE au.ApartmentID = '$apartment_id' AND u.Status = 'active'
-        ");
-        
-        echo '<option value="">--Chọn chủ phương tiện--</option>';
-        while ($owner = mysqli_fetch_assoc($owner_query)) {
-            echo '<option value="'.$owner['ID'].'">'.$owner['Name'].'</option>';
-        }
-        exit;
-    }
-    
-    // Xử lý AJAX lấy danh sách bảng giá theo dịch vụ
-    if (isset($_POST['get_price_list']) && isset($_POST['service_id'])) {
-        $service_id = mysqli_real_escape_string($conn, $_POST['service_id']);
-        $price_query = mysqli_query($conn, "
-            SELECT pl.ID, pl.Name, pl.TypeOfFee, pl.Price 
-            FROM pricelist pl
-            JOIN ServicePrice sp ON pl.ID = sp.PriceId
-            WHERE sp.ServiceId = '$service_id' AND pl.Status = 'active'
-            ORDER BY pl.ApplyDate DESC
-        ");
-        
-        echo '<option value="">--Mức ưu tiên tính phí--</option>';
-        while ($price = mysqli_fetch_assoc($price_query)) {
-            echo '<option value="'.$price['ID'].'">'.$price['Name'].' - '.number_format($price['Price']).' đ ('.$price['TypeOfFee'].')</option>';
-        }
-        exit;
-    }
-    ?>
 </body>
 </html>

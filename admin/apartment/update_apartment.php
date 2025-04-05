@@ -66,6 +66,60 @@ $current_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE P
 // Lấy danh sách tầng của tòa nhà hiện tại
 $current_floors = mysqli_query($conn, "SELECT ID, Name FROM Floors WHERE BuildingId = '{$apartment['BuildingId']}'");
 
+// 1. Lấy thông tin hợp đồng
+$contracts_query = mysqli_query($conn, "
+    SELECT 
+        c.ContractCode,
+        c.CreationDate,
+        c.Status,
+        DATE_FORMAT(c.CreationDate, '%d/%m/%Y') as FormattedCreationDate
+    FROM contracts c
+    INNER JOIN resident r ON c.ResidentID = r.ID
+    INNER JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+    WHERE ra.ApartmentId = '$apartment_id'
+    ORDER BY c.CreationDate DESC
+");
+
+// 2. Lấy thông tin dịch vụ
+$services_query = mysqli_query($conn, "
+    SELECT 
+        s.ServiceCode,
+        s.Name as ServiceName,
+        s.Status,
+        pl.Price,
+        DATE_FORMAT(s.ApplyForm, '%d/%m/%Y') as StartDate
+    FROM services s
+    INNER JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
+    INNER JOIN pricelist pl ON sp.PriceId = pl.ID
+    WHERE s.Status = 'active'
+");
+
+// 3. Lấy thông tin cư dân
+$residents_query = mysqli_query($conn, "
+    SELECT 
+        r.ID,
+        r.NationalId,
+        u.UserName,
+        u.PhoneNumber,
+        ra.Relationship
+    FROM resident r
+    INNER JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+    INNER JOIN users u ON r.ID = u.ResidentID
+    WHERE ra.ApartmentId = '$apartment_id'
+");
+
+// 4. Lấy thông tin phương tiện
+$vehicles_query = mysqli_query($conn, "
+    SELECT 
+        v.VehicleCode,
+        v.VehicleName,
+        v.NumberPlate,
+        v.TypeVehicle,
+        v.Status
+    FROM vehicles v
+    WHERE v.ApartmentID = '$apartment_id'
+");
+
 // Xử lý cập nhật căn hộ
 if(isset($_POST['submit'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -174,6 +228,43 @@ if(isset($_POST['submit'])) {
         }
         .breadcrumb span {
             color: #718096;
+        }
+        .card {
+            border: none;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+        }
+        .card-header h5 {
+            color: #476a52;
+            font-weight: 600;
+            margin: 0;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .table th {
+            background-color: #f8f9fa;
+            color: #476a52;
+            font-weight: 600;
+            border-bottom: 2px solid #dee2e6;
+        }
+        .table td {
+            vertical-align: middle;
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+        }
+        .btn-primary {
+            background-color: #476a52;
+            border-color: #476a52;
+        }
+        .btn-primary:hover {
+            background-color: #385442;
+            border-color: #385442;
         }
     </style>
 </head>
@@ -286,6 +377,133 @@ if(isset($_POST['submit'])) {
                             <a href="apartment_management.php" class="btn btn-cancel">Hủy</a>
                         </div>
                     </form>
+                </div>
+
+                <div class="apartment-info mt-4">
+                    <!-- Hợp đồng -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Hợp đồng</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã hợp đồng</th>
+                                            <th>Ngày ký hợp đồng</th>
+                                            <th>Trạng thái</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while($contract = mysqli_fetch_assoc($contracts_query)) { ?>
+                                        <tr>
+                                            <td><?php echo $contract['ContractCode']; ?></td>
+                                            <td><?php echo $contract['FormattedCreationDate']; ?></td>
+                                            <td><?php echo $contract['Status']; ?></td>
+                                        </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dịch vụ -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Dịch vụ</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Dịch vụ</th>
+                                            <th>Phí</th>
+                                            <th>Ngày bắt đầu</th>
+                                            <th>Trạng thái</th>
+                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while($service = mysqli_fetch_assoc($services_query)) { ?>
+                                        <tr>
+                                            <td><?php echo $service['ServiceName']; ?></td>
+                                            <td><?php echo number_format($service['Price']); ?> VNĐ</td>
+                                            <td><?php echo $service['StartDate']; ?></td>
+                                            <td><?php echo $service['Status']; ?></td>
+                                        </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cư dân -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Cư dân</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Họ và tên</th>
+                                            <th>CCCD</th>
+                                            <th>Số điện thoại</th>
+                                            <th>Quan hệ</th>
+                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while($resident = mysqli_fetch_assoc($residents_query)) { ?>
+                                        <tr>
+                                            <td><?php echo $resident['UserName']; ?></td>
+                                            <td><?php echo $resident['NationalId']; ?></td>
+                                            <td><?php echo $resident['PhoneNumber']; ?></td>
+                                            <td><?php echo $resident['Relationship']; ?></td>
+                                        </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phương tiện -->
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Phương tiện</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Tên phương tiện</th>
+                                            <th>Loại xe</th>
+                                            <th>Biển số</th>
+                                            <th>Trạng thái</th>
+                                            
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php while($vehicle = mysqli_fetch_assoc($vehicles_query)) { ?>
+                                        <tr>
+                                            <td><?php echo $vehicle['VehicleName']; ?></td>
+                                            <td><?php echo $vehicle['TypeVehicle']; ?></td>
+                                            <td><?php echo $vehicle['NumberPlate']; ?></td>
+                                            <td><?php echo $vehicle['Status']; ?></td>
+                                        </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

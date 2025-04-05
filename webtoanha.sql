@@ -78,8 +78,19 @@ CREATE TABLE `receipts` (
 
 CREATE TABLE `resident` (
   `ID` int(11) NOT NULL,
-  `Name` varchar(FAULT NULL
+  `NationalId` varchar(50) DEFAULT NULL,
+  `Dob` date DEFAULT NULL,
+  `Gender` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE ResidentApartment (
+    ResidentId INT NOT NULL,
+    ApartmentId INT NOT NULL,
+    Relationship VARCHAR(100),
+    PRIMARY KEY (ResidentId, ApartmentId),
+    FOREIGN KEY (ResidentId) REFERENCES Resident(ID) ON DELETE CASCADE,
+    FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentID) ON DELETE CASCADE
+);
 
 
 CREATE TABLE Companies (
@@ -226,8 +237,6 @@ CREATE TABLE `vehiclecards` (
   `VehicleType` varchar(100) DEFAULT NULL,
   `NumberPlate` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-
 
 CREATE TABLE `vehicles` (
   `VehicleCode` varchar(50) NOT NULL,
