@@ -118,9 +118,21 @@
          <i class="fas fa-th-large"></i> Trang chủ
       </a>
       
-      <a href="/webquanlytoanha/admin/apartments.php">
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
          <i class="fas fa-building"></i> Căn hộ - cư dân
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
       </a>
+      <div class="submenu">
+         <a href="/webquanlytoanha/admin/apartment/apartment_management.php">
+            <i class="fas fa-home"></i> Quản lý căn hộ
+         </a>
+         <a href="/webquanlytoanha/admin/apartment/contract_management.php">
+            <i class="fas fa-file-contract"></i> Quản lý hợp đồng
+         </a>
+         <a href="/webquanlytoanha/admin/apartment/resident_management.php">
+            <i class="fas fa-users"></i> Quản lý cư dân
+         </a>
+      </div>
       
       <a href="resident_interaction.php">
          <i class="fas fa-users"></i> Tương tác cư dân
@@ -130,9 +142,18 @@
          <i class="fas fa-hand-paper"></i> Yêu cầu dịch vụ
       </a>
       
-      <a href="services.php">
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
          <i class="fas fa-concierge-bell"></i> Dịch vụ - phương tiện
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
       </a>
+      <div class="submenu">
+         <a href="/webquanlytoanha/admin/service/service_list.php">
+            <i class="fas fa-concierge-bell"></i> Dịch vụ tòa nhà
+         </a>
+         <a href="/webquanlytoanha/admin/service/vehicle_list.php">
+            <i class="fas fa-car"></i> Quản lý phương tiện
+         </a>
+      </div>
       
       <a href="payment_management.php">
          <i class="fas fa-dollar-sign"></i> Quản lý thu phí

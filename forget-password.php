@@ -2,34 +2,43 @@
 include 'database/DBController.php';
 session_start();
 
-if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submit"
+if (isset($_POST['submit'])) {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $password = mysqli_real_escape_string($conn, md5($_POST['password'])); // Mã hóa mật khẩu bằng md5
+    $current_password = mysqli_real_escape_string($conn, md5($_POST['current_password']));
+    $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
+    $confirm_password = mysqli_real_escape_string($conn, $_POST['confirm_password']);
 
-    // Truy vấn kiểm tra thông tin đăng nhập
-    $query = "SELECT * FROM `users` WHERE email = '$email' AND password = '$password'";
-    $result = mysqli_query($conn, $query) or die('Query failed');
+    // Kiểm tra email và mật khẩu hiện tại
+    $check_query = "SELECT * FROM `users` WHERE email = '$email' AND password = '$current_password'";
+    $check_result = mysqli_query($conn, $check_query) or die('Query failed');
 
-    // Kiểm tra kết quả truy vấn
-    if (mysqli_num_rows($result) > 0) {
-        $user = mysqli_fetch_assoc($result);
-        $_SESSION['admin_name'] = $user['UserName'];
-        $_SESSION['admin_email'] = $user['Email'];
-        $_SESSION['admin_id'] = @$user['UserId'];
-        header('Location: admin/account/acount.php'); // Chuyển đến trang quản trị
-        exit();
+    if (mysqli_num_rows($check_result) > 0) {
+        // Kiểm tra mật khẩu mới và xác nhận mật khẩu
+        if ($new_password === $confirm_password) {
+            $hashed_password = md5($new_password);
+            $update_query = "UPDATE `users` SET password = '$hashed_password' WHERE email = '$email'";
+            
+            if (mysqli_query($conn, $update_query)) {
+                $success_message = 'Mật khẩu đã được cập nhật thành công!';
+            } else {
+                $message = 'Có lỗi xảy ra khi cập nhật mật khẩu!';
+            }
         } else {
-            $message = 'Tên tài khoản hoặc mật khẩu không chính xác!';
+            $message = 'Mật khẩu mới không khớp!';
         }
+    } else {
+        $message = 'Email hoặc mật khẩu hiện tại không chính xác!';
     }
+}
 ?>
+
 <!DOCTYPE html>
 <html>
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Đăng nhập</title>
+    <title>Quên mật khẩu</title>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -147,6 +156,35 @@ if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submi
             letter-spacing: 0%;
             text-align: center;
         }
+
+        .success-message {
+            background-color: #F0FFF4;
+            color: #2F855A;
+            padding: 12px 16px;
+            border-radius: 8px 8px 0 0;
+            font-size: 14px;
+            text-align: center;
+            margin-bottom: 0;
+            border-bottom: 1px solid #C6F6D5;
+        }
+
+        .password-requirements {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            padding-left: 45px;
+        }
+
+        .back-to-login {
+            display: inline-block;
+            margin-right: 10px;
+            color: #666;
+            text-decoration: none;
+        }
+
+        .back-to-login:hover {
+            color: #899F87;
+        }
     </style>
 </head>
 
@@ -160,9 +198,15 @@ if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submi
                     </div>
                 <?php endif; ?>
 
+                <?php if (isset($success_message)) : ?>
+                    <div class="success-message">
+                        <?php echo $success_message; ?>
+                    </div>
+                <?php endif; ?>
+
                 <div class="login-header">
-                    <img width="100px" src="./assets/logo.png" alt="logo" class="logo-img">
-                    <div class="title-login">Đăng Nhập</div>
+                    <img width="100px" src="/webquanlytoanha/assets/logo.png" alt="logo" class="logo-img">
+                    <div class="title-login">Đổi Mật Khẩu</div>
                 </div>
                 <div class="login-body">
                     <form action="" method="post">
@@ -175,21 +219,44 @@ if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submi
                                        placeholder="Email của bạn" required>
                             </div>
                         </div>
-                        <div class="mb-4">
+                        <div class="mb-3">
                             <div class="input-group">
                                 <span class="input-group-text bg-transparent border-end-0">
                                     <i class="fas fa-lock text-muted"></i>
                                 </span>
-                                <input type="password" name="password" class="form-control border-start-0" 
-                                       placeholder="Mật khẩu" required>
+                                <input type="password" name="current_password" class="form-control border-start-0" 
+                                       placeholder="Mật khẩu hiện tại" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="fas fa-key text-muted"></i>
+                                </span>
+                                <input type="password" name="new_password" class="form-control border-start-0" 
+                                       placeholder="Mật khẩu mới" required>
+                            </div>
+                            <div class="password-requirements">
+                                Mật khẩu phải có ít nhất 6 ký tự
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <div class="input-group">
+                                <span class="input-group-text bg-transparent border-end-0">
+                                    <i class="fas fa-key text-muted"></i>
+                                </span>
+                                <input type="password" name="confirm_password" class="form-control border-start-0" 
+                                       placeholder="Xác nhận mật khẩu mới" required>
                             </div>
                         </div>
                         <button type="submit" name="submit" class="btn btn-login btn-success w-100">
-                            Đăng Nhập
+                            Đổi Mật Khẩu
                         </button>
                     </form>
                     <div class="register-link">
-                        <a href="forget-password.php">Quên mật khẩu</a>
+                        <a href="/webquanlytoanha/index.php" class="back-to-login">
+                            <i class="fas fa-arrow-left"></i> Quay lại đăng nhập
+                        </a>
                     </div>
                 </div>
             </div>

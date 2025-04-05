@@ -1,14 +1,15 @@
-
 CREATE TABLE `apartment` (
   `ApartmentID` int(11) NOT NULL,
   `Name` varchar(255) DEFAULT NULL,
   `Area` int(11) DEFAULT NULL,
   `NumberOffBedroom` int(11) DEFAULT NULL,
-  `ApplicationFee` int(11) DEFAULT NULL,
-  `Population` int(11) DEFAULT NULL,
+  `Code` varchar(255) DEFAULT NULL,
+  `ElectricId` int(11) DEFAULT NULL,
+  `WaterId` int(11) NOT NULL,
   `Description` text DEFAULT NULL,
   `Status` varchar(50) DEFAULT NULL,
-  `ResidentID` int(11) DEFAULT NULL
+  `BuildingId` int(11) NOT NULL,
+  `FloorId` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
@@ -175,12 +176,57 @@ CREATE TABLE `users` (
   `ResidentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+CREATE TABLE `services` (
+  `ServiceCode` varchar(50) NOT NULL,
+  `Name` varchar(255) NOT NULL,
+  `Description` text DEFAULT NULL,
+  `Status` varchar(50) DEFAULT 'active',
+  `Cycle` int(11) DEFAULT NULL,
+  `Paydate` date DEFAULT NULL,
+  `FirstDate` date DEFAULT NULL,
+  `ApplyForm` date DEFAULT NULL,
+  `SwitchDay` int(11) DEFAULT NULL,
+  `TypeOfObject` varchar(100) DEFAULT NULL,
+  `TypeOfService` varchar(100) DEFAULT NULL,
+  `StartPrice` varchar(100) DEFAULT NULL,
+  `CancelPrice` varchar(100) DEFAULT NULL,
+  `ProjectId` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+
+CREATE TABLE ServicePrice (
+    ServiceId VARCHAR(50) NOT NULL,
+    PriceId INT NOT NULL,
+    PRIMARY KEY (ServiceId, PriceId),
+    FOREIGN KEY (ServiceId) REFERENCES Services(ServiceCode) ON DELETE CASCADE,
+    FOREIGN KEY (PriceId) REFERENCES PriceList(ID) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE `pricelist` (
+  `ID` int(11) NOT NULL,
+  `Name` varchar(255) NOT NULL,
+  `Code` varchar(50) NOT NULL,
+  `Price` int(11) NOT NULL,
+  `TypeOfFee` varchar(100) DEFAULT NULL,
+  `ApplyDate` date DEFAULT NULL,
+  `Status` enum('active','inactive') DEFAULT 'active',
+  `PriceCalculation` varchar(100) DEFAULT NULL,
+  `Title` varchar(255) DEFAULT NULL,
+  `PriceFrom` int(11) DEFAULT NULL,
+  `PriceTo` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
 
 CREATE TABLE `vehiclecards` (
   `VehicleCardCode` varchar(50) NOT NULL,
-  `Status` varchar(50) DEFAULT NULL,
-  `Note` text DEFAULT NULL
+  `Status` varchar(50) DEFAULT 'Chưa cấp phát',
+  `Note` text DEFAULT NULL,
+  `VehicleType` varchar(100) DEFAULT NULL,
+  `NumberPlate` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
 
 
 CREATE TABLE `vehicles` (
@@ -194,5 +240,18 @@ CREATE TABLE `vehicles` (
   `EngineNumber` varchar(100) DEFAULT NULL,
   `Description` text DEFAULT NULL,
   `Status` varchar(50) DEFAULT NULL,
-  `VehicleCardCode` varchar(50) DEFAULT NULL
+  `VehicleCardCode` varchar(50) DEFAULT 
+  `VehicleOwnerID` int(11) DEFAULT NULL
+  `ApartmentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE ServiceVehicles (
+    ServiceId VARCHAR(50) NOT NULL,
+    VehicleCode VARCHAR(50) NOT NULL,
+    ApplyFeeDate DATE,
+    EndFeeDate DATE,
+    PRIMARY KEY (ServiceId, VehicleCode),
+    FOREIGN KEY (ServiceId) REFERENCES Services(ServiceCode) ON DELETE CASCADE,
+    FOREIGN KEY (VehicleCode) REFERENCES Vehicles(VehicleCode) ON DELETE CASCADE
+);
+
