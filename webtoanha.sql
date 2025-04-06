@@ -9,15 +9,8 @@ CREATE TABLE `apartment` (
   `Description` text DEFAULT NULL,
   `Status` varchar(50) DEFAULT NULL,
   `BuildingId` int(11) NOT NULL,
-  `FloorId` int(11) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-
-CREATE TABLE `contracts` (
-  `ContractCode` varchar(50) NOT NULL,
-  `CreationDate` date DEFAULT NULL,
-  `Status` varchar(50) DEFAULT NULL,
-  `ResidentID` int(11) DEFAULT NULL
+  `FloorId` int(11) NOT NULL,
+  `ContractCode` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
@@ -262,5 +255,32 @@ CREATE TABLE ServiceVehicles (
     PRIMARY KEY (ServiceId, VehicleCode),
     FOREIGN KEY (ServiceId) REFERENCES Services(ServiceCode) ON DELETE CASCADE,
     FOREIGN KEY (VehicleCode) REFERENCES Vehicles(VehicleCode) ON DELETE CASCADE
+);
+
+CREATE TABLE Contracts (
+    ContractCode VARCHAR(50) PRIMARY KEY,
+    Status VARCHAR(50) DEFAULT 'active',
+    CretionDate DATE,
+    File TEXT NULL,
+    CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    EndDate DATE
+);
+
+CREATE TABLE ContractServices (
+    ContractCode VARCHAR(50) NOT NULL,
+    ServiceId VARCHAR(50) NOT NULL,
+    ApplyDate DATE,
+    EndDate DATE,
+    PRIMARY KEY (ContractCode, ServiceId),
+    FOREIGN KEY (ContractCode) REFERENCES Contracts(ContractCode) ON DELETE CASCADE,
+    FOREIGN KEY (ServiceId) REFERENCES Services(ServiceCode) ON DELETE CASCADE
+);
+
+CREATE TABLE ContractAppendixs (
+    ContractAppendixId INT AUTO_INCREMENT PRIMARY KEY,
+    Status VARCHAR(50) DEFAULT 'active',
+    CretionDate DATE,
+    ContractCode VARCHAR(50),
+    FOREIGN KEY (ContractCode) REFERENCES Contracts(ContractCode) ON DELETE CASCADE
 );
 

@@ -134,13 +134,13 @@
          </a>
       </div>
       
-      <a href="resident_interaction.php">
+      <!-- <a href="resident_interaction.php">
          <i class="fas fa-users"></i> Tương tác cư dân
-      </a>
+      </a> -->
       
-      <a href="service_requests.php">
+      <!-- <a href="service_requests.php">
          <i class="fas fa-hand-paper"></i> Yêu cầu dịch vụ
-      </a>
+      </a> -->
       
       <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
          <i class="fas fa-concierge-bell"></i> Dịch vụ - phương tiện
@@ -189,9 +189,9 @@
          </a>
       </div>
       
-      <a href="system_config.php">
+      <!-- <a href="system_config.php">
          <i class="fas fa-cogs"></i> Config hệ thống
-      </a>
+      </a> -->
    </div>
 
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

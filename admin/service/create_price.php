@@ -86,8 +86,8 @@ if (isset($_POST['submit'])) {
             
             $_SESSION['success_msg'] = 'Đã thêm bảng giá thành công!';
             header('location: price_list.php');
-            exit();
-        } catch (Exception $e) {
+        exit();
+    } catch (Exception $e) {
             $error = 'Đã xảy ra lỗi: ' . $e->getMessage();
         }
     }
@@ -249,7 +249,7 @@ if (isset($_POST['submit'])) {
             content: " (*)";
             color: red;
         }
-        
+
         .add-row-btn {
             background: transparent;
             border: none;
@@ -322,8 +322,8 @@ if (isset($_POST['submit'])) {
 
                 <div class="card">
                     <form action="" method="post" id="priceForm">
-                        <div class="row">
-                            <div class="col-md-6">
+                    <div class="row">
+                        <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="code" class="form-label required">Mã bảng giá</label>
                                     <input type="text" id="code" name="code" class="form-control" required>
@@ -337,7 +337,7 @@ if (isset($_POST['submit'])) {
                                         while ($service = mysqli_fetch_assoc($select_services)) {
                                             echo '<option value="' . $service['ServiceCode'] . '">' . 
                                                 htmlspecialchars($service['Name']) . 
-                                                '</option>';
+                                                 '</option>';
                                         }
                                         ?>
                                     </select>
@@ -352,10 +352,10 @@ if (isset($_POST['submit'])) {
                                         <option value="Nhân khẩu">Nhân khẩu</option>
                                         <option value="Định mức">Định mức</option>
                                     </select>
-                                </div>
                             </div>
-                            
-                            <div class="col-md-6">
+                        </div>
+
+                        <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="name" class="form-label required">Tên bảng giá</label>
                                     <input type="text" id="name" name="name" class="form-control" required>
@@ -370,23 +370,23 @@ if (isset($_POST['submit'])) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                                </div>
                         
                         <!-- Container cho các trường dữ liệu đặc biệt dựa vào loại bảng giá -->
                         <div id="fixed-price-container" class="mt-3 hidden">
                             <div class="row">
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                <div class="form-group">
                                         <label for="calculation_method" class="form-label required">Mức giá</label>
                                         <select id="calculation_method" name="calculation_method" class="form-select">
                                             <option value="">--Nhập giá tiền--</option>
                                             <option value="floor">Giá sàn</option>
                                             <option value="normal">Giá thường</option>
-                                        </select>
-                                    </div>
+                                    </select>
+                                </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <div class="form-group">
+                                <div class="form-group">
                                         <label for="fixed_price" class="form-label required">Giá tiền</label>
                                         <input type="number" id="fixed_price" name="fixed_price" class="form-control" min="0">
                                     </div>
@@ -409,14 +409,14 @@ if (isset($_POST['submit'])) {
                             
                             <div class="d-flex justify-content-center">
                                 <button type="button" id="add-row-btn" class="btn-submit w-100">THÊM MỚI</button>
-                            </div>
                         </div>
-                        
+                    </div>
+
                         <div class="btn-container mt-4">
-                            <button type="submit" name="submit" class="btn-submit">Thêm mới</button>
+                        <button type="submit" name="submit" class="btn-submit">Thêm mới</button>
                             <a href="price_list.php" class="btn-cancel">Hủy</a>
-                        </div>
-                    </form>
+                    </div>
+                </form>
                 </div>
             </div>
         </div>

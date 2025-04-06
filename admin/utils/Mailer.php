@@ -18,7 +18,7 @@ class Mailer {
         $this->mail->Host = 'smtp.gmail.com';
         $this->mail->SMTPAuth = true;
         $this->mail->Username = 'dungli1221@gmail.com'; // Thay bằng email thực tế
-        $this->mail->Password = 'dungli1221'; // Thay bằng app password từ Google
+        $this->mail->Password = 'tlqxcbaaeyfgfsul'; // Thay bằng app password từ Google
         $this->mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $this->mail->Port = 587;
         $this->mail->CharSet = 'UTF-8';

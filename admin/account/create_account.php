@@ -253,7 +253,7 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
         .btn-cancel:hover {
             background-color: #c82333;
         }
-        
+
         .manage-container {
             background:rgb(243, 239, 239) !important;
             width: 100%;
@@ -267,19 +267,19 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
         <?php include '../admin_navbar.php'; ?>
         <div style="width: 100%;">
             <?php include '../admin_header.php'; ?>
-            <div class="manage-container">
-                <?php
+        <div class="manage-container">
+            <?php
                 if (isset($message)) {
-                    foreach ($message as $msg) {
-                        echo '
+                foreach ($message as $msg) {
+                    echo '
                         <div class="alert alert-info alert-dismissible fade show" role="alert">
-                            <span style="font-size: 16px;">' . $msg . '</span>
-                            <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
-                        </div>';
-                    }
+                        <span style="font-size: 16px;">' . $msg . '</span>
+                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                    </div>';
                 }
-                ?>
-                
+            }
+            ?>
+            
                 <h2 class="form-title">THÊM MỚI NGƯỜI DÙNG</h2>
                 
                 <div class="create-form">
@@ -319,20 +319,20 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
                                 <div class="form-group">
                                     <label class="form-label">CCCD/CMT/Hộ chiếu:</label>
                                     <input type="text" name="id_card" class="form-control" placeholder="CCCD/CMT/Hộ chiếu">
-                                </div>
-                            </div>
-                            
+                </div>
+            </div>
+            
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="form-label">Họ và tên <span class="required">*</span>:</label>
                                     <input type="text" name="fullname" class="form-control" placeholder="Nhập tên nhân viên" required>
-                                </div>
+                </div>
                                 
                                 <div class="form-group">
                                     <label class="form-label">SĐT <span class="required">*</span>:</label>
                                     <input type="tel" name="phone" class="form-control" placeholder="Số điện thoại" required>
-                                </div>
-                                
+            </div>
+            
                                 <div class="form-group">
                                     <label class="form-label">Bộ phận:</label>
                                     <select name="department" class="form-select">
@@ -385,7 +385,7 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
                         <div class="btn-container">
                             <button type="submit" name="submit" class="btn-submit">Thêm mới</button>
                             <a href="acount.php" class="btn-cancel">Hủy bỏ</a>
-                        </div>
+                </div>
                     </form>
                 </div>
             </div>

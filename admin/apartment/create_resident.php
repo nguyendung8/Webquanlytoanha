@@ -36,13 +36,29 @@ if(isset($_GET['get_floors'])) {
 
 // Xử lý AJAX load căn hộ theo tầng
 if(isset($_GET['get_apartments'])) {
-    $floor_id = $_GET['floor_id'];
-    $apartments = mysqli_query($conn, "SELECT ApartmentID, Name FROM apartment WHERE FloorId = '$floor_id'");
-    $apartment_list = array();
-    while($apartment = mysqli_fetch_assoc($apartments)) {
-        $apartment_list[] = $apartment;
+    header('Content-Type: application/json');
+    
+    try {
+        $building_id = mysqli_real_escape_string($conn, $_GET['building_id']);
+        $apartments = mysqli_query($conn, "
+            SELECT ApartmentID, Name, Code, Area 
+            FROM apartment 
+            WHERE BuildingId = '$building_id' 
+            AND Status != 'Trống'
+        ");
+        
+        if (!$apartments) {
+            throw new Exception(mysqli_error($conn));
+        }
+        
+        $apartment_list = array();
+        while($apartment = mysqli_fetch_assoc($apartments)) {
+            $apartment_list[] = $apartment;
+        }
+        echo json_encode($apartment_list);
+    } catch (Exception $e) {
+        echo json_encode(['error' => $e->getMessage()]);
     }
-    echo json_encode($apartment_list);
     exit();
 }
 
@@ -79,10 +95,11 @@ if(isset($_POST['submit'])) {
             VALUES ('$name', '$email', '$phone', '$hashed_password', '$resident_id')
         ") or throw new Exception('Không thể thêm user: ' . mysqli_error($conn));
 
-        // 3. Thêm thông tin căn hộ
+        // 3. Thêm thông tin căn hộ (nếu có)
         if (!empty($apartment_ids)) {
             foreach($apartment_ids as $index => $apartment_id) {
-                if(!empty($apartment_id)) {
+                // Chỉ thêm nếu có đầy đủ thông tin căn hộ và quan hệ
+                if(!empty($apartment_id) && !empty($relationships[$index])) {
                     $relationship = mysqli_real_escape_string($conn, $relationships[$index]);
                     $insert_resident_apartment = mysqli_query($conn, "
                         INSERT INTO ResidentApartment (ResidentId, ApartmentId, Relationship)
@@ -97,7 +114,6 @@ if(isset($_POST['submit'])) {
         $emailSent = $mailer->sendNewAccountEmail($name, $email, $default_password);
 
         if (!$emailSent) {
-            // Log lỗi nhưng không rollback transaction
             error_log("Failed to send email to user: $email");
             $_SESSION['warning_msg'] = 'Thêm cư dân thành công nhưng không gửi được email!';
         } else {
@@ -211,7 +227,7 @@ if(isset($_POST['submit'])) {
         <div style="width: 100%;">
             <?php include '../admin_header.php'; ?>
             <div class="manage-container">
-                <div class="page-header">
+                 <div class="page-header">
                     <h2>THÊM MỚI CƯ DÂN</h2>
                     <div class="breadcrumb">
                         <a href="dashboard.php">Trang chủ</a>
@@ -249,8 +265,8 @@ if(isset($_POST['submit'])) {
                                         <div class="form-check form-check-inline">
                                             <input class="form-check-input" type="radio" name="gender" value="Khác">
                                             <label class="form-check-label">Khác</label>
-                                        </div>
-                                    </div>
+                                </div>
+                            </div>
                                 </div>
                             </div>
                             <div class="col-md-6"></div>
@@ -285,22 +301,22 @@ if(isset($_POST['submit'])) {
                                 <tr>
                                     <td>1</td>
                                     <td>
-                                        <select name="building_id[]" class="form-select building-select" required>
+                                        <select name="building_id[]" class="form-select building-select">
                                             <option value="">Chọn tòa nhà</option>
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="floor_id[]" class="form-select floor-select" required>
+                                        <select name="floor_id[]" class="form-select floor-select">
                                             <option value="">Chọn tầng</option>
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="apartment_id[]" class="form-select apartment-select" required>
+                                        <select name="apartment_id[]" class="form-select apartment-select">
                                             <option value="">Chọn căn hộ</option>
                                         </select>
                                     </td>
                                     <td>
-                                        <select name="relationship[]" class="form-select" required>
+                                        <select name="relationship[]" class="form-select">
                                             <option value="">Chọn quan hệ</option>
                                             <option value="Khách thuê">Khách thuê</option>
                                             <option value="Vợ/Chồng">Vợ/Chồng</option>
@@ -346,7 +362,7 @@ if(isset($_POST['submit'])) {
                     const buildingSelects = document.querySelectorAll('.building-select');
                     buildingSelects.forEach(select => {
                         select.innerHTML = '<option value="">Chọn tòa nhà</option>';
-                        data.forEach(building => {
+                    data.forEach(building => {
                             select.innerHTML += `<option value="${building.ID}">${building.Name}</option>`;
                         });
                     });
@@ -361,13 +377,13 @@ if(isset($_POST['submit'])) {
                 const floorSelect = row.querySelector('.floor-select');
                 
                 fetch(`create_resident.php?get_floors=1&building_id=${buildingId}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        floorSelect.innerHTML = '<option value="">Chọn tầng</option>';
-                        data.forEach(floor => {
-                            floorSelect.innerHTML += `<option value="${floor.ID}">${floor.Name}</option>`;
-                        });
+                .then(response => response.json())
+                .then(data => {
+                    floorSelect.innerHTML = '<option value="">Chọn tầng</option>';
+                    data.forEach(floor => {
+                        floorSelect.innerHTML += `<option value="${floor.ID}">${floor.Name}</option>`;
                     });
+                });
             }
         });
 
@@ -378,7 +394,7 @@ if(isset($_POST['submit'])) {
                 const row = e.target.closest('tr');
                 const apartmentSelect = row.querySelector('.apartment-select');
                 
-                fetch(`create_resident.php?get_apartments=1&floor_id=${floorId}`)
+                fetch(`create_resident.php?get_apartments=1&building_id=${floorId}`)
                     .then(response => response.json())
                     .then(data => {
                         apartmentSelect.innerHTML = '<option value="">Chọn căn hộ</option>';
@@ -398,27 +414,29 @@ if(isset($_POST['submit'])) {
             newRow.innerHTML = `
                 <td>${rowCount}</td>
                 <td>
-                    <select name="building_id[]" class="form-select building-select" required>
+                    <select name="building_id[]" class="form-select building-select">
                         <option value="">Chọn tòa nhà</option>
                     </select>
                 </td>
                 <td>
-                    <select name="floor_id[]" class="form-select floor-select" required>
+                    <select name="floor_id[]" class="form-select floor-select">
                         <option value="">Chọn tầng</option>
                     </select>
                 </td>
                 <td>
-                    <select name="apartment_id[]" class="form-select apartment-select" required>
+                    <select name="apartment_id[]" class="form-select apartment-select">
                         <option value="">Chọn căn hộ</option>
                     </select>
                 </td>
                 <td>
-                    <select name="relationship[]" class="form-select" required>
+                    <select name="relationship[]" class="form-select">
                         <option value="">Chọn quan hệ</option>
-                        <option value="Chủ hộ">Chủ hộ</option>
+                        <option value="Chủ sở hữu">Chủ sở hữu</option>
+                        <option value="Khách thuê">Khách thuê</option>
                         <option value="Vợ/Chồng">Vợ/Chồng</option>
                         <option value="Con">Con</option>
-                        <option value="Người thuê">Người thuê</option>
+                        <option value="Bố mẹ">Bố mẹ</option>
+                        <option value="Anh chị em">Anh chị em</option>
                     </select>
                 </td>
                 <td>

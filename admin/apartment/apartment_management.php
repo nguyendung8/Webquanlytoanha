@@ -234,7 +234,7 @@ $select_apartments = mysqli_query($conn, "
                             <select name="status" class="form-select">
                                 <option value="">Trạng thái</option>
                                 <option value="Đang ở" <?php echo ($status_filter == 'Đang ở') ? 'selected' : ''; ?>>Đang ở</option>
-                                <option value="Đang chờ" <?php echo ($status_filter == 'Đang chờ') ? 'selected' : ''; ?>>Đang chờ</option>
+                                <option value="Đang chờ nhận" <?php echo ($status_filter == 'Đang chờ nhận') ? 'selected' : ''; ?>>Đang chờ nhận</option>
                                 <option value="Đang sửa chữa" <?php echo ($status_filter == 'Đang sửa chữa') ? 'selected' : ''; ?>>Đang sửa chữa</option>
                                 <option value="Trống" <?php echo ($status_filter == 'Trống') ? 'selected' : ''; ?>>Trống</option>
                                 <option value="Tạm vắng" <?php echo ($status_filter == 'Tạm vắng') ? 'selected' : ''; ?>>Tạm vắng</option>
@@ -287,7 +287,7 @@ $select_apartments = mysqli_query($conn, "
                                     <span class="status-badge <?php 
                                         switch($apartment['Status']){
                                             case 'Đang ở': echo 'status-occupied'; break;
-                                            case 'Đang chờ': echo 'status-pending'; break;
+                                            case 'Đang chờ nhận': echo 'status-pending'; break;
                                             case 'Đang sửa chữa': echo 'status-renovating'; break;
                                             case 'Trống': echo 'status-empty'; break;
                                             case 'Tạm vắng': echo 'status-away'; break;
