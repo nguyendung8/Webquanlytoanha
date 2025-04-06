@@ -189,7 +189,7 @@ if(isset($_POST['submit'])) {
         // Thêm hợp đồng mới
         $insert_contract = mysqli_query($conn, "
             INSERT INTO Contracts (ContractCode, Status, CretionDate, EndDate) 
-            VALUES ('$contract_code', 'active', '$apply_date', '$end_date')
+            VALUES ('$contract_code', 'pending', '$apply_date', '$end_date')
         ") or throw new Exception('Không thể thêm hợp đồng: ' . mysqli_error($conn));
         
         // Thêm mối quan hệ chủ hộ vào bảng ResidentApartment

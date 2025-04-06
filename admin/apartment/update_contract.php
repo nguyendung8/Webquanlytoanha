@@ -306,6 +306,22 @@ foreach($contract_services as $contract_service) {
         .file-upload .fas {
             margin-right: 5px;
         }
+
+        .btn-outline-primary {
+            padding: 6px 12px;
+            border-color: #476a52;
+            color: #476a52;
+        }
+
+        .btn-outline-primary:hover {
+            background-color: #476a52;
+            border-color: #476a52;
+            color: white;
+        }
+
+        .gap-2 {
+            gap: 0.5rem !important;
+        }
     </style>
 </head>
 <body>
@@ -450,7 +466,14 @@ foreach($contract_services as $contract_service) {
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label class="form-label">File hợp đồng</label>
-                                    <input type="file" name="contract_file" class="form-control" accept=".pdf,.doc,.docx">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <a href="/webquanlytoanha/export_contract.php?contract_code=<?php echo $contract_data['ContractCode']; ?>" 
+                                           download
+                                           class="btn btn-outline-primary">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                        <input type="file" name="contract_file" class="form-control" accept=".pdf,.doc,.docx">
+                                    </div>
                                     <?php if (!empty($contract_data['File'])): ?>
                                         <div class="mt-2">
                                             <a href="/webquanlytoanha/admin/uploads/contracts/<?php echo $contract_data['File']; ?>" 
