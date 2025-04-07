@@ -1,3 +1,88 @@
+<?php
+if (!isset($_SESSION['admin_id'])) {
+    header('Location: /webquanlytoanha/admin/login.php');
+    exit();
+}
+
+$user_role = $_SESSION['admin_role'];
+
+// Hiển thị menu dựa trên role
+function showMenuByRole($role) {
+    switch($role) {
+        case 'Quản trị hệ thống':
+            // Hiển thị tất cả menu
+            return [
+                'dashboard' => true,
+                'account' => true,
+                'data_info' => true,
+                'apartment' => true,
+                'service' => true,
+                'payment' => true,
+                'resident_interaction' => true,
+                'service_request' => true,
+                'report' => true
+            ];
+            
+        case 'Cư dân':
+            // Chỉ hiển thị các menu cho Cư dân
+            return [
+                'dashboard' => true,
+                'apartment' => true,
+                'service_request' => true
+            ];
+            
+        case 'Trưởng BQL':
+        case 'Phó BQL':
+            return [
+                'dashboard' => true,
+                'data_info' => true,
+                'apartment' => true,
+                'service' => true,
+                'payment' => true,
+                'resident_interaction' => true,
+                'service_request' => true,
+                'report' => true
+            ];
+            
+        case 'Kế toán HO':
+            return [
+                'dashboard' => true,
+                'apartment' => true,
+                'service' => true,
+                'payment' => true,
+                'service_request' => true
+            ];
+            
+        case 'Kế toán ban':
+            return [
+                'dashboard' => true,
+                'apartment' => true,
+                'service' => true,
+                'payment' => true,
+                'service_request' => true
+            ];
+            
+        case 'Lễ tân':
+            return [
+                'dashboard' => true,
+                'apartment' => true,
+                'service' => true,
+                'service_request' => true
+            ];
+            
+        case 'Nhân viên kỹ thuật':
+            return [
+                'dashboard' => true,
+                'payment' => ['utility_reading' => true]
+            ];
+            
+        default:
+            return ['dashboard' => true];
+    }
+}
+
+$allowed_menus = showMenuByRole($user_role);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -10,7 +95,7 @@
    <style>
       .sidebar {
          position: relative;
-         min-width: 250px;
+         min-width: 276px;
          min-height: 100vh;
          background-color: white;
          color: #333;
@@ -114,59 +199,22 @@
          <img width="130px" src="/webquanlytoanha/assets/logo.png" alt="LOGO">
       </div>
 
+      <!-- Trang chủ -->
+      <?php if (isset($allowed_menus['dashboard'])): ?>
       <a href="/webquanlytoanha/admin/dashboard.php">
          <i class="fas fa-th-large"></i> Trang chủ
       </a>
-      
-      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
-         <i class="fas fa-building"></i> Căn hộ - cư dân
-         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
-      </a>
-      <div class="submenu">
-         <a href="/webquanlytoanha/admin/apartment/apartment_management.php">
-            <i class="fas fa-home"></i> Quản lý căn hộ
-         </a>
-         <a href="/webquanlytoanha/admin/apartment/contract_management.php">
-            <i class="fas fa-file-contract"></i> Quản lý hợp đồng
-         </a>
-         <a href="/webquanlytoanha/admin/apartment/resident_management.php">
-            <i class="fas fa-users"></i> Quản lý cư dân
-         </a>
-      </div>
-      
-      <!-- <a href="resident_interaction.php">
-         <i class="fas fa-users"></i> Tương tác cư dân
-      </a> -->
-      
-      <!-- <a href="service_requests.php">
-         <i class="fas fa-hand-paper"></i> Yêu cầu dịch vụ
-      </a> -->
-      
-      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
-         <i class="fas fa-concierge-bell"></i> Dịch vụ - phương tiện
-         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
-      </a>
-      <div class="submenu">
-         <a href="/webquanlytoanha/admin/service/service_list.php">
-            <i class="fas fa-concierge-bell"></i> Dịch vụ tòa nhà
-         </a>
-         <a href="/webquanlytoanha/admin/service/vehicle_list.php">
-            <i class="fas fa-car"></i> Quản lý phương tiện
-         </a>
-      </div>
-      
-      <a href="payment_management.php">
-         <i class="fas fa-dollar-sign"></i> Quản lý thu phí
-      </a>
-      
-      <a href="reports.php">
-         <i class="fas fa-chart-line"></i> Báo cáo
-      </a>
-      
+      <?php endif; ?>
+
+      <!-- Tài khoản phân quyền -->
+      <?php if (isset($allowed_menus['account'])): ?>
       <a href="/webquanlytoanha/admin/account/acount.php">
          <i class="fas fa-user-shield"></i> Tài khoản phân quyền
       </a>
-      
+      <?php endif; ?>
+
+      <!-- Thông tin dữ liệu -->
+      <?php if (isset($allowed_menus['data_info'])): ?>
       <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
          <i class="fas fa-database"></i> Thông tin dữ liệu
          <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
@@ -188,10 +236,130 @@
             <i class="fas fa-users"></i> Nhân viên công ty
          </a>
       </div>
+      <?php endif; ?>
+
+      <!-- Căn hộ - cư dân -->
+      <?php if (isset($allowed_menus['apartment'])): ?>
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
+         <i class="fas fa-building"></i> Căn hộ - cư dân
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
+      </a>
+      <div class="submenu">
+         <a href="/webquanlytoanha/admin/apartment/apartment_management.php">
+            <i class="fas fa-home"></i> Quản lý căn hộ
+         </a>
+         <a href="/webquanlytoanha/admin/apartment/resident_management.php">
+            <i class="fas fa-users"></i> Quản lý cư dân
+         </a>
+         <a href="/webquanlytoanha/admin/apartment/contract_management.php">
+            <i class="fas fa-file-contract"></i> Quản lý hợp đồng
+         </a>
+      </div>
+      <?php endif; ?>
+
+      <?php if (isset($allowed_menus['resident_interaction'])): ?>
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
+         <i class="fas fa-comments"></i> Tương tác cư dân
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
+      </a>
+      <div class="submenu">
+         <a href="/webquanlytoanha/admin/resident_interaction/notifications.php">
+            <i class="fas fa-bell"></i> Thông báo cư dân
+         </a>
+         <a href="/webquanlytoanha/admin/resident_interaction/handbook.php">
+            <i class="fas fa-book"></i> Cẩm nang tòa nhà
+         </a>
+      </div>
+      <?php endif; ?>
       
-      <!-- <a href="system_config.php">
-         <i class="fas fa-cogs"></i> Config hệ thống
-      </a> -->
+      <?php if (isset($allowed_menus['service_request'])): ?>
+      <a href="#">
+         <i class="fas fa-hand-paper"></i> Yêu cầu dịch vụ
+      </a>
+      <?php endif; ?>
+      
+      <?php if (isset($allowed_menus['service'])): ?>
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
+         <i class="fas fa-concierge-bell"></i> Dịch vụ - phương tiện
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
+      </a>
+      <div class="submenu">
+         <a href="/webquanlytoanha/admin/service/service_list.php">
+            <i class="fas fa-concierge-bell"></i> Dịch vụ tòa nhà
+         </a>
+         <a href="/webquanlytoanha/admin/service/vehicle_list.php">
+            <i class="fas fa-car"></i> Quản lý phương tiện
+         </a>
+      </div>
+      <?php endif; ?>
+      
+      <?php if (isset($allowed_menus['payment'])): ?>
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
+         <i class="fas fa-dollar-sign"></i> Quản lý thu phí
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
+      </a>
+      <div class="submenu">
+         <?php if (isset($allowed_menus['payment']['utility_reading'])): ?>
+         <a href="/webquanlytoanha/admin/payment/utility_reading.php">
+            <i class="fas fa-tachometer-alt"></i> Chỉ số điện nước
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['bill_approval'])): ?>
+         <a href="/webquanlytoanha/admin/payment/bill_approval.php">
+            <i class="fas fa-file-alt"></i> Duyệt bảng kê
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['bill_list'])): ?>
+         <a href="/webquanlytoanha/admin/payment/bill_list.php">
+            <i class="fas fa-list-alt"></i> Danh sách bảng kê
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['payment_receipt'])): ?>
+         <a href="/webquanlytoanha/admin/payment/payment_receipt.php">
+            <i class="fas fa-receipt"></i> Quản lý phiếu thu/chi
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['transaction'])): ?>
+         <a href="/webquanlytoanha/admin/payment/transaction_accounting.php">
+            <i class="fas fa-calculator"></i> Hạch toán giao dịch
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['debt'])): ?>
+         <a href="/webquanlytoanha/admin/payment/debt_management.php">
+            <i class="fas fa-coins"></i> Quản lý tiền thừa
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['payment']['report'])): ?>
+         <a href="/webquanlytoanha/admin/payment/payment_reports.php">
+            <i class="fas fa-chart-bar"></i> Báo cáo
+         </a>
+         <?php endif; ?>
+      </div>
+      <?php endif; ?>
+      
+      <?php if (isset($allowed_menus['report'])): ?>
+      <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
+         <i class="fas fa-chart-bar"></i> Báo cáo
+         <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
+      </a>
+      <div class="submenu">
+         <?php if (isset($allowed_menus['report']['summary'])): ?>
+         <a href="/webquanlytoanha/admin/reports/summary_report.php">
+            <i class="fas fa-file-alt"></i> Báo cáo tổng hợp
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['report']['vehicle_movement'])): ?>
+         <a href="/webquanlytoanha/admin/reports/vehicle_movement_report.php">
+            <i class="fas fa-car"></i> Báo cáo di chuyển phương tiện
+         </a>
+         <?php endif; ?>
+         <?php if (isset($allowed_menus['report']['allocation'])): ?>
+         <a href="/webquanlytoanha/admin/reports/allocation_report.php">
+            <i class="fas fa-chart-pie"></i> Báo cáo phân bổ
+         </a>
+         <?php endif; ?>
+      </div>
+      <?php endif; ?>
    </div>
 
    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -260,6 +428,12 @@
                link.classList.add('active');
             }
          });
+      });
+
+      document.addEventListener('DOMContentLoaded', function() {
+         console.log('Current role:', '<?php echo $_SESSION["admin_role"]; ?>');
+         // Log ra các menu permissions để debug
+         console.log('Menu permissions:', <?php echo json_encode($allowed_menus); ?>);
       });
    </script>
 </body>

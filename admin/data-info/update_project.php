@@ -431,7 +431,7 @@ if (isset($_POST['edit_payment'])) {
                     <a href="/webquanlytoanha/admin/data-info/projects.php">Danh mục dự án</a>
                     <span style="margin: 0 8px;">›</span>
                         <span>Cập nhật dự án</span>
-                    </div>
+                </div>
             </div>
             
             <div class="create-form">
@@ -476,28 +476,28 @@ if (isset($_POST['edit_payment'])) {
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Mã ban vận hành <span class="required">*</span></label>
                                         <input type="text" name="operation_id" class="form-control" placeholder="Mã ban vận hành" value="<?php echo $project['OperationId']; ?>" required>
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Tên dự án <span class="required">*</span></label>
                                         <input type="text" name="project_name" class="form-control" placeholder="Tên dự án" value="<?php echo $project['Name']; ?>" required>
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Mô tả</label>
                                         <textarea name="description" class="form-control" placeholder="Mô tả dự án"><?php echo $project['Description']; ?></textarea>
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <label class="form-label">Địa chỉ <span class="required">*</span></label>
                                         <input type="text" name="address" class="form-control" placeholder="Địa chỉ dự án" value="<?php echo $project['Address']; ?>" required>
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -508,7 +508,7 @@ if (isset($_POST['edit_payment'])) {
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Email dự án <span class="required">*</span></label>
                                         <input type="email" name="email" class="form-control" placeholder="Email" value="<?php echo $project['Email']; ?>" required>
-                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">

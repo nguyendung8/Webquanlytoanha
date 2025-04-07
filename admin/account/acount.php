@@ -286,7 +286,7 @@ if (isset($_GET['un_block'])) {
         <?php include '../admin_navbar.php'; ?>
         <div style="width: 100%;">
             <?php include '../admin_header.php'; ?>
-            <div class="manage-container">
+        <div class="manage-container">
             <?php
             //nhúng vào các trang bán hàng
             if (isset($message)) { // hiển thị thông báo sau khi thao tác với biến message được gán giá trị
@@ -331,18 +331,18 @@ if (isset($_GET['un_block'])) {
             
             <!-- Users Table -->
             <table class="account-table">
-                <thead>
-                    <tr>
+                        <thead>
+                            <tr>
                         <th>MÃ NHÂN VIÊN</th>
                         <th>HỌ TÊN</th>
                         <th>SĐT</th>
                         <th>EMAIL</th>
                         <th>CHỨC VỤ</th>
                         <th>THAO TÁC</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
                     // Pagination setup
                     $records_per_page = 10;
                     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
@@ -371,7 +371,7 @@ if (isset($_GET['un_block'])) {
                     if (mysqli_num_rows($select_staff) > 0) {
                         while ($staff = mysqli_fetch_assoc($select_staff)) {
                             ?>
-                            <tr>
+                                    <tr>
                                 <td><?php echo $staff['ID']; ?></td>
                                 <td><?php echo $staff['Name']; ?></td>
                                 <td><?php echo $staff['PhoneNumber']; ?></td>
@@ -381,17 +381,17 @@ if (isset($_GET['un_block'])) {
                                     <div class="d-flex">
                                         <a href="update_account.php?id=<?php echo $staff['ID']; ?>" class="action-icon"><i class="far fa-edit"></i></a>
                                         <a href="acount.php?delete=<?php echo $staff['ID']; ?>" class="action-icon" onclick="return confirm('Bạn có chắc chắn muốn xóa người dùng này?');"><i class="far fa-trash-alt"></i></a>
-                                    </div>
-                                </td>
-                            </tr>
+                                            </div>
+                                        </td>
+                                    </tr>
                             <?php
-                        }
-                    } else {
+                                }
+                            } else {
                         echo '<tr><td colspan="7" class="text-center">Không có dữ liệu nhân viên</td></tr>';
-                    }
-                    ?>
-                </tbody>
-            </table>
+                            }
+                            ?>
+                        </tbody>
+                    </table>
             
             <!-- Pagination -->
             <div class="pagination">
