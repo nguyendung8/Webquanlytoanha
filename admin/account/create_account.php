@@ -1,5 +1,6 @@
 <?php
 include '../../database/DBController.php';
+require_once '../utils/Mailer.php';
 
 session_start();
 
@@ -22,8 +23,8 @@ if (isset($_POST['submit'])) {
     $address = mysqli_real_escape_string($conn, $_POST['address']);
     $projects = isset($_POST['projects']) ? $_POST['projects'] : [];
     
-    // Mật khẩu mặc định - sử dụng md5 để mã hóa
-    $default_password = isset($_POST['password']) ? $_POST['password'] : '123456';
+    // Mật khẩu mặc định là 123456
+    $default_password = '123456';
     $password = md5($default_password);
     
     // Kiểm tra email đã tồn tại chưa
@@ -46,6 +47,12 @@ if (isset($_POST['submit'])) {
             
             $staff_id = mysqli_insert_id($conn);
 
+            // Thêm vào bảng users
+            $insert_user = mysqli_query($conn, "
+                INSERT INTO users (UserName, Email, PhoneNumber, Position, DepartmentId, Password) 
+                VALUES ('$fullname', '$email', '$phone', '$position', '$department', '$password')
+            ") or throw new Exception('Không thể thêm user: ' . mysqli_error($conn));
+
             // Thêm các dự án được chọn
             if (!empty($projects)) {
                 foreach ($projects as $project_id) {
@@ -56,10 +63,19 @@ if (isset($_POST['submit'])) {
                 }
             }
 
+            // Gửi email thông tin tài khoản
+            $mailer = new Mailer();
+            $emailSent = $mailer->sendNewAccountEmail($fullname, $email, $default_password);
+
             mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
             mysqli_commit($conn);
             
-            $message[] = 'Thêm nhân viên thành công!';
+            if (!$emailSent) {
+                $_SESSION['warning_msg'] = 'Thêm tài khoản thành công nhưng không gửi được email!';
+            } else {
+                $_SESSION['success_msg'] = 'Thêm tài khoản và gửi email thành công!';
+            }
+            
             header('location: acount.php');
             exit();
             
@@ -294,12 +310,6 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
                                 <div class="form-group">
                                     <label class="form-label">Email <span class="required">*</span>:</label>
                                     <input type="email" name="email" class="form-control" placeholder="Email" required>
-                                </div>
-                                
-                                <div class="form-group">
-                                    <label class="form-label">Mật khẩu <span class="required">*</span>:</label>
-                                    <input type="password" name="password" class="form-control" placeholder="Mật khẩu" value="123456" required>
-                                    <small class="text-muted" style="margin-left: 165px;">Mặc định: 123456</small>
                                 </div>
                                 
                                 <div class="form-group">

@@ -10,21 +10,56 @@ if (!isset($admin_id)) {
     exit();
 }
 
-// Xóa tài khoản người dùng
+// Thêm xử lý xóa account
 if (isset($_GET['delete'])) {
-    $delete_id = $_GET['delete'];
-
-        // Xóa tài khoản người dùng
-        $delete_query = mysqli_query($conn, "DELETE FROM `users` WHERE UserID = '$delete_id'") or die('Query failed');
-
-        if ($delete_query) {
-            $message[] = 'Xóa tài khoản người dùng thành công!';
+    $staff_id = mysqli_real_escape_string($conn, $_GET['delete']);
+    
+    mysqli_begin_transaction($conn);
+    try {
+        // Tắt kiểm tra khóa ngoại tạm thời
+        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
+        
+        // 1. Lấy UserId từ bảng users dựa trên thông tin staff
+        $user_query = mysqli_query($conn, "
+            SELECT u.UserId 
+            FROM users u 
+            INNER JOIN staffs s ON (s.Name = u.UserName OR s.PhoneNumber = u.PhoneNumber)
+            WHERE s.ID = '$staff_id'
+        ") or throw new Exception('Không thể tìm thấy user tương ứng: ' . mysqli_error($conn));
+        
+        if ($user = mysqli_fetch_assoc($user_query)) {
+            $user_id = $user['UserId'];
+            
+            // 2. Xóa từ bảng StaffProjects
+            mysqli_query($conn, "DELETE FROM StaffProjects WHERE StaffId = '$staff_id'") 
+                or throw new Exception('Không thể xóa dự án của nhân viên: ' . mysqli_error($conn));
+            
+            // 3. Xóa từ bảng users
+            mysqli_query($conn, "DELETE FROM users WHERE UserId = '$user_id'") 
+                or throw new Exception('Không thể xóa tài khoản user: ' . mysqli_error($conn));
+            
+            // 4. Xóa từ bảng Staffs
+            mysqli_query($conn, "DELETE FROM Staffs WHERE ID = '$staff_id'") 
+                or throw new Exception('Không thể xóa nhân viên: ' . mysqli_error($conn));
         } else {
-            $message[] = 'Xóa tài khoản người dùng thất bại!';
+            throw new Exception('Không tìm thấy tài khoản user tương ứng với nhân viên này');
         }
 
-    header('location:acount.php');
-    exit();
+        // Bật lại kiểm tra khóa ngoại
+        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
+        
+        mysqli_commit($conn);
+        $_SESSION['success_msg'] = 'Xóa tài khoản thành công!';
+        header('location: acount.php');
+        exit();
+        
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 1");
+        $_SESSION['error_msg'] = 'Lỗi: ' . $e->getMessage();
+        header('location: acount.php');
+        exit();
+    }
 }
 
 // Khóa tài khoản người dùng
@@ -67,7 +102,6 @@ if (isset($_GET['un_block'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <link rel="stylesheet" href="css/admin_style.css">
     <style>
         body {
             background-color: #f5f5f5;
@@ -346,7 +380,7 @@ if (isset($_GET['un_block'])) {
                                 <td>
                                     <div class="d-flex">
                                         <a href="update_account.php?id=<?php echo $staff['ID']; ?>" class="action-icon"><i class="far fa-edit"></i></a>
-                                        <a href="acount.php?delete=<?php echo $staff['ID']; ?>" class="action-icon" onclick="return confirm('Bạn có chắc chắn muốn xóa nhân viên này?');"><i class="far fa-trash-alt"></i></a>
+                                        <a href="acount.php?delete=<?php echo $staff['ID']; ?>" class="action-icon" onclick="return confirm('Bạn có chắc chắn muốn xóa người dùng này?');"><i class="far fa-trash-alt"></i></a>
                                     </div>
                                 </td>
                             </tr>

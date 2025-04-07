@@ -15,13 +15,21 @@ if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submi
         $user = mysqli_fetch_assoc($result);
         $_SESSION['admin_name'] = $user['UserName'];
         $_SESSION['admin_email'] = $user['Email'];
-        $_SESSION['admin_id'] = @$user['UserId'];
+        $_SESSION['admin_id'] = $user['UserId'];
+        
+        // Kiểm tra role dựa vào ResidentID
+        if ($user['ResidentID'] !== NULL) {
+            $_SESSION['admin_role'] = 'Cư dân'; // Nếu có ResidentID thì là cư dân
+        } else {
+            $_SESSION['admin_role'] = $user['Position']; // Nếu không thì lấy theo Position
+        }
+        
         header('Location: admin/account/acount.php'); // Chuyển đến trang quản trị
         exit();
-        } else {
-            $message = 'Tên tài khoản hoặc mật khẩu không chính xác!';
-        }
+    } else {
+        $message = 'Tên tài khoản hoặc mật khẩu không chính xác!';
     }
+}
 ?>
 <!DOCTYPE html>
 <html>
