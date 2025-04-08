@@ -299,41 +299,27 @@ $allowed_menus = showMenuByRole($user_role);
          <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
       </a>
       <div class="submenu">
-         <?php if (isset($allowed_menus['payment']['utility_reading'])): ?>
-         <a href="/webquanlytoanha/admin/payment/utility_reading.php">
+         <a href="/webquanlytoanha/admin/payment/electric_reading.php">
             <i class="fas fa-tachometer-alt"></i> Chỉ số điện nước
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['bill_approval'])): ?>
-         <a href="/webquanlytoanha/admin/payment/bill_approval.php">
-            <i class="fas fa-file-alt"></i> Duyệt bảng kê
-         </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['bill_list'])): ?>
          <a href="/webquanlytoanha/admin/payment/bill_list.php">
             <i class="fas fa-list-alt"></i> Danh sách bảng kê
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['payment_receipt'])): ?>
+         <a href="/webquanlytoanha/admin/payment/bill_approval.php">
+            <i class="fas fa-file-alt"></i> Duyệt bảng kê
+         </a>
          <a href="/webquanlytoanha/admin/payment/payment_receipt.php">
             <i class="fas fa-receipt"></i> Quản lý phiếu thu/chi
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['transaction'])): ?>
          <a href="/webquanlytoanha/admin/payment/transaction_accounting.php">
             <i class="fas fa-calculator"></i> Hạch toán giao dịch
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['debt'])): ?>
          <a href="/webquanlytoanha/admin/payment/debt_management.php">
             <i class="fas fa-coins"></i> Quản lý tiền thừa
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['payment']['report'])): ?>
          <a href="/webquanlytoanha/admin/payment/payment_reports.php">
             <i class="fas fa-chart-bar"></i> Báo cáo
          </a>
-         <?php endif; ?>
       </div>
       <?php endif; ?>
       
@@ -390,14 +376,14 @@ $allowed_menus = showMenuByRole($user_role);
          link.addEventListener('click', function(e) {
             // Không bao gồm các link submenu toggle
             if (!this.classList.contains('has-submenu')) {
-               // Xóa class 'active' khỏi tất cả các link
-               sidebarLinks.forEach(item => item.classList.remove('active'));
+            // Xóa class 'active' khỏi tất cả các link
+            sidebarLinks.forEach(item => item.classList.remove('active'));
 
-               // Thêm class 'active' vào link được click
-               this.classList.add('active');
+            // Thêm class 'active' vào link được click
+            this.classList.add('active');
 
-               // Lưu trang hiện tại vào localStorage
-               localStorage.setItem('activePage', this.getAttribute('href'));
+            // Lưu trang hiện tại vào localStorage
+            localStorage.setItem('activePage', this.getAttribute('href'));
             }
          });
       });

@@ -2,6 +2,10 @@
 include 'database/DBController.php';
 session_start();
 
+if (isset($_SESSION['admin_id'])) {
+    header('Location: admin/account/acount.php'); // Chuyển đến trang quản trị
+}
+
 if (isset($_POST['submit'])) { // Xử lý khi người dùng nhấn nút "submit"
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, md5($_POST['password'])); // Mã hóa mật khẩu bằng md5

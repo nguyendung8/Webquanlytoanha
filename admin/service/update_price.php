@@ -325,13 +325,13 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                 <form action="" method="POST">
                     <div class="form-container">
                         <h2 class="form-title">THÔNG TIN BẢNG GIÁ</h2>
-                        
-                        <?php if(isset($error)): ?>
+
+                <?php if(isset($error)): ?>
                         <div class="alert alert-danger" role="alert">
-                            <?php echo $error; ?>
-                        </div>
-                        <?php endif; ?>
-                        
+                    <?php echo $error; ?>
+                </div>
+                <?php endif; ?>
+
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Mã bảng giá<span class="required-mark">*</span></label>
@@ -340,9 +340,9 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                             <div class="col-md-6">
                                 <label class="form-label">Tên bảng giá<span class="required-mark">*</span></label>
                                 <input type="text" name="name" class="form-control" required value="<?php echo htmlspecialchars($price['Name']); ?>">
-                            </div>
-                        </div>
-                        
+                                </div>
+                                </div>
+                                
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Dịch vụ<span class="required-mark">*</span></label>
@@ -353,14 +353,14 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                                         <?php echo htmlspecialchars($service['Name']); ?>
                                     </option>
                                     <?php endwhile; ?>
-                                </select>
-                            </div>
+                                    </select>
+                                </div>
                             <div class="col-md-6">
                                 <label class="form-label">Ngày áp dụng<span class="required-mark">*</span></label>
                                 <input type="date" name="apply_date" class="form-control" required value="<?php echo $price['ApplyDate']; ?>">
                             </div>
-                        </div>
-                        
+                            </div>
+                            
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label class="form-label">Loại bảng giá<span class="required-mark">*</span></label>
@@ -384,7 +384,7 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                                         <option value="Đơn giá (m2)" <?php echo $price['CalculationMethod'] == 'Đơn giá (m2)' ? 'selected' : ''; ?>>Đơn giá (m2)</option>
                                         <option value="Định mức (phòng)" <?php echo $price['CalculationMethod'] == 'Định mức (phòng)' ? 'selected' : ''; ?>>Định mức (phòng)</option>
                                         <option value="Định mức (HK)" <?php echo $price['CalculationMethod'] == 'Định mức (HK)' ? 'selected' : ''; ?>>Định mức (HK)</option>
-                                    </select>
+                                        </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Giá<span class="required-mark">*</span></label>
@@ -418,7 +418,7 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                                     <div class="price-row-remove">
                                         <button type="button" class="btn-remove-row" onclick="removeRow(this)">
                                             <i class="fas fa-times-circle"></i>
-                                        </button>
+                                    </button>
                                     </div>
                                     <?php endif; ?>
                                 </div>
@@ -436,8 +436,8 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                             <a href="price_list.php" class="btn btn-cancel me-2">Hủy</a>
                             <button type="submit" name="submit" class="btn btn-submit">Cập nhật</button>
                         </div>
-                    </div>
-                </form>
+                        </div>
+                    </form>
             </div>
         </div>
     </div>
@@ -493,8 +493,8 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                         <i class="fas fa-times-circle"></i>
                     </button>
                 </div>
-            </div>
-        `;
+                </div>
+            `;
         $('#variable_rows_container').append(newRow);
     }
     

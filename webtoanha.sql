@@ -26,8 +26,25 @@ CREATE TABLE `debtstatements` (
   `RemainingBalance` int(11) DEFAULT NULL,
   `IssueDate` date DEFAULT NULL,
   `Status` varchar(50) DEFAULT NULL,
-  `ResidentID` int(11) DEFAULT NULL
+  `StaffID` int(11) DEFAULT NULL,
+  `ApartmentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+
+CREATE TABLE `debtstatementdetail` (
+    `InvoiceCode` varchar(50) NOT NULL,
+    `ServiceCode` varchar(50) NOT NULL,
+    `Quantity` int(11) DEFAULT 0,
+    `UnitPrice` int(11) DEFAULT 0,
+    `Discount` int(11) DEFAULT 0,
+    `PaidAmount` int(11) DEFAULT 0,
+    `RemainingBalance` int(11) DEFAULT 0,
+    `IssueDate` date,
+    PRIMARY KEY (`InvoiceCode`, `ServiceCode`),
+    FOREIGN KEY (`InvoiceCode`) REFERENCES `debtstatements`(`InvoiceCode`) ON DELETE CASCADE,
+    FOREIGN KEY (`ServiceCode`) REFERENCES `services`(`ServiceCode`) ON DELETE CASCADE
+);
+
 
 
 
@@ -283,4 +300,32 @@ CREATE TABLE ContractAppendixs (
     ContractCode VARCHAR(50),
     FOREIGN KEY (ContractCode) REFERENCES Contracts(ContractCode) ON DELETE CASCADE
 );
+
+CREATE TABLE `WaterMeterReading` (
+  `WaterMeterID` int(11) NOT NULL AUTO_INCREMENT,
+  `InitialReading` float DEFAULT NULL,
+  `FinalReading` float DEFAULT NULL,
+  `Image` varchar(255) DEFAULT NULL,
+  `ClosingDate` date DEFAULT NULL,
+  `Consumption` float DEFAULT NULL,
+  `ApartmentID` int(11) NOT NULL,
+  `StaffID` int(11) NOT NULL,
+  PRIMARY KEY (`WaterMeterID`),
+  FOREIGN KEY (`ApartmentID`) REFERENCES `apartment`(`ApartmentID`) ON DELETE CASCADE,
+  FOREIGN KEY (`StaffID`) REFERENCES `staffs`(`ID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+CREATE TABLE `ElectricityMeterReading` (
+  `ElectricityMeterID` int(11) NOT NULL AUTO_INCREMENT,
+  `InitialReading` float DEFAULT NULL,
+  `FinalReading` float DEFAULT NULL,
+  `Image` varchar(255) DEFAULT NULL,
+  `ClosingDate` date DEFAULT NULL,
+  `Consumption` float DEFAULT NULL,
+  `ApartmentID` int(11) NOT NULL,
+  `StaffID` int(11) NOT NULL,
+  PRIMARY KEY (`ElectricityMeterID`),
+  FOREIGN KEY (`ApartmentID`) REFERENCES `apartment`(`ApartmentID`) ON DELETE CASCADE,
+  FOREIGN KEY (`StaffID`) REFERENCES `staffs`(`ID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 

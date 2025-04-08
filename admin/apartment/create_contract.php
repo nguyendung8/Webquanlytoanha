@@ -69,17 +69,17 @@ if(isset($_GET['get_buildings'])) {
     
     try {
         $project_id = mysqli_real_escape_string($conn, $_GET['project_id']);
-        $buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE ProjectId = '$project_id' AND Status = 'active'");
+    $buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE ProjectId = '$project_id' AND Status = 'active'");
         
         if (!$buildings) {
             throw new Exception(mysqli_error($conn));
         }
         
-        $building_list = array();
-        while($building = mysqli_fetch_assoc($buildings)) {
-            $building_list[] = $building;
-        }
-        echo json_encode($building_list);
+    $building_list = array();
+    while($building = mysqli_fetch_assoc($buildings)) {
+        $building_list[] = $building;
+    }
+    echo json_encode($building_list);
     } catch (Exception $e) {
         echo json_encode(['error' => $e->getMessage()]);
     }
@@ -184,8 +184,8 @@ if(isset($_POST['submit'])) {
     $service_apply_dates = isset($_POST['service_apply_date']) ? $_POST['service_apply_date'] : [];
     $service_end_dates = isset($_POST['service_end_date']) ? $_POST['service_end_date'] : [];
     
-    mysqli_begin_transaction($conn);
-    try {
+        mysqli_begin_transaction($conn);
+        try {
         // Thêm hợp đồng mới
         $insert_contract = mysqli_query($conn, "
             INSERT INTO Contracts (ContractCode, Status, CretionDate, EndDate) 
@@ -219,13 +219,13 @@ if(isset($_POST['submit'])) {
                 ") or throw new Exception('Không thể thêm dịch vụ cho hợp đồng: ' . mysqli_error($conn));
             }
         }
-        
-        mysqli_commit($conn);
+
+            mysqli_commit($conn);
         $_SESSION['success_msg'] = 'Thêm hợp đồng thành công!';
         header('location: contract_management.php');
-        exit();
-    } catch (Exception $e) {
-        mysqli_rollback($conn);
+            exit();
+        } catch (Exception $e) {
+            mysqli_rollback($conn);
         $_SESSION['error_msg'] = 'Lỗi: ' . $e->getMessage();
     }
 }
@@ -299,7 +299,7 @@ $new_contract_code = generateContractCode($conn);
         .service-checkbox {
             margin-right: 10px;
         }
-        
+
         .page-header {
             background-color: #f5f5f5;
             padding: 15px 20px;
@@ -339,7 +339,7 @@ $new_contract_code = generateContractCode($conn);
             <?php include '../admin_header.php'; ?>
             <div class="manage-container">
                 <!-- Breadcrumb -->
-                <div class="page-header">
+                 <div class="page-header">
                     <h2>THÊM MỚI HỢP ĐỒNG</h2>
                     <div class="breadcrumb">
                         <a href="dashboard.php">Trang chủ</a>
@@ -416,7 +416,7 @@ $new_contract_code = generateContractCode($conn);
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -448,7 +448,7 @@ $new_contract_code = generateContractCode($conn);
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
@@ -484,7 +484,7 @@ $new_contract_code = generateContractCode($conn);
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="form-group">
                             <label class="form-label">Diện tích</label>
                             <input type="text" id="area" class="form-control" readonly>
@@ -570,13 +570,13 @@ $new_contract_code = generateContractCode($conn);
                 
             // Lấy danh sách tòa nhà
             const buildings = await fetchWithErrorHandling(`create_contract.php?get_buildings=1&project_id=${projectId}`);
-            const buildingSelect = document.getElementById('building_id');
-            buildingSelect.innerHTML = '<option value="">Chọn tòa nhà</option>';
+                    const buildingSelect = document.getElementById('building_id');
+                    buildingSelect.innerHTML = '<option value="">Chọn tòa nhà</option>';
             
             if (buildings && buildings.length > 0) {
                 buildings.forEach(building => {
-                    buildingSelect.innerHTML += `<option value="${building.ID}">${building.Name}</option>`;
-                });
+                        buildingSelect.innerHTML += `<option value="${building.ID}">${building.Name}</option>`;
+                    });
             }
                 
             // Lấy danh sách dịch vụ
