@@ -92,6 +92,173 @@ if(isset($_POST['delete_bill'])) {
     }
 }
 
+// Xử lý gửi email thông báo
+if(isset($_POST['send_notification'])) {
+    $invoice_code = mysqli_real_escape_string($conn, $_POST['invoice_code']);
+    
+    // Lấy thông tin bảng kê
+    $invoice_query = mysqli_query($conn, "
+        SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID,
+               b.Name as BuildingName
+        FROM debtstatements d
+        LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+        LEFT JOIN Buildings b ON a.BuildingId = b.ID
+        WHERE d.InvoiceCode = '$invoice_code'
+    ");
+    
+    if(mysqli_num_rows($invoice_query) > 0) {
+        $invoice = mysqli_fetch_assoc($invoice_query);
+        $apartment_id = $invoice['ApartmentID'];
+        
+        // Lấy thông tin chi tiết bảng kê
+        $details_query = mysqli_query($conn, "
+            SELECT d.*, s.Name as ServiceName, s.TypeOfService
+            FROM debtstatementdetail d
+            LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
+            WHERE d.InvoiceCode = '$invoice_code'
+        ");
+        
+        $details = [];
+        while($detail = mysqli_fetch_assoc($details_query)) {
+            $details[] = $detail;
+        }
+        
+        // Lấy thông tin chủ hộ và email
+        $resident_query = mysqli_query($conn, "
+            SELECT r.*, u.Email, u.UserName
+            FROM resident r
+            JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+            LEFT JOIN users u ON r.ID = u.ResidentID
+            WHERE ra.ApartmentId = '$apartment_id'
+            AND ra.Relationship = 'Chủ hộ'
+            LIMIT 1
+        ");
+        
+        // Nếu không tìm thấy chủ hộ, lấy bất kỳ cư dân nào của căn hộ
+        if(mysqli_num_rows($resident_query) == 0) {
+            $resident_query = mysqli_query($conn, "
+                SELECT r.*, u.Email, u.UserName
+                FROM resident r
+                JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+                LEFT JOIN users u ON r.ID = u.ResidentID
+                WHERE ra.ApartmentId = '$apartment_id'
+                LIMIT 1
+            ");
+        }
+        
+        if(mysqli_num_rows($resident_query) > 0) {
+            $resident = mysqli_fetch_assoc($resident_query);
+            
+            if(!empty($resident['Email'])) {
+                // Tạo nội dung email thông báo
+                $apartment_code = $invoice['ApartmentCode'];
+                $building_name = $invoice['BuildingName'];
+                $period = $invoice['InvoicePeriod'];
+                $due_date = date('d - m - Y', strtotime($invoice['DueDate']));
+                $total_amount = number_format($invoice['Total']);
+                
+                // Tạo bảng chi tiết dịch vụ
+                $service_details = '';
+                foreach($details as $detail) {
+                    $service_amount = $detail['Quantity'] * $detail['UnitPrice'] - $detail['Discount'];
+                    $service_details .= '<tr>
+                        <td>'.$detail['ServiceName'].'</td>
+                        <td style="text-align: right;">'.$detail['Quantity'].'</td>
+                        <td style="text-align: right;">'.number_format($detail['UnitPrice']).' VNĐ</td>
+                        <td style="text-align: right;">'.number_format($service_amount).' VNĐ</td>
+                    </tr>';
+                }
+                
+                // Nội dung email
+                $email_content = '
+                <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6;">
+                    <h1 style="text-align: center; color: #333;">THÔNG BÁO NHẮC THU PHÍ DỊCH VỤ</h1>
+                    
+                    <p style="font-size: 16px; margin-bottom: 20px;">Kính gửi căn hộ <strong>'.$apartment_code.'</strong> thuộc tòa nhà <strong>'.$building_name.'</strong>.</p>
+                    
+                    <p style="font-size: 16px; margin-bottom: 20px;">Ban quản lý tòa nhà xin thông báo đến quý cư dân về việc thu phí dịch vụ kỳ tháng <strong>'.$period.'</strong> của căn hộ <strong>'.$apartment_code.'</strong>.</p>
+                    
+                    <ul style="font-size: 16px; margin-bottom: 20px;">
+                        <li><strong>Hạn đóng phí dịch vụ: '.$due_date.'</strong></li>
+                        <li><strong>Số tiền cần thanh toán: '.$total_amount.' VNĐ</strong></li>
+                    </ul>
+                    
+                    <div style="font-size: 16px; margin-bottom: 20px;">
+                        <p><strong>Chi tiết phí dịch vụ:</strong></p>
+                        <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+                            <tr style="background-color: #f2f2f2;">
+                                <th style="text-align: left;">Dịch vụ</th>
+                                <th style="text-align: right;">Số lượng</th>
+                                <th style="text-align: right;">Đơn giá</th>
+                                <th style="text-align: right;">Thành tiền</th>
+                            </tr>
+                            '.$service_details.'
+                            <tr style="font-weight: bold; background-color: #f9f9f9;">
+                                <td colspan="3" style="text-align: right;">Tổng cộng:</td>
+                                <td style="text-align: right;">'.number_format($invoice['Total']).' VNĐ</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <p style="font-size: 16px; margin-bottom: 20px;">Xin quý cư dân vui lòng thanh toán đầy đủ và đúng hạn để đảm bảo quyền lợi và sự thuận tiện trong quá trình sinh hoạt. Quý khách hàng có thể thực hiện thanh toán qua 2 hình thức:</p>
+                    
+                    <p style="font-size: 16px; margin-bottom: 10px;"><strong>+ Tiền mặt: Thanh toán trực tiếp với Ban quản lý.</strong></p>
+                    
+                    <p style="font-size: 16px; margin-bottom: 10px;"><strong>+ Thanh toán qua ngân hàng điện tử:</strong></p>
+                    <ul style="font-size: 16px; margin-bottom: 20px;">
+                        <li><strong>Ngân hàng:</strong> Ngân hàng Quân đội MB bank</li>
+                        <li><strong>Số tài khoản:</strong> 09879990000</li>
+                        <li><strong>Đơn vị thụ hưởng:</strong> BQL tòa nhà Buildmate</li>
+                    </ul>
+                    
+                    <p style="font-size: 16px; margin-bottom: 20px;">Nếu có bất kỳ thắc mắc hoặc cần hỗ trợ, quý cư dân vui lòng liên hệ với Ban Quản lý qua:</p>
+                    <p style="font-size: 16px; margin-bottom: 20px;">Số điện thoại 0384125722 hoặc email <a href="mailto:Buildmate@gmail.com">Buildmate@gmail.com</a>.</p>
+                    
+                    <div style="font-size: 16px; margin-bottom: 20px;">
+                        <p><strong>Lưu ý:</strong></p>
+                        <ul>
+                            <li>Quý cư dân vui lòng thanh toán đúng hạn để tránh bị phạt chậm trả hoặc ngắt dịch vụ.</li>
+                            <li>Sau thời hạn thanh toán, Ban quản lý sẽ liên hệ trực tiếp với các căn hộ chưa đóng phí để nhắc nhở và hỗ trợ.</li>
+                            <li>Trường hợp quý cư dân có khó khăn về tài chính, vui lòng liên hệ với Ban quản lý để được hỗ trợ.</li>
+                            <li>Nếu sau 30 ngày kể từ ngày hết hạn thanh toán mà quý cư dân vẫn chưa đóng phí, Ban quản lý sẽ buộc phải ngắt một số dịch vụ tiện ích như điện, nước, wifi, v.v... cho đến khi quý cư dân thanh toán đầy đủ.</li>
+                        </ul>
+                    </div>
+                    
+                    <p style="font-size: 16px; margin-bottom: 20px;">Trân trọng cảm ơn!</p>
+                    
+                    <p style="font-size: 16px; font-weight: bold;">Ban Quản Lý Tòa nhà Buildmate.</p>
+                </div>';
+                
+                // Import class Mailer để gửi email
+                include '../utils/Mailer.php';
+                
+                // Gửi email
+                $mailer = new Mailer();
+                $email_subject = "Thông báo nhắc thu phí dịch vụ - Căn hộ " . $apartment_code;
+                
+                $emailSent = $mailer->sendInvoiceEmail($resident['Email'], $resident['UserName'] ?? $resident['Name'], $email_subject, $email_content);
+                
+                if($emailSent) {
+                    $success_msg[] = 'Đã gửi email thông báo thành công cho ' . ($resident['UserName'] ?? $resident['Name']) . ' (' . $resident['Email'] . ')';
+                } else {
+                    $error_msg[] = 'Không gửi được email thông báo!';
+                }
+            } else {
+                $error_msg[] = 'Không tìm thấy email chủ hộ!';
+            }
+        } else {
+            $error_msg[] = 'Không tìm thấy thông tin chủ hộ!';
+        }
+    } else {
+        $error_msg[] = 'Không tìm thấy bảng kê!';
+    }
+    
+    // Giữ lại các tham số tìm kiếm hiện tại
+    $current_url = $_SERVER['REQUEST_URI'];
+    header("Location: $current_url");
+    exit();
+}
+
 if(isset($success_msg)){
     foreach($success_msg as $msg){
         echo '<div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -348,12 +515,9 @@ if(isset($error_msg)){
                                 <th>KỲ BẢNG KÊ</th>
                                 <th>CĂN HỘ</th>
                                 <th>HẠN TT</th>
-                                <th>NỢ</th>
-                                <th>GIẢM GIÁ</th>
                                 <th>TỔNG TIỀN</th>
                                 <th>ĐÃ THANH TOÁN</th>
                                 <th>CÒN NỢ</th>
-                                <th>NGÀY LẬP</th>
                                 <th>NGÀY DUYỆT</th>
                                 <th>TRẠNG THÁI</th>
                                 <th>THAO TÁC</th>
@@ -371,12 +535,9 @@ if(isset($error_msg)){
                                 <td><?php echo $bill['InvoicePeriod']; ?></td>
                                 <td><?php echo $bill['ApartmentName']; ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($bill['DueDate'])); ?></td>
-                                <td><?php echo number_format($bill['OutstandingDebt']); ?></td>
-                                <td><?php echo number_format($bill['Discount']); ?></td>
                                 <td><?php echo number_format($bill['Total']); ?></td>
                                 <td><?php echo number_format($bill['PaidAmount']); ?></td>
                                 <td><?php echo number_format($bill['RemainingBalance']); ?></td>
-                                <td><?php echo date('d/m/Y', strtotime($bill['IssueDate'])); ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($bill['ApprovalDate'])); ?></td>
                                 <td>
                                     <span class="bill-status <?php 
@@ -402,6 +563,18 @@ if(isset($error_msg)){
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </form>
+                                    <!-- Thêm nút gửi thông báo -->
+                                     <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
+                                        <button type="submit" name="send_notification" 
+                                                class="btn btn-sm btn-warning" 
+                                                onclick="return confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')"
+                                                title="Gửi thông báo">
+                                            <i class="fas fa-bell"></i>
+                                        </button>
+                                    </form>
+                                    <?php } ?>
                                 </td>
                             </tr>
                             <?php
@@ -448,5 +621,43 @@ if(isset($error_msg)){
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    // Xử lý sự kiện gửi thông báo qua email
+    $(document).on('click', '.send-notification', function() {
+        const invoiceCode = $(this).data('invoice-code');
+        const button = $(this);
+        
+        // Hiển thị hộp thoại xác nhận
+        if (confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')) {
+            button.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+            
+            // Gọi AJAX để gửi thông báo
+            $.ajax({
+                url: window.location.href,
+                method: 'POST',
+                data: {
+                    send_notification: true,
+                    invoice_code: invoiceCode
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        // Hiển thị thông báo thành công
+                        alert(response.message);
+                        button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
+                    } else {
+                        // Hiển thị thông báo lỗi
+                        alert(response.message);
+                        button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    alert('Đã xảy ra lỗi khi gửi thông báo!');
+                    button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>

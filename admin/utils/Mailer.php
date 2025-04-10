@@ -60,4 +60,19 @@ class Mailer {
         📞 Liên hệ hỗ trợ: {$this->projectPhone}</p>
         ";
     }
+
+    // Thêm hàm gửi email thông báo bảng kê
+    public function sendInvoiceEmail($email, $name, $subject, $content) {
+        try {
+            $this->mail->clearAddresses(); // Xóa các địa chỉ trước đó
+            $this->mail->addAddress($email, $name);
+            $this->mail->isHTML(true);
+            $this->mail->Subject = $subject;
+            $this->mail->Body = $content;
+            
+            return $this->mail->send();
+        } catch (Exception $e) {
+            return false;
+        }
+    }
 }

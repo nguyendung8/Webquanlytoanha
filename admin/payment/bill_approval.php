@@ -1,5 +1,6 @@
 <?php
 include '../../database/DBController.php';
+require_once '../utils/Mailer.php';
 
 session_start();
 
@@ -83,15 +84,153 @@ if(isset($_POST['approve_bill'])) {
                     AND Status = 'Chờ xác nhận'";
     
     if(mysqli_query($conn, $update_query)) {
-        $_SESSION['success_msg'] = 'Duyệt bảng kê thành công!';
+        // Lấy thông tin bảng kê để gửi email
+        $invoice_query = mysqli_query($conn, "
+            SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID
+            FROM debtstatements d
+            LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+            WHERE d.InvoiceCode = '$invoice_code'
+        ");
+        
+        if(mysqli_num_rows($invoice_query) > 0) {
+            $invoice = mysqli_fetch_assoc($invoice_query);
+            $apartment_id = $invoice['ApartmentID'];
+            
+            // Lấy thông tin chi tiết bảng kê
+            $details_query = mysqli_query($conn, "
+                SELECT d.*, s.Name as ServiceName, s.TypeOfService
+                FROM debtstatementdetail d
+                LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
+                WHERE d.InvoiceCode = '$invoice_code'
+            ");
+            
+            $details = [];
+            while($detail = mysqli_fetch_assoc($details_query)) {
+                $details[] = $detail;
+            }
+            
+            // Lấy thông tin chủ hộ và email
+            $resident_query = mysqli_query($conn, "
+                SELECT r.*, u.Email, u.UserName
+                FROM resident r
+                JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+                LEFT JOIN users u ON r.ID = u.ResidentID
+                WHERE ra.ApartmentId = '$apartment_id'
+                AND ra.Relationship = 'Chủ hộ'
+                LIMIT 1
+            ");
+            
+            // Nếu không tìm thấy chủ hộ, lấy bất kỳ cư dân nào của căn hộ
+            if(mysqli_num_rows($resident_query) == 0) {
+                $resident_query = mysqli_query($conn, "
+                    SELECT r.*, u.Email, u.UserName
+                    FROM resident r
+                    JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+                    LEFT JOIN users u ON r.ID = u.ResidentID
+                    WHERE ra.ApartmentId = '$apartment_id'
+                    LIMIT 1
+                ");
+            }
+            
+            if(mysqli_num_rows($resident_query) > 0) {
+                $resident = mysqli_fetch_assoc($resident_query);
+                
+                if(!empty($resident['Email'])) {
+                    // Tạo nội dung email
+                    $email_content = createInvoiceEmailContent($invoice, $details, $resident);
+                    
+                    // Gửi email
+                    $mailer = new Mailer();
+                    $email_subject = "Giấy báo phí tháng " . $invoice['InvoicePeriod'] . " - Căn hộ " . $invoice['ApartmentCode'];
+                    $emailSent = $mailer->sendInvoiceEmail($resident['Email'], $resident['UserName'] ?? $resident['Name'], $email_subject, $email_content);
+                    
+                    if($emailSent) {
+                        $success_msg[] = 'Duyệt bảng kê thành công và đã gửi email thông báo!';
+                    } else {
+                        $success_msg[] = 'Duyệt bảng kê thành công nhưng không gửi được email!';
+                    }
+                } else {
+                    $success_msg[] = 'Duyệt bảng kê thành công nhưng không tìm thấy email chủ hộ!';
+                }
+            } else {
+                $success_msg[] = 'Duyệt bảng kê thành công nhưng không tìm thấy thông tin chủ hộ!';
+            }
+        } else {
+            $success_msg[] = 'Duyệt bảng kê thành công!';
+        }
+        
         // Giữ lại các tham số tìm kiếm hiện tại
         $current_url = $_SERVER['REQUEST_URI'];
         header("Location: $current_url");
         exit();
     } else {
-        $_SESSION['error_msg'] = 'Có lỗi xảy ra khi duyệt bảng kê! ' . mysqli_error($conn);
+        $error_msg[] = 'Có lỗi xảy ra khi duyệt bảng kê! ' . mysqli_error($conn);
         header("Location: $current_url");
         exit();
+    }
+}
+
+// Xử lý AJAX lấy dữ liệu bảng kê
+if(isset($_POST['get_invoice_data']) && isset($_POST['invoice_code'])) {
+    $invoice_code = mysqli_real_escape_string($conn, $_POST['invoice_code']);
+    
+    // Lấy thông tin bảng kê
+    $invoice_query = mysqli_query($conn, "
+        SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName
+        FROM debtstatements d
+        LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+        WHERE d.InvoiceCode = '$invoice_code'
+    ");
+    
+    if(mysqli_num_rows($invoice_query) > 0) {
+        $invoice = mysqli_fetch_assoc($invoice_query);
+        
+        // Lấy thông tin căn hộ
+        $apartment_query = mysqli_query($conn, "
+            SELECT a.*, b.Name as BuildingName
+            FROM apartment a
+            LEFT JOIN Buildings b ON a.BuildingId = b.ID
+            WHERE a.ApartmentID = '{$invoice['ApartmentID']}'
+        ");
+        $apartment = mysqli_fetch_assoc($apartment_query);
+        
+        // Lấy thông tin cư dân
+        $resident_query = mysqli_query($conn, "
+            SELECT r.*
+            FROM resident r
+            JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+            WHERE ra.ApartmentId = '{$invoice['ApartmentID']}'
+            LIMIT 1
+        ");
+        $resident = mysqli_num_rows($resident_query) > 0 ? mysqli_fetch_assoc($resident_query) : null;
+        
+        // Lấy chi tiết bảng kê
+        $details_query = mysqli_query($conn, "
+            SELECT d.*, s.Name as ServiceName, s.TypeOfService
+            FROM debtstatementdetail d
+            LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
+            WHERE d.InvoiceCode = '$invoice_code'
+        ");
+        
+        $details = [];
+        while($detail = mysqli_fetch_assoc($details_query)) {
+            $details[] = $detail;
+        }
+        
+        // Trả về kết quả
+        header('Content-Type: application/json');
+        echo json_encode([
+            'success' => true,
+            'invoice' => $invoice,
+            'apartment' => $apartment,
+            'resident' => $resident,
+            'details' => $details
+        ]);
+        exit;
+    } else {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Không tìm thấy bảng kê']);
+        exit;
     }
 }
 
@@ -397,6 +536,11 @@ if(isset($_SESSION['error_msg'])) {
                                             <i class="fas fa-check"></i> Duyệt
                                         </button>
                                     </form>
+                                    
+                                    <button class="btn btn-sm btn-info view-invoice" title="Xem giấy báo phí" 
+                                            data-invoice-code="<?php echo $bill['InvoiceCode']; ?>">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </button>
                                 </td>
                             </tr>
                             <?php
@@ -446,40 +590,453 @@ if(isset($_SESSION['error_msg'])) {
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
     $(document).ready(function() {
-        $('.approve-bill').click(function() {
+        // Xử lý khi click vào nút xem giấy báo phí
+        $(document).on('click', '.view-invoice', function() {
             const invoiceCode = $(this).data('invoice-code');
-            const button = $(this);
             
-            if(confirm('Bạn có chắc chắn muốn duyệt bảng kê này?')) {
-                $.ajax({
-                    url: 'approve_bill.php',
-                    method: 'POST',
-                    data: {
-                        invoice_code: invoiceCode
-                    },
-                    success: function(response) {
-                        const data = JSON.parse(response);
-                        if(data.success) {
-                            // Cập nhật UI
-                            const row = button.closest('tr');
-                            row.find('td:nth-last-child(2) span').text('Chờ thanh toán')
-                                .removeClass('status-pending status-overdue')
-                                .addClass('status-pending');
-                            // Ẩn nút duyệt
-                            button.remove();
-                            // Hiển thị thông báo
-                            alert('Duyệt bảng kê thành công!');
+            // Gọi AJAX để lấy thông tin giấy báo phí
+            $.ajax({
+                url: window.location.href, // Gửi đến chính file hiện tại
+                method: 'POST',
+                data: { 
+                    get_invoice_data: true,
+                    invoice_code: invoiceCode 
+                },
+                dataType: 'json',
+                success: function(data) {
+                    if (data.success) {
+                        // Điền thông tin vào modal
+                        $('#invoiceTitle').text('GIẤY BÁO PHÍ THÁNG ' + data.invoice.InvoicePeriod);
+                        $('#invoiceNumber').text(data.invoice.InvoiceCode);
+                        $('#residentName').text(data.resident ? data.resident.Name : data.apartment.Name);
+                        $('#apartmentCode').text(data.apartment.Code);
+                        $('#invoiceTotal').text(formatCurrency(data.invoice.Total) + ' VNĐ');
+                        
+                        // Điền dữ liệu tổng hợp
+                        let summaryHtml = '';
+                        let totalAmount = 0;
+                        
+                        summaryHtml += `<tr>
+                            <td>1</td>
+                            <td>Phí quản lý</td>
+                            <td>${formatCurrency(data.invoice.OutstandingDebt)}</td>
+                            <td>${formatCurrency(data.invoice.Total - data.invoice.OutstandingDebt - data.invoice.Discount)}</td>
+                            <td>${formatCurrency(data.invoice.PaidAmount)}</td>
+                            <td>${formatCurrency(data.invoice.Total)}</td>
+                            <td></td>
+                        </tr>`;
+                        
+                        summaryHtml += `<tr>
+                            <td>2</td>
+                            <td>Tổng</td>
+                            <td>${formatCurrency(data.invoice.OutstandingDebt)}</td>
+                            <td>${formatCurrency(data.invoice.Total - data.invoice.OutstandingDebt - data.invoice.Discount)}</td>
+                            <td>${formatCurrency(data.invoice.PaidAmount)}</td>
+                            <td>${formatCurrency(data.invoice.Total)}</td>
+                            <td></td>
+                        </tr>`;
+                        
+                        $('#invoiceSummaryBody').html(summaryHtml);
+                        
+                        // Điền chi tiết dịch vụ
+                        let detailsHtml = '';
+                        
+                        if (data.details && data.details.length > 0) {
+                            data.details.forEach(function(service, index) {
+                                detailsHtml += `
+                                    <div class="service-detail mb-4">
+                                        <h6>${index + 1}/ ${service.ServiceName}</h6>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Tháng (Month)</th>
+                                                    <th>Diện tích (SQM) (1)</th>
+                                                    <th>Đơn giá (Unit price) (2)</th>
+                                                    <th>Thành tiền (Amount)(3)=(1)x(2)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Nợ trước/ Debt</td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td>${formatCurrency(0)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Tháng ${data.invoice.InvoicePeriod}</td>
+                                                    <td>${service.Quantity}</td>
+                                                    <td>${formatCurrency(service.UnitPrice)}</td>
+                                                    <td>${formatCurrency(service.Quantity * service.UnitPrice)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Giảm giá/ Discount</td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td>${formatCurrency(service.Discount)}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Thanh toán/ Paid</td>
+                                                    <td></td>
+                                                    <td></td>
+                                                    <td>${formatCurrency(service.PaidAmount)}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                `;
+                            });
                         } else {
-                            alert('Có lỗi xảy ra: ' + data.message);
+                            detailsHtml = '<p>Không có dữ liệu chi tiết</p>';
                         }
-                    },
-                    error: function() {
-                        alert('Có lỗi xảy ra khi xử lý yêu cầu!');
+                        
+                        $('#invoiceDetails').html(detailsHtml);
+                        
+                        // Cập nhật ngày hiện tại
+                        const today = new Date();
+                        $('#currentDate').text(today.getDate() + ' tháng ' + (today.getMonth() + 1) + ' năm ' + today.getFullYear());
+                        
+                        // Hiển thị modal
+                        $('#invoiceModal').modal('show');
+                    } else {
+                        alert('Không thể lấy thông tin giấy báo phí!');
                     }
-                });
-            }
+                },
+                error: function() {
+                    alert('Đã xảy ra lỗi khi lấy thông tin giấy báo phí!');
+                }
+            });
         });
+        
+        // Xử lý in giấy báo phí
+        $('#printInvoice').click(function() {
+            const content = document.getElementById('invoiceModalBody').innerHTML;
+            const printWindow = window.open('', '_blank');
+            
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>Giấy báo phí</title>
+                    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                    <style>
+                        body {
+                            font-size: 14px;
+                            padding: 20px;
+                        }
+                        @media print {
+                            body {
+                                width: 21cm;
+                                height: 29.7cm;
+                                margin: 0;
+                            }
+                        }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    ${content}
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+        });
+        
+        // Hàm format số tiền
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('vi-VN').format(amount);
+        }
     });
     </script>
+
+    <!-- Modal Giấy báo phí -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="invoiceModalLabel">Giấy báo phí</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="invoiceModalBody">
+                    <div class="invoice-content">
+                        <div class="row mb-3 text-center">
+                            <div class="col-4">
+                                <img src="/webquanlytoanha/assets/logo.png" alt="Logo" height="80">
+                            </div>
+                            <div class="col-8 text-start">
+                                <h5>VĂN PHÒNG BAN QUẢN LÝ BUILDMATE</h5>
+                                <p class="mb-0">12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội</p>
+                                <p class="mb-0">Hotline CSKH: 0978343328 - Hotline kỹ thuật: 0978343328 - Hotline bảo vệ: 0978343328</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4 mb-3 text-center">
+                            <div class="col-12">
+                                <h4 class="fw-bold" id="invoiceTitle">GIẤY BÁO PHÍ THÁNG</h4>
+                            </div>
+                        </div>
+                        
+                        <div class="row justify-content-between mb-3">
+                            <div class="col-6">
+                                <p class="mb-0"><strong>Kính gửi/Respectfully:</strong> <span id="residentName"></span></p>
+                                <p class="mb-0"><strong>Mã số căn hộ/Apartment code:</strong> <span id="apartmentCode"></span></p>
+                            </div>
+                            <div class="col-6 text-end">
+                                <p class="mb-0"><strong>Số:</strong> <span id="invoiceNumber"></span></p>
+                                <p class="mb-0"><strong>Tổng tiền thanh toán/Total:</strong> <span id="invoiceTotal"></span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive mb-3">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>STT</th>
+                                        <th>Diễn giải (Explanation)</th>
+                                        <th>Nợ trước (Prior debt)</th>
+                                        <th>Phát sinh trong tháng (Addition on a month)</th>
+                                        <th>Thanh toán (Paid)</th>
+                                        <th>Tổng (Total)</th>
+                                        <th>Ghi chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoiceSummaryBody">
+                                    <!-- Dữ liệu tổng hợp sẽ được điền vào đây -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5>THÔNG TIN CHI TIẾT/THE INFORMATION IN DETAIL</h5>
+                            <div id="invoiceDetails">
+                                <!-- Các chi tiết dịch vụ sẽ được điền vào đây -->
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>PHƯƠNG THỨC THANH TOÁN/PAYMENT METHODS</h5>
+                            <div class="mb-2">
+                                <strong>1/Thanh toán tiền mặt/ By cash:</strong>
+                                <p>Tại Văn phòng ban quản lý Buildmate</p>
+                            </div>
+                            
+                            <div>
+                                <strong>2/Thanh toán chuyển khoản/ ByTranfer to:</strong>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Chủ tài khoản (Name)</th>
+                                        <th>Số tài khoản (Account number)</th>
+                                        <th>Ngân hàng (Bank)</th>
+                                        <th></th>
+                                    </tr>
+                                    <tr>
+                                        <td>Trần Thị Kim Anh</td>
+                                        <td>0888738572</td>
+                                        <td>Ngân hàng Quân đội MB Bank</td>
+                                        <td>
+                                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0888738572" alt="QR Code" height="100">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4">
+                                            <p>Nội dung chuyển khoản: "Căn hộ - Loại phí - Diễn giải". Ví dụ: "B1002 - PQL, Nước, Xe - T4/19"</p>
+                                            <p>Details Of Payment: "Apartment\'s code - Charge code - Noted". EX:"B1002 - Management fee, Water, Parking fee - T4/19 "</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-8">
+                                <strong>Ghi chú/Note:</strong>
+                                <ul>
+                                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán. Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày./ The deadline for paying the debt fees is 45 days since incurring the expenses. Management Team will notify to reminder debt before 05 days. After that we will stop providing services for apartments owing fees over 45 days.</li>
+                                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này./ If you have already paid the fee, please ignore this notice.</li>
+                                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ./ In case of special reasons, citizens can not paid in time according to the Regulations, please notify the Management for assistance.</li>
+                                </ul>
+                            </div>
+                            <div class="col-4 text-center">
+                                <p>Hà Nội, Ngày <span id="currentDate"></span></p>
+                                <p><strong>Trưởng ban quản lý</strong></p>
+                                <div style="height: 80px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
+<?php
+function createInvoiceEmailContent($invoice, $details, $resident) {
+    $total_amount = number_format($invoice['Total']);
+    $today = date('d/m/Y');
+    
+    // Tạo bảng tổng hợp
+    $summary_table = '
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+        <thead>
+            <tr style="background-color: #f2f2f2;">
+                <th>STT</th>
+                <th>Diễn giải (Explanation)</th>
+                <th>Nợ trước (Prior debt)</th>
+                <th>Phát sinh trong tháng (Addition on a month)</th>
+                <th>Thanh toán (Paid)</th>
+                <th>Tổng (Total)</th>
+                <th>Ghi chú</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>1</td>
+                <td>Phí quản lý</td>
+                <td>'.number_format($invoice['OutstandingDebt']).'</td>
+                <td>'.number_format($invoice['Total'] - $invoice['OutstandingDebt'] - $invoice['Discount']).'</td>
+                <td>'.number_format($invoice['PaidAmount']).'</td>
+                <td>'.number_format($invoice['Total']).'</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Tổng</td>
+                <td>'.number_format($invoice['OutstandingDebt']).'</td>
+                <td>'.number_format($invoice['Total'] - $invoice['OutstandingDebt'] - $invoice['Discount']).'</td>
+                <td>'.number_format($invoice['PaidAmount']).'</td>
+                <td>'.number_format($invoice['Total']).'</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>';
+    
+    // Tạo chi tiết dịch vụ
+    $details_content = '';
+    foreach($details as $index => $service) {
+        $service_amount = $service['Quantity'] * $service['UnitPrice'];
+        
+        $details_content .= '
+        <div style="margin-bottom: 20px;">
+            <h4>'.($index+1).'/'.($service['ServiceName'] ?? 'Dịch vụ').'</h4>
+            <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                <thead>
+                    <tr style="background-color: #f2f2f2;">
+                        <th>Tháng (Month)</th>
+                        <th>Diện tích (SQM) (1)</th>
+                        <th>Đơn giá (Unit price) (2)</th>
+                        <th>Thành tiền (Amount)(3)=(1)x(2)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Nợ trước/ Debt</td>
+                        <td></td>
+                        <td></td>
+                        <td>0</td>
+                    </tr>
+                    <tr>
+                        <td>Tháng '.$invoice['InvoicePeriod'].'</td>
+                        <td>'.$service['Quantity'].'</td>
+                        <td>'.number_format($service['UnitPrice']).'</td>
+                        <td>'.number_format($service_amount).'</td>
+                    </tr>
+                    <tr>
+                        <td>Giảm giá/ Discount</td>
+                        <td></td>
+                        <td></td>
+                        <td>'.number_format($service['Discount']).'</td>
+                    </tr>
+                    <tr>
+                        <td>Thanh toán/ Paid</td>
+                        <td></td>
+                        <td></td>
+                        <td>'.number_format($service['PaidAmount']).'</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>';
+    }
+    
+    // Tạo nội dung email hoàn chỉnh
+    $content = '
+    <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2>VĂN PHÒNG BAN QUẢN LÝ BUILDMATE</h2>
+            <p>12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội</p>
+            <p>Hotline CSKH: 0978343328 - Hotline kỹ thuật: 0978343328 - Hotline bảo vệ: 0978343328</p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 20px;">
+            <h2>GIẤY BÁO PHÍ THÁNG '.$invoice['InvoicePeriod'].'</h2>
+        </div>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <div>
+                <p><strong>Kính gửi/Respectfully:</strong> '.($resident['Name'] ?? $invoice['ApartmentName']).'</p>
+                <p><strong>Mã số căn hộ/Apartment code:</strong> '.$invoice['ApartmentCode'].'</p>
+            </div>
+            <div style="text-align: right;">
+                <p><strong>Số:</strong> '.$invoice['InvoiceCode'].'</p>
+                <p><strong>Tổng tiền thanh toán/Total:</strong> '.number_format($invoice['Total']).' VNĐ</p>
+            </div>
+        </div>
+        
+        '.$summary_table.'
+        
+        <div style="margin-top: 20px;">
+            <h3>THÔNG TIN CHI TIẾT/THE INFORMATION IN DETAIL</h3>
+            '.$details_content.'
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <h3>PHƯƠNG THỨC THANH TOÁN/PAYMENT METHODS</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <strong>1/Thanh toán tiền mặt/ By cash:</strong>
+                <p>Tại Văn phòng ban quản lý Buildmate</p>
+            </div>
+            
+            <div>
+                <strong>2/Thanh toán chuyển khoản/ ByTranfer to:</strong>
+                <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+                    <tr style="background-color: #f2f2f2;">
+                        <th>Chủ tài khoản (Name)</th>
+                        <th>Số tài khoản (Account number)</th>
+                        <th>Ngân hàng (Bank)</th>
+                    </tr>
+                    <tr>
+                        <td>Trần Thị Kim Anh</td>
+                        <td>0888738572</td>
+                        <td>Ngân hàng Quân đội MB Bank</td>
+                    </tr>
+                    <tr>
+                        <td colspan="3">
+                            <p>Nội dung chuyển khoản: "Căn hộ - Loại phí - Diễn giải". Ví dụ: "B1002 - PQL, Nước, Xe - T4/19"</p>
+                            <p>Details Of Payment: "Apartment\'s code - Charge code - Noted". EX:"B1002 - Management fee, Water, Parking fee - T4/19 "</p>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex;">
+            <div style="width: 70%;">
+                <strong>Ghi chú/Note:</strong>
+                <ul>
+                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán.</li>
+                    <li>Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày.</li>
+                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này.</li>
+                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ.</li>
+                </ul>
+            </div>
+            <div style="width: 30%; text-align: center;">
+                <p>Hà Nội, Ngày '.$today.'</p>
+                <p><strong>Trưởng ban quản lý</strong></p>
+            </div>
+        </div>
+    </div>';
+    
+    return $content;
+}
+?>

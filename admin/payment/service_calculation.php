@@ -14,6 +14,9 @@ if (!isset($admin_id)) {
 $current_month = date('m');
 $current_year = date('Y');
 
+// Lấy danh sách dự án cho filter
+$select_projects = mysqli_query($conn, "SELECT ProjectID, Name FROM Projects WHERE Status = 'active'");
+
 // Xử lý khi có POST request để tính phí
 if (isset($_POST['calculate_fee'])) {
     $invoice_period_month = mysqli_real_escape_string($conn, $_POST['month']);
@@ -27,6 +30,10 @@ if (isset($_POST['calculate_fee'])) {
     $discounts = $_POST['discounts'] ?? [];
     $discount_reasons = $_POST['discount_reasons'] ?? [];
     
+    // Thêm điều kiện filter theo dự án
+    $project_filter = isset($_POST['project_filter']) ? mysqli_real_escape_string($conn, $_POST['project_filter']) : '';
+    $project_clause = !empty($project_filter) ? "AND b.ProjectId = '$project_filter'" : "";
+    
     // Kiểm tra xem đã chọn căn hộ cụ thể hay không
     $apartment_clause = ($apartment_filter != 'all') ? "AND a.ApartmentID = '$apartment_filter'" : "";
     
@@ -34,8 +41,10 @@ if (isset($_POST['calculate_fee'])) {
     $apartment_query = "
         SELECT a.ApartmentID, a.Code, a.Name, a.ContractCode, c.Status AS ContractStatus
         FROM apartment a
+        JOIN Buildings b ON a.BuildingId = b.ID
         LEFT JOIN Contracts c ON a.ContractCode = c.ContractCode
-        WHERE c.Status != 'pending' AND c.Status != 'expired' $apartment_clause
+        WHERE c.Status != 'pending' AND c.Status != 'expired' 
+        $apartment_clause $project_clause
     ";
     
     $apartments = mysqli_query($conn, $apartment_query);
@@ -177,9 +186,18 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
 
 // Đầu tiên cần lấy ContractCode từ apartment được chọn
 $apartment_filter = isset($_POST['apartment_filter']) ? mysqli_real_escape_string($conn, $_POST['apartment_filter']) : 'all';
+$project_filter = isset($_POST['project_filter']) ? mysqli_real_escape_string($conn, $_POST['project_filter']) : '';
+
 $contract_clause = "";
 if ($apartment_filter != 'all') {
     $contract_clause = "AND cs.ContractCode = (SELECT ContractCode FROM apartment WHERE ApartmentID = '$apartment_filter')";
+} else if (!empty($project_filter)) {
+    $contract_clause = "AND cs.ContractCode IN (
+        SELECT a.ContractCode 
+        FROM apartment a 
+        JOIN Buildings b ON a.BuildingId = b.ID 
+        WHERE b.ProjectId = '$project_filter'
+    )";
 }
 
 $services_query = "
@@ -199,11 +217,43 @@ $services_query = "
     WHERE s.Status = 'active' 
     AND cs.ApplyDate <= CURDATE()
     AND (cs.EndDate IS NULL OR cs.EndDate >= CURDATE())
+    " . (!empty($project_filter) ? "AND s.ProjectId = '$project_filter'" : "") . "
     $contract_clause
     ORDER BY s.ServiceCode
 ";
 
 $services_result = mysqli_query($conn, $services_query);
+
+// Thêm điều kiện để lọc căn hộ theo dự án được chọn
+$project_filter = isset($_POST['project_filter']) ? mysqli_real_escape_string($conn, $_POST['project_filter']) : '';
+$project_clause = !empty($project_filter) ? "AND b.ProjectId = '$project_filter'" : "";
+
+// Lấy danh sách căn hộ theo dự án (nếu có)
+$apartment_query = "
+    SELECT a.ApartmentID, a.Code, a.Name
+    FROM apartment a
+    JOIN Buildings b ON a.BuildingId = b.ID
+    WHERE a.Status = 'active'".
+    (!empty($project_filter) ? " AND b.ProjectId = '$project_filter'" : "")."
+    ORDER BY a.Code
+";
+$select_apartments = mysqli_query($conn, $apartment_query);
+
+// Sử dụng GET hoặc POST cho project_filter
+$project_filter = isset($_POST['project_filter']) ? mysqli_real_escape_string($conn, $_POST['project_filter']) : 
+                 (isset($_GET['project_filter']) ? mysqli_real_escape_string($conn, $_GET['project_filter']) : '');
+
+// Lọc căn hộ theo dự án
+if (!empty($project_filter)) {
+    $apartment_query = "
+        SELECT a.ApartmentID, a.Code, a.Name
+        FROM apartment a
+        JOIN Buildings b ON a.BuildingId = b.ID
+        WHERE a.Status = 'active' AND b.ProjectId = '$project_filter'
+        ORDER BY a.Code
+    ";
+    $select_apartments = mysqli_query($conn, $apartment_query);
+}
 ?>
 
 <!DOCTYPE html>
@@ -362,8 +412,20 @@ $services_result = mysqli_query($conn, $services_query);
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
+                                <label class="form-label required">Dự án</label>
+                                <select class="form-select" name="project_filter" id="project_filter" required>
+                                    <option value="">-- Chọn dự án --</option>
+                                    <?php while($project = mysqli_fetch_assoc($select_projects)): ?>
+                                        <option value="<?php echo $project['ProjectID']; ?>"
+                                               <?php echo ($project_filter == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                            <?php echo $project['Name']; ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
                                 <label class="form-label">Căn hộ tính phí</label>
-                                <select class="form-select" name="apartment_filter">
+                                <select class="form-select" name="apartment_filter" id="apartment_filter">
                                     <option value="all">Tất cả các căn hộ</option>
                                     <?php while($apartment = mysqli_fetch_assoc($select_apartments)): ?>
                                         <option value="<?php echo $apartment['ApartmentID']; ?>">
@@ -488,6 +550,36 @@ $services_result = mysqli_query($conn, $services_query);
             // Add event listeners for changes
             monthSelect.addEventListener('change', updateDueDate);
             yearSelect.addEventListener('change', updateDueDate);
+        });
+
+        // Thêm flag để tránh submit tự động khi trang vừa load
+        let isInitialLoad = true;
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const projectSelect = document.getElementById('project_filter');
+            const apartmentSelect = document.getElementById('apartment_filter');
+            
+            // Đánh dấu là đã load xong
+            setTimeout(function() {
+                isInitialLoad = false;
+            }, 500);
+            
+            projectSelect.addEventListener('change', function() {
+                // Chỉ submit form nếu không phải lần load đầu tiên
+                if (!isInitialLoad) {
+                    const projectId = this.value;
+                    
+                    // Thêm một input hidden để lưu giá trị project_filter đã chọn
+                    const hiddenInput = document.createElement('input');
+                    hiddenInput.type = 'hidden';
+                    hiddenInput.name = 'project_filter';
+                    hiddenInput.value = projectId;
+                    this.form.appendChild(hiddenInput);
+                    
+                    // Submit form để load lại trang với project_id mới
+                    this.form.submit();
+                }
+            });
         });
     </script>
 </body>
