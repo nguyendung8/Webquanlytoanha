@@ -499,7 +499,7 @@ if(isset($error_msg)){
                         <a href="service_calculation.php" class="btn btn-success" style="margin-right: 10px;">
                             <i class="fas fa-calculator"></i> Tính phí dịch vụ
                         </a>
-                        <a href="create_bill.php" class="btn btn-success">
+                        <a href="payment_receipt.php" class="btn btn-success">
                             <i class="fas fa-plus"></i> Lập phiếu thu
                         </a>
                     </div>
@@ -551,9 +551,9 @@ if(isset($error_msg)){
                                     </span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-info" title="Xem chi tiết">
+                                    <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
                                         <i class="fas fa-eye"></i>
-                                    </button>
+                                    </a>
                                     <form method="POST" style="display: inline;">
                                         <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
                                         <button type="submit" name="delete_bill" 
@@ -573,7 +573,7 @@ if(isset($error_msg)){
                                                 title="Gửi thông báo">
                                             <i class="fas fa-bell"></i>
                                         </button>
-                                    </form>
+                                    </form> 
                                     <?php } ?>
                                 </td>
                             </tr>

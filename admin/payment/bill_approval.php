@@ -86,9 +86,14 @@ if(isset($_POST['approve_bill'])) {
     if(mysqli_query($conn, $update_query)) {
         // Lấy thông tin bảng kê để gửi email
         $invoice_query = mysqli_query($conn, "
-            SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID
+            SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID,
+                   b.Name as BuildingName, b.ProjectId,
+                   p.ManagerId, s.Name as ManagerName
             FROM debtstatements d
             LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+            LEFT JOIN Buildings b ON a.BuildingId = b.ID
+            LEFT JOIN Projects p ON b.ProjectId = p.ProjectID
+            LEFT JOIN staffs s ON p.ManagerId = s.ID
             WHERE d.InvoiceCode = '$invoice_code'
         ");
         
@@ -174,11 +179,16 @@ if(isset($_POST['approve_bill'])) {
 if(isset($_POST['get_invoice_data']) && isset($_POST['invoice_code'])) {
     $invoice_code = mysqli_real_escape_string($conn, $_POST['invoice_code']);
     
-    // Lấy thông tin bảng kê
+    // Lấy thông tin bảng kê có thêm thông tin về trưởng ban quản lý
     $invoice_query = mysqli_query($conn, "
-        SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName
+        SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID,
+               b.Name as BuildingName, b.ProjectId,
+               p.ManagerId, s.Name as ManagerName
         FROM debtstatements d
         LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+        LEFT JOIN Buildings b ON a.BuildingId = b.ID
+        LEFT JOIN Projects p ON b.ProjectId = p.ProjectID
+        LEFT JOIN staffs s ON p.ManagerId = s.ID
         WHERE d.InvoiceCode = '$invoice_code'
     ");
     
@@ -252,7 +262,7 @@ if(isset($_SESSION['error_msg'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh sách bảng kê</title>
+    <title>Danh sách bảng kê chờ xác nhận</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -409,14 +419,14 @@ if(isset($_SESSION['error_msg'])) {
             <div class="container-fluid p-4">
                 <div class="page-header mb-4">
                     <h2 style="font-weight: bold; color: #476a52; margin-bottom: 10px; text-transform: uppercase;">
-                        DANH SÁCH BẢNG KÊ
+                        DANH SÁCH BẢNG KÊ CHỜ XÁC NHẬN
                     </h2>
                     <div class="breadcrumb">
                         <a href="dashboard.php">Trang chủ</a>
                         <span style="margin: 0 8px;">›</span>
                         <span>Quản lý thu phí</span>
                         <span style="margin: 0 8px;">›</span>
-                        <span>Danh sách bảng kê</span>
+                        <span>Danh sách bảng kê chờ xác nhận</span>
                     </div>
                 </div>
 
@@ -611,6 +621,9 @@ if(isset($_SESSION['error_msg'])) {
                         $('#residentName').text(data.resident ? data.resident.Name : data.apartment.Name);
                         $('#apartmentCode').text(data.apartment.Code);
                         $('#invoiceTotal').text(formatCurrency(data.invoice.Total) + ' VNĐ');
+                        
+                        // Điền tên trưởng ban quản lý
+                        $('#managerName').text(data.invoice.ManagerName || 'Hoàng Văn Nam_Trưởng ban');
                         
                         // Điền dữ liệu tổng hợp
                         let summaryHtml = '';
@@ -849,15 +862,17 @@ if(isset($_SESSION['error_msg'])) {
                             <div class="col-8">
                                 <strong>Ghi chú/Note:</strong>
                                 <ul>
-                                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán. Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày./ The deadline for paying the debt fees is 45 days since incurring the expenses. Management Team will notify to reminder debt before 05 days. After that we will stop providing services for apartments owing fees over 45 days.</li>
-                                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này./ If you have already paid the fee, please ignore this notice.</li>
-                                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ./ In case of special reasons, citizens can not paid in time according to the Regulations, please notify the Management for assistance.</li>
+                                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán.</li>
+                                    <li>Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày.</li>
+                                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này.</li>
+                                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ.</li>
                                 </ul>
                             </div>
                             <div class="col-4 text-center">
                                 <p>Hà Nội, Ngày <span id="currentDate"></span></p>
                                 <p><strong>Trưởng ban quản lý</strong></p>
                                 <div style="height: 80px;"></div>
+                                <p><strong id="managerName">Hoàng Văn Nam_Trưởng ban</strong></p>
                             </div>
                         </div>
                     </div>
@@ -872,8 +887,11 @@ if(isset($_SESSION['error_msg'])) {
 </html>
 <?php
 function createInvoiceEmailContent($invoice, $details, $resident) {
-    $total_amount = number_format($invoice['Total']);
+    // Lấy thông tin trưởng ban quản lý từ $invoice nếu có
+    $manager_name = $invoice['ManagerName'] ?? 'Hoàng Văn Nam';
     $today = date('d/m/Y');
+    
+    $total_amount = number_format($invoice['Total']);
     
     // Tạo bảng tổng hợp
     $summary_table = '
@@ -1020,21 +1038,29 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
             </div>
         </div>
         
-        <div style="margin-top: 20px; display: flex;">
+        <div style="font-size: 16px; margin-bottom: 20px;">
+            <p><strong>Lưu ý:</strong></p>
+            <ul>
+                <li>Quý cư dân vui lòng thanh toán đúng hạn để tránh bị phạt chậm trả hoặc ngắt dịch vụ.</li>
+                <li>Sau thời hạn thanh toán, Ban quản lý sẽ liên hệ trực tiếp với các căn hộ chưa đóng phí để nhắc nhở và hỗ trợ.</li>
+                <li>Trường hợp quý cư dân có khó khăn về tài chính, vui lòng liên hệ với Ban quản lý để được hỗ trợ.</li>
+                <li>Nếu sau 30 ngày kể từ ngày hết hạn thanh toán mà quý cư dân vẫn chưa đóng phí, Ban quản lý sẽ buộc phải ngắt một số dịch vụ tiện ích như điện, nước, wifi, v.v... cho đến khi quý cư dân thanh toán đầy đủ.</li>
+            </ul>
+        </div>
+
+        <div style="display: flex; margin-top: 20px;">
             <div style="width: 70%;">
-                <strong>Ghi chú/Note:</strong>
-                <ul>
-                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán.</li>
-                    <li>Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày.</li>
-                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này.</li>
-                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ.</li>
-                </ul>
+                <p style="font-size: 16px; margin-bottom: 20px;">Trân trọng cảm ơn!</p>
             </div>
             <div style="width: 30%; text-align: center;">
                 <p>Hà Nội, Ngày '.$today.'</p>
                 <p><strong>Trưởng ban quản lý</strong></p>
+                <div style="height: 80px;"></div>
+                <p><strong>'.$manager_name.'</strong></p>
             </div>
         </div>
+
+        <p style="font-size: 16px; font-weight: bold;">Ban Quản Lý Tòa nhà Buildmate.</p>
     </div>';
     
     return $content;
