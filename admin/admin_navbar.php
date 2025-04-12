@@ -257,7 +257,7 @@ $allowed_menus = showMenuByRole($user_role);
       </div>
       <?php endif; ?>
 
-      <?php if (isset($allowed_menus['resident_interaction'])): ?>
+      <!-- <?php if (isset($allowed_menus['resident_interaction'])): ?>
       <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
          <i class="fas fa-comments"></i> Tương tác cư dân
          <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
@@ -270,13 +270,13 @@ $allowed_menus = showMenuByRole($user_role);
             <i class="fas fa-book"></i> Cẩm nang tòa nhà
          </a>
       </div>
-      <?php endif; ?>
+      <?php endif; ?> -->
       
-      <?php if (isset($allowed_menus['service_request'])): ?>
+      <!-- <?php if (isset($allowed_menus['service_request'])): ?>
       <a href="#">
          <i class="fas fa-hand-paper"></i> Yêu cầu dịch vụ
       </a>
-      <?php endif; ?>
+      <?php endif; ?> -->
       
       <?php if (isset($allowed_menus['service'])): ?>
       <a href="javascript:void(0);" class="has-submenu" onclick="toggleSubmenu(this)">
@@ -311,9 +311,9 @@ $allowed_menus = showMenuByRole($user_role);
          <a href="/webquanlytoanha/admin/payment/payment_receipt.php">
             <i class="fas fa-receipt"></i> Quản lý phiếu thu/chi
          </a>
-         <a href="/webquanlytoanha/admin/payment/transaction_accounting.php">
+         <!-- <a href="/webquanlytoanha/admin/payment/transaction_accounting.php">
             <i class="fas fa-calculator"></i> Hạch toán giao dịch
-         </a>
+         </a> -->
          <a href="/webquanlytoanha/admin/payment/debt_management.php">
             <i class="fas fa-coins"></i> Quản lý tiền thừa
          </a>
@@ -329,21 +329,15 @@ $allowed_menus = showMenuByRole($user_role);
          <i style="font-size: 14px" class="fas fa-chevron-down submenu-icon"></i>
       </a>
       <div class="submenu">
-         <?php if (isset($allowed_menus['report']['summary'])): ?>
          <a href="/webquanlytoanha/admin/reports/summary_report.php">
             <i class="fas fa-file-alt"></i> Báo cáo tổng hợp
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['report']['vehicle_movement'])): ?>
          <a href="/webquanlytoanha/admin/reports/vehicle_movement_report.php">
             <i class="fas fa-car"></i> Báo cáo di chuyển phương tiện
          </a>
-         <?php endif; ?>
-         <?php if (isset($allowed_menus['report']['allocation'])): ?>
          <a href="/webquanlytoanha/admin/reports/allocation_report.php">
             <i class="fas fa-chart-pie"></i> Báo cáo phân bổ
          </a>
-         <?php endif; ?>
       </div>
       <?php endif; ?>
    </div>

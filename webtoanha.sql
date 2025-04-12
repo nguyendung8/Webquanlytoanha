@@ -59,32 +59,64 @@ CREATE TABLE `departments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
-
 CREATE TABLE `payments` (
   `PaymentID` int(11) NOT NULL,
   `PaymentMethod` varchar(50) DEFAULT NULL,
-  `PaymentType` varchar(50) DEFAULT NULL,
   `IssueDate` date DEFAULT NULL,
   `AccountingDate` date DEFAULT NULL,
   `Total` int(11) DEFAULT NULL,
-  `ResidentID` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
-
-CREATE TABLE `receipts` (
-  `ReceiptID` int(11) NOT NULL,
-  `PaymentMethod` varchar(50) DEFAULT NULL,
-  `TransactionType` varchar(50) DEFAULT NULL,
-  `ReceiptType` varchar(50) DEFAULT NULL,
-  `Total` int(11) DEFAULT NULL,
-  `AmountDue` int(11) DEFAULT NULL,
-  `Payer` varchar(255) DEFAULT NULL,
-  `Address` text DEFAULT NULL,
-  `AccountingDate` date DEFAULT NULL,
   `Content` text DEFAULT NULL,
-  `ResidentID` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unico----------------------------------
+  `ApartmentID` int(11) DEFAULT NULL,
+  `StaffID` int(11) DEFAULT NULL,
+  `DeletedBy` int(11) DEFAULT NULL,
+  `CreatedAt` timestamp NOT NULL DEFAULT current_timestamp(),
+  `UpdatedAt` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+    FOREIGN KEY (ApartmentID) REFERENCES Apartment(ApartmentID) ON DELETE CASCADE,
+  FOREIGN KEY (StaffID) REFERENCES Staffs(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+
+CREATE TABLE `receipt` (
+  `ReceiptID` varchar(20) NOT NULL,
+  `PaymentMethod` varchar(50) DEFAULT NULL COMMENT 'Hình thức thanh toán',
+  `TransactionType` varchar(50) DEFAULT NULL COMMENT 'Loại giao dịch (Thu/Chi)',
+  `ReceiptType` varchar(50) DEFAULT NULL COMMENT 'Loại phiếu',
+  `Total` decimal(15,2) DEFAULT 0.00 COMMENT 'Tổng tiền',
+  `AmountDue` decimal(15,2) DEFAULT 0.00 COMMENT 'Số tiền phải trả',
+  `Payer` varchar(255) DEFAULT NULL COMMENT 'Người nộp/nhận tiền',
+  `Address` text DEFAULT NULL COMMENT 'Địa chỉ',
+  `AccountingDate` date DEFAULT NULL COMMENT 'Ngày hạch toán',
+  `Content` text DEFAULT NULL COMMENT 'Nội dung',
+  `StaffID` int(11) DEFAULT NULL COMMENT 'Người tạo phiếu',
+  `ApartmentID` int(11) DEFAULT NULL COMMENT 'Căn hộ',
+  `CreatedAt` datetime DEFAULT current_timestamp(),
+  `Status` varchar(50) DEFAULT 'pending' COMMENT 'Trạng thái phiếu'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `receiptdetails` (
+  `ReceiptID` varchar(20) NOT NULL,
+  `ServiceCode` varchar(50) NOT NULL COMMENT 'Mã dịch vụ',
+  `Incurred` decimal(15,2) DEFAULT 0.00 COMMENT 'Số tiền phát sinh',
+  `Discount` decimal(15,2) DEFAULT 0.00 COMMENT 'Giảm giá',
+  `Payment` decimal(15,2) DEFAULT 0.00 COMMENT 'Số tiền thanh toán',
+  `Note` text DEFAULT NULL COMMENT 'Ghi chú'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `OtherReceipt` (
+  `OtherReceiptID` varchar(20) NOT NULL PRIMARY KEY,
+  `ApartmentID` int(11) DEFAULT NULL,
+  `Quantity` int DEFAULT NULL,
+  `Price` decimal(10,2) DEFAULT NULL,
+  `PaymentMethod` varchar(50) DEFAULT NULL,
+  `Payer` varchar(100) DEFAULT NULL,
+  `Total` decimal(10,2) DEFAULT NULL,
+  `AccountingDate` date DEFAULT NULL,
+  `Content` text,
+  `StaffID` int,
+  FOREIGN KEY (StaffID) REFERENCES staffs(ID),
+  FOREIGN KEY (ApartmentID) REFERENCES apartment(ApartmentID)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `resident` (
   `ID` int(11) NOT NULL,
@@ -134,6 +166,18 @@ CREATE TABLE Projects (
     FOREIGN KEY (TownShipId) REFERENCES TownShips(TownShipId) ON DELETE CASCADE,
     FOREIGN KEY (ManagerId) REFERENCES Staffs(ID) ON DELETE SET NULL
 )
+
+CREATE TABLE `excesspayment` (
+  `ExcessPaymentID` int(11) NOT NULL,
+  `OccurrenceDate` date NOT NULL,
+  `Total` int(15) NOT NULL,
+  `ApartmentID` int(11) NOT NULL,
+  `ReceiptID` varchar(20) DEFAULT NULL,
+  `Description` text DEFAULT NULL,
+  `Status` varchar(50) DEFAULT 'active',
+  FOREIGN KEY (ApartmentID) REFERENCES Apartment(ApartmentID) ON DELETE CASCADE,
+  FOREIGN KEY (ReceiptID) REFERENCES Receipt(ReceiptID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE PaymentInformation (
     Id INT PRIMARY KEY AUTO_INCREMENT,

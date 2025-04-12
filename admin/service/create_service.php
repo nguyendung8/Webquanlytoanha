@@ -18,10 +18,7 @@ $user_info = mysqli_fetch_assoc($user_query);
 $projects_query = mysqli_query($conn, "
     SELECT DISTINCT p.* 
     FROM Projects p 
-    INNER JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId 
-    INNER JOIN Staffs s ON sp.StaffId = s.ID 
-    INNER JOIN users u ON s.Email = u.Email 
-    WHERE u.UserId = '$admin_id' AND p.Status = 'active'
+    WHERE p.Status = 'active'
     ORDER BY p.Name
 ") or die('Query failed: ' . mysqli_error($conn));
 

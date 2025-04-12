@@ -119,39 +119,6 @@ $vehicles_query = mysqli_query($conn, "
     FROM vehicles v
     WHERE v.ApartmentID = '$apartment_id'
 ");
-
-// Xử lý cập nhật căn hộ
-if(isset($_POST['submit'])) {
-    $name = mysqli_real_escape_string($conn, $_POST['name']);
-    $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
-    $floor_id = mysqli_real_escape_string($conn, $_POST['floor_id']);
-    $area = mysqli_real_escape_string($conn, $_POST['area']);
-    $bedrooms = mysqli_real_escape_string($conn, $_POST['bedrooms']);
-    $description = mysqli_real_escape_string($conn, $_POST['description']);
-
-    mysqli_begin_transaction($conn);
-    try {
-        // Cập nhật thông tin căn hộ
-        $update_apartment = mysqli_query($conn, "
-            UPDATE apartment SET 
-            Name = '$name',
-            Area = '$area',
-            NumberOffBedroom = '$bedrooms',
-            Description = '$description',
-            BuildingId = '$building_id',
-            FloorId = '$floor_id'
-            WHERE ApartmentID = '$apartment_id'
-        ") or throw new Exception('Không thể cập nhật căn hộ: ' . mysqli_error($conn));
-
-        mysqli_commit($conn);
-        $message[] = 'Cập nhật căn hộ thành công!';
-        header('location: apartment_management.php');
-        exit();
-    } catch (Exception $e) {
-        mysqli_rollback($conn);
-        $message[] = 'Lỗi: ' . $e->getMessage();
-    }
-}
 ?>
 
 <!DOCTYPE html>
@@ -159,7 +126,7 @@ if(isset($_POST['submit'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cập nhật căn hộ</title>
+    <title>Chi tiết căn hộ</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
@@ -276,107 +243,99 @@ if(isset($_POST['submit'])) {
             <div class="manage-container">
                 <!-- Page Header -->
                 <div class="page-header">
-                    <h2>CẬP NHẬT CĂN HỘ</h2>
+                    <h2>CHI TIẾT CĂN HỘ</h2>
                     <div class="breadcrumb">
-                        <a href="dashboard.php">Trang chủ</a>
+                        <a style="text-decoration: none; color: #476a52;" href="dashboard.php">Trang chủ</a>
                         <span>›</span>
-                        <a href="apartment_management.php">Căn hộ</a>
+                        <a style="text-decoration: none; color: #476a52;" href="apartment_management.php">Căn hộ</a>
                         <span>›</span>
-                        <span>Cập nhật</span>
+                        <span>Chi tiết</span>
                     </div>
                 </div>
 
                 <div class="form-container">
-                    <form action="" method="post">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">Căn hộ<span class="required">*</span></label>
-                                    <input type="text" name="name" class="form-control" required 
-                                           value="<?php echo $apartment['Name']; ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">Mã căn hộ</label>
-                                    <input type="text" class="form-control" value="<?php echo $apartment['Code']; ?>" readonly>
-                                </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Căn hộ</label>
+                                <input type="text" class="form-control" value="<?php echo $apartment['Name']; ?>" disabled>
                             </div>
                         </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Mã căn hộ</label>
+                                <input type="text" class="form-control" value="<?php echo $apartment['Code']; ?>" disabled>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="form-label">Dự án<span class="required">*</span></label>
-                                    <select name="project_id" id="project_id" class="form-select" required>
-                                        <option value="">Chọn dự án</option>
-                                        <?php while($project = mysqli_fetch_assoc($select_projects)) { ?>
-                                            <option value="<?php echo $project['ProjectID']; ?>" 
-                                                <?php echo ($project['ProjectID'] == $apartment['ProjectId']) ? 'selected' : ''; ?>>
-                                                <?php echo $project['Name']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="form-label">Tòa nhà<span class="required">*</span></label>
-                                    <select name="building_id" id="building_id" class="form-select" required>
-                                        <option value="">Chọn tòa nhà</option>
-                                        <?php while($building = mysqli_fetch_assoc($current_buildings)) { ?>
-                                            <option value="<?php echo $building['ID']; ?>"
-                                                <?php echo ($building['ID'] == $apartment['BuildingId']) ? 'selected' : ''; ?>>
-                                                <?php echo $building['Name']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="form-label">Tầng<span class="required">*</span></label>
-                                    <select name="floor_id" id="floor_id" class="form-select" required>
-                                        <option value="">Chọn tầng</option>
-                                        <?php while($floor = mysqli_fetch_assoc($current_floors)) { ?>
-                                            <option value="<?php echo $floor['ID']; ?>"
-                                                <?php echo ($floor['ID'] == $apartment['FloorId']) ? 'selected' : ''; ?>>
-                                                <?php echo $floor['Name']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Dự án</label>
+                                <select class="form-select" disabled>
+                                    <?php while($project = mysqli_fetch_assoc($select_projects)) { ?>
+                                        <option value="<?php echo $project['ProjectID']; ?>" 
+                                            <?php echo ($project['ProjectID'] == $apartment['ProjectId']) ? 'selected' : ''; ?>>
+                                            <?php echo $project['Name']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Tòa nhà</label>
+                                <select class="form-select" disabled>
+                                    <?php while($building = mysqli_fetch_assoc($current_buildings)) { ?>
+                                        <option value="<?php echo $building['ID']; ?>"
+                                            <?php echo ($building['ID'] == $apartment['BuildingId']) ? 'selected' : ''; ?>>
+                                            <?php echo $building['Name']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Tầng</label>
+                                <select class="form-select" disabled>
+                                    <?php while($floor = mysqli_fetch_assoc($current_floors)) { ?>
+                                        <option value="<?php echo $floor['ID']; ?>"
+                                            <?php echo ($floor['ID'] == $apartment['FloorId']) ? 'selected' : ''; ?>>
+                                            <?php echo $floor['Name']; ?>
+                                        </option>
+                                    <?php } ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
 
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">Diện tích (m²)<span class="required">*</span></label>
-                                    <input type="number" name="area" class="form-control" required 
-                                           value="<?php echo $apartment['Area']; ?>">
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <label class="form-label">Số phòng ngủ<span class="required">*</span></label>
-                                    <input type="number" name="bedrooms" class="form-control" required 
-                                           value="<?php echo $apartment['NumberOffBedroom']; ?>">
-                                </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Diện tích (m²)</label>
+                                <input type="number" class="form-control" value="<?php echo $apartment['Area']; ?>" disabled>
                             </div>
                         </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Mô tả</label>
-                            <div id="editor"><?php echo $apartment['Description']; ?></div>
-                            <input type="hidden" name="description" id="description">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="form-label">Số phòng ngủ</label>
+                                <input type="number" class="form-control" value="<?php echo $apartment['NumberOffBedroom']; ?>" disabled>
+                            </div>
                         </div>
+                    </div>
 
-                        <div class="btn-container">
-                            <button type="submit" name="submit" class="btn btn-submit">Cập nhật</button>
-                            <a href="apartment_management.php" class="btn btn-cancel">Hủy</a>
+                    <div class="form-group">
+                        <label class="form-label">Mô tả</label>
+                        <div class="form-control" style="min-height: 100px; overflow-y: auto;" disabled>
+                            <?php echo $apartment['Description']; ?>
                         </div>
-                    </form>
+                    </div>
+
+                    <div class="btn-container">
+                        <a href="apartment_management.php" class="btn btn-cancel">Quay lại</a>
+                    </div>
                 </div>
 
                 <div class="apartment-info mt-4">
