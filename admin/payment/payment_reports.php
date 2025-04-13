@@ -134,27 +134,18 @@ $projects_query = mysqli_query($conn, "
                     <div class="report-title">Báo cáo công nợ</div>
                     
                     <div class="report-item">
-                        <a href="debt_reports/payment_report.php">Báo cáo thu - nợ</a>
+                        <a href="payment_debt_report.php">Báo cáo thu - nợ</a>
                         <div class="action-buttons">
-                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                            <a href="payment_debt_report.php" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-circle-arrow-right"></i>
                             </a>
                         </div>
                     </div>
 
                     <div class="report-item">
-                        <a href="debt_reports/apartment_debt.php">Báo cáo tổng hợp công nợ theo căn hộ</a>
+                        <a href="service_debt.php">Báo cáo tổng hợp công nợ theo dịch vụ</a>
                         <div class="action-buttons">
-                            <a href="#" class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-circle-arrow-right"></i>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="report-item">
-                        <a href="debt_reports/service_debt.php">Báo cáo chi tiết công nợ theo dịch vụ</a>
-                        <div class="action-buttons">
-                            <a href="#" class="btn btn-sm btn-outline-secondary">
+                            <a href="service_debt.php" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-circle-arrow-right"></i>
                             </a>
                         </div>
