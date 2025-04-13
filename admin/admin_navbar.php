@@ -332,12 +332,12 @@ $allowed_menus = showMenuByRole($user_role);
          <a href="/webquanlytoanha/admin/reports/summary_report.php">
             <i class="fas fa-file-alt"></i> Báo cáo tổng hợp
          </a>
-         <a href="/webquanlytoanha/admin/reports/vehicle_movement_report.php">
-            <i class="fas fa-car"></i> Báo cáo di chuyển phương tiện
+         <a href="/webquanlytoanha/admin/reports/fluctuation_vehicle_report.php">
+            <i class="fas fa-car"></i> Báo cáo biến động
          </a>
-         <a href="/webquanlytoanha/admin/reports/allocation_report.php">
+         <!-- <a href="/webquanlytoanha/admin/reports/allocation_report.php">
             <i class="fas fa-chart-pie"></i> Báo cáo phân bổ
-         </a>
+         </a> -->
       </div>
       <?php endif; ?>
    </div>

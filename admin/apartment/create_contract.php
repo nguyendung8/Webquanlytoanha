@@ -202,7 +202,7 @@ if(isset($_POST['submit'])) {
         $update_apartment = mysqli_query($conn, "
             UPDATE apartment 
             SET ContractCode = '$contract_code',
-                Status = 'Đang chờ nhận'
+                Status = 'Đang ở'
             WHERE ApartmentID = '$apartment_id'
         ") or throw new Exception('Không thể cập nhật thông tin căn hộ: ' . mysqli_error($conn));
         
