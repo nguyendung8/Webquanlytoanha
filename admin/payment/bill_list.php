@@ -556,10 +556,10 @@ if(isset($error_msg)){
                                 <i class="fas fa-plus"></i> Lập phiếu thu
                             </button>
                         <?php else: ?>
-                            <a href="service_calculation.php" class="btn btn-success" style="margin-right: 10px;">
+                            <a href="service_calculation.php" class="btn btn-success btn-calculate action-btn" style="margin-right: 10px;">
                                 <i class="fas fa-calculator"></i> Tính phí dịch vụ
                             </a>
-                            <a href="payment_receipt.php" class="btn btn-success">
+                            <a href="payment_receipt.php" class="btn btn-success btn-receipt action-btn">
                                 <i class="fas fa-plus"></i> Lập phiếu thu
                             </a>
                         <?php endif; ?>
@@ -612,44 +612,33 @@ if(isset($error_msg)){
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if(empty($selected_project)): ?>
-                                        <button class="btn btn-sm btn-info view-invoice" title="Xem giấy báo phí" 
-                                                data-invoice-code="<?php echo $bill['InvoiceCode']; ?>">
-                                            <i class="fas fa-file-invoice"></i>
-                                        </button>
-                                        <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-danger action-btn" title="Xóa">
+                                    <button class="btn btn-sm btn-info view-invoice" title="Xem giấy báo phí" 
+                                            data-invoice-code="<?php echo $bill['InvoiceCode']; ?>">
+                                        <i class="fas fa-file-invoice"></i>
+                                    </button>
+                                    <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <form method="POST" style="display: inline;">
+                                        <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
+                                        <button type="submit" name="delete_bill" 
+                                                class="btn btn-sm btn-danger" 
+                                                onclick="return confirm('Bạn có chắc chắn muốn xóa bảng kê này?')"
+                                                title="Xóa">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                        <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
-                                            <button type="button" class="btn btn-sm btn-warning action-btn" title="Gửi thông báo">
-                                                <i class="fas fa-bell"></i>
-                                            </button>
-                                        <?php } ?>
-                                    <?php else: ?>
+                                    </form>
+                                    <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
-                                            <button type="submit" name="delete_bill" 
-                                                    class="btn btn-sm btn-danger" 
-                                                    onclick="return confirm('Bạn có chắc chắn muốn xóa bảng kê này?')"
-                                                    title="Xóa">
-                                                <i class="fas fa-trash"></i>
+                                            <button type="submit" name="send_notification" 
+                                                    class="btn btn-sm btn-warning" 
+                                                    onclick="return confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')"
+                                                    title="Gửi thông báo">
+                                                <i class="fas fa-bell"></i>
                                             </button>
                                         </form>
-                                        <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
-                                            <form method="POST" style="display: inline;">
-                                                <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
-                                                <button type="submit" name="send_notification" 
-                                                        class="btn btn-sm btn-warning" 
-                                                        onclick="return confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')"
-                                                        title="Gửi thông báo">
-                                                    <i class="fas fa-bell"></i>
-                                                </button>
-                                            </form>
-                                        <?php } ?>
-                                    <?php endif; ?>
+                                    <?php } ?>
                                 </td>
                             </tr>
                             <?php
@@ -723,7 +712,7 @@ if(isset($error_msg)){
         // Gắn event cho các nút thao tác khi chưa chọn dự án
         if (!<?php echo $selected_project ? 'true' : 'false'; ?>) {
             // Chặn nút tính phí và lập phiếu thu
-            $('.btn-calculate, .btn-receipt').on('click', function(e) {
+            $('.btn-calculate, .btn-receipt' ).on('click', function(e) {
                 e.preventDefault();
                 showProjectAlert();
             });

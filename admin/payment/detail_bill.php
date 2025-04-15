@@ -74,6 +74,130 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
     $total_paid += $detail['PaidAmount'];
     $total_remaining += $detail['RemainingBalance'];
 }
+
+// Xử lý AJAX request
+if(isset($_POST['action'])) {
+    header('Content-Type: application/json');
+    
+    if($_POST['action'] === 'get') {
+        $invoice_code = mysqli_real_escape_string($conn, $_POST['invoiceCode']);
+        $service_code = mysqli_real_escape_string($conn, $_POST['serviceCode']);
+
+        $query = "
+            SELECT 
+                d.InvoiceCode,
+                d.InvoicePeriod,
+                d.DueDate,
+                dd.ServiceCode,
+                s.Name as ServiceName,
+                dd.Quantity,
+                dd.UnitPrice,
+                dd.Discount,
+                dd.PaidAmount,
+                dd.RemainingBalance,
+                dd.IssueDate as StartDate,
+                d.DueDate as EndDate
+            FROM debtstatements d
+            JOIN debtstatementdetail dd ON d.InvoiceCode = dd.InvoiceCode
+            JOIN services s ON dd.ServiceCode = s.ServiceCode
+            WHERE d.InvoiceCode = '$invoice_code' 
+            AND dd.ServiceCode = '$service_code'
+        ";
+
+        $result = mysqli_query($conn, $query);
+
+        if ($result && $row = mysqli_fetch_assoc($result)) {
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'InvoiceCode' => $row['InvoiceCode'],
+                    'InvoicePeriod' => $row['InvoicePeriod'],
+                    'ServiceCode' => $row['ServiceCode'],
+                    'ServiceName' => $row['ServiceName'],
+                    'Quantity' => (int)$row['Quantity'],
+                    'UnitPrice' => (int)$row['UnitPrice'],
+                    'Discount' => (int)$row['Discount'],
+                    'PaidAmount' => (int)$row['PaidAmount'],
+                    'RemainingBalance' => (int)$row['RemainingBalance'],
+                    'StartDate' => $row['StartDate'],
+                    'EndDate' => $row['EndDate']
+                ]
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Không tìm thấy dữ liệu'
+            ]);
+        }
+        exit;
+    }
+    
+    if($_POST['action'] === 'update') {
+        $service_code = mysqli_real_escape_string($conn, $_POST['serviceCode']);
+        $invoice_code = mysqli_real_escape_string($conn, $_POST['invoiceCode']);
+        $quantity = (int)$_POST['quantity'];
+        $unit_price = (int)$_POST['unitPrice'];
+        $discount = (int)$_POST['discount'];
+        $discount_reason = mysqli_real_escape_string($conn, $_POST['discountReason']);
+
+        // Kiểm tra PaidAmount
+        $check_query = "SELECT PaidAmount FROM debtstatements WHERE InvoiceCode = '$invoice_code'";
+        $check_result = mysqli_query($conn, $check_query);
+        $check_row = mysqli_fetch_assoc($check_result);
+
+        if ($check_row['PaidAmount'] > 0) {
+            echo json_encode(['success' => false, 'message' => 'Không thể chỉnh sửa bảng kê đã thanh toán']);
+            exit;
+        }
+
+        $amount = $quantity * $unit_price - $discount;
+
+        mysqli_begin_transaction($conn);
+
+        try {
+            $update_detail = mysqli_query($conn, "
+                UPDATE debtstatementdetail 
+                SET Quantity = $quantity,
+                    UnitPrice = $unit_price,
+                    Discount = $discount,
+                    RemainingBalance = $amount
+                WHERE InvoiceCode = '$invoice_code' 
+                AND ServiceCode = '$service_code'
+            ");
+
+            if (!$update_detail) {
+                throw new Exception("Lỗi khi cập nhật chi tiết dịch vụ");
+            }
+
+            $update_total = mysqli_query($conn, "
+                UPDATE debtstatements d
+                SET Total = (
+                    SELECT SUM(Quantity * UnitPrice - Discount)
+                    FROM debtstatementdetail
+                    WHERE InvoiceCode = d.InvoiceCode
+                ),
+                RemainingBalance = (
+                    SELECT SUM(Quantity * UnitPrice - Discount)
+                    FROM debtstatementdetail
+                    WHERE InvoiceCode = d.InvoiceCode
+                )
+                WHERE InvoiceCode = '$invoice_code'
+            ");
+
+            if (!$update_total) {
+                throw new Exception("Lỗi khi cập nhật tổng tiền");
+            }
+
+            mysqli_commit($conn);
+            echo json_encode(['success' => true]);
+
+        } catch (Exception $e) {
+            mysqli_rollback($conn);
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        exit;
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -87,6 +211,8 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/admin_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         .page-header {
             background-color: #f5f5f5;
@@ -193,6 +319,26 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
                 box-shadow: none;
                 padding: 0;
             }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+        }
+        
+        .modal-dialog {
+            background: white;
+            width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 10000;
         }
     </style>
 </head>
@@ -377,7 +523,7 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
                     <div class="row">
                         <div class="col-12">
                             <h4 class="section-title">Chi tiết dịch vụ</h4>
-                <div class="table-responsive">
+                            <div class="table-responsive">
                                 <table class="table table-striped table-bordered">
                                     <thead class="table-header">
                                         <tr>
@@ -389,35 +535,48 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
                                             <th width="10%">Giảm giá</th>
                                             <th width="15%">Thành tiền</th>
                                             <th width="15%">Đã thanh toán</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
+                                            <?php if ($invoice['PaidAmount'] == 0): ?>
+                                            <th width="10%">Thao tác</th>
+                                            <?php endif; ?>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
                                         $i = 1;
                                         $total_amount = 0;
                                         foreach($details as $detail): 
                                             $amount = $detail['Quantity'] * $detail['UnitPrice'] - $detail['Discount'];
                                             $total_amount += $amount;
-                            ?>
-                            <tr>
-                                <td><?php echo $i++; ?></td>
-                                            <td><?php echo $detail['ServiceName']; ?></td>
-                                            <td><?php echo $detail['TypeOfService']; ?></td>
-                                            <td><?php echo $detail['Quantity']; ?></td>
-                                            <td class="text-end"><?php echo number_format($detail['UnitPrice']); ?> VNĐ</td>
-                                            <td class="text-end"><?php echo number_format($detail['Discount']); ?> VNĐ</td>
-                                            <td class="text-end"><?php echo number_format($amount); ?> VNĐ</td>
-                                            <td class="text-end"><?php echo number_format($detail['PaidAmount']); ?> VNĐ</td>
-                                        </tr>
+                                        ?>
+                                            <tr>
+                                                <td><?php echo $i++; ?></td>
+                                                <td><?php echo $detail['ServiceName']; ?></td>
+                                                <td><?php echo $detail['TypeOfService']; ?></td>
+                                                <td class="editable" data-field="Quantity"><?php echo $detail['Quantity']; ?></td>
+                                                <td class="text-end editable" data-field="UnitPrice"><?php echo number_format($detail['UnitPrice']); ?> VNĐ</td>
+                                                <td class="text-end editable" data-field="Discount"><?php echo number_format($detail['Discount']); ?> VNĐ</td>
+                                                <td class="text-end"><?php echo number_format($amount); ?> VNĐ</td>
+                                                <td class="text-end"><?php echo number_format($detail['PaidAmount']); ?> VNĐ</td>
+                                                <?php if ($invoice['PaidAmount'] == 0): ?>
+                                                <td>
+                                                    <a href="edit_service_detail.php?invoice_code=<?php echo $invoice_code; ?>&service_code=<?php echo $detail['ServiceCode']; ?>" class="btn btn-sm btn-primary">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                </td>
+                                                <?php endif; ?>
+                                            </tr>
                                         <?php endforeach; ?>
                                         <tr class="total-row">
                                             <td colspan="6" class="text-end">Tổng cộng:</td>
                                             <td class="text-end"><?php echo number_format($total_amount); ?> VNĐ</td>
                                             <td class="text-end"><?php echo number_format($total_paid); ?> VNĐ</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                                            <?php if ($invoice['PaidAmount'] == 0): ?>
+                                            <td></td>
+                                            <?php endif; ?>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
@@ -503,21 +662,171 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Modal -->
+    <div class="modal fade" id="editServiceModal" tabindex="-1" aria-labelledby="editServiceModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editServiceModalLabel">CHI TIẾT BẢNG KÊ DỊCH VỤ</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editServiceForm">
+                <input type="hidden" id="serviceCode" name="serviceCode">
+                
+                <div class="mb-3">
+                    <label class="form-label">Kỳ bảng kê</label>
+                    <input type="text" id="invoicePeriod" class="form-control" value="<?php echo $invoice['InvoicePeriod']; ?>" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Dịch vụ</label>
+                    <input type="text" id="serviceName" class="form-control" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Đơn giá <span class="text-danger">*</span></label>
+                    <input type="number" id="unitPrice" name="unitPrice" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Số lượng <span class="text-danger">*</span></label>
+                    <input type="number" id="quantity" name="quantity" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Phát sinh</label>
+                    <input type="text" id="total" class="form-control" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Giảm trừ</label>
+                    <input type="number" id="discount" name="discount" class="form-control" value="0">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Thành tiền</label>
+                    <input type="text" id="finalAmount" class="form-control" readonly>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Lý do giảm trừ</label>
+                    <textarea id="discountReason" name="discountReason" class="form-control" rows="3"></textarea>
+                </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="cancelBtn">Huỷ</button>
+            <button type="button" class="btn btn-success" id="saveBtn">Cập nhật</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script -->
     <script>
-        // Xử lý khi click nút gửi thông báo
-    $(document).on('click', '.send-notification', function() {
-        const invoiceCode = $(this).data('invoice-code');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modal và các phần tử
+        const myModal = new bootstrap.Modal(document.getElementById('editServiceModal'));
+        const serviceCodeInput = document.getElementById('serviceCode');
+        const serviceNameInput = document.getElementById('serviceName');
+        const quantityInput = document.getElementById('quantity');
+        const unitPriceInput = document.getElementById('unitPrice');
+        const discountInput = document.getElementById('discount');
+        const totalInput = document.getElementById('total');
+        const finalAmountInput = document.getElementById('finalAmount');
+        const saveBtn = document.getElementById('saveBtn');
+        
+        // Hàm tính toán tổng tiền
+        function calculateTotal() {
+            const quantity = parseFloat(quantityInput.value) || 0;
+            const unitPrice = parseFloat(unitPriceInput.value) || 0;
+            const discount = parseFloat(discountInput.value) || 0;
             
-            if(confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')) {
-                // Submit form để gửi thông báo
-                const form = $('<form method="POST" action="bill_list.php"></form>');
-                form.append('<input type="hidden" name="invoice_code" value="' + invoiceCode + '">');
-                form.append('<input type="hidden" name="send_notification" value="1">');
-                $('body').append(form);
-                form.submit();
+            const total = quantity * unitPrice;
+            const finalAmount = total - discount;
+            
+            totalInput.value = total.toLocaleString('vi-VN');
+            finalAmountInput.value = finalAmount.toLocaleString('vi-VN');
         }
+        
+        // Thêm event listener cho các trường cần tính toán lại
+        quantityInput.addEventListener('input', calculateTotal);
+        unitPriceInput.addEventListener('input', calculateTotal);
+        discountInput.addEventListener('input', calculateTotal);
+        
+        // Sự kiện click cho nút edit
+        const editButtons = document.querySelectorAll('.edit-btn');
+        console.log('Số lượng nút edit:', editButtons.length);
+        
+        editButtons.forEach(function(button) {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('Đã click nút edit');
+                
+                const serviceCode = this.getAttribute('data-service-code');
+                const serviceName = this.getAttribute('data-service-name');
+                const quantity = this.getAttribute('data-quantity');
+                const unitPrice = this.getAttribute('data-unit-price');
+                const discount = this.getAttribute('data-discount');
+                
+                console.log('Service Code:', serviceCode);
+                
+                // Điền dữ liệu vào form
+                serviceCodeInput.value = serviceCode;
+                serviceNameInput.value = serviceName;
+                quantityInput.value = quantity;
+                unitPriceInput.value = unitPrice;
+                discountInput.value = discount;
+                
+                // Tính toán các giá trị
+                calculateTotal();
+                
+                // Hiển thị modal
+                myModal.show();
+            });
+        });
+        
+        // Lưu thay đổi
+        saveBtn.addEventListener('click', function() {
+            const formData = {
+                action: 'update',
+                serviceCode: serviceCodeInput.value,
+                invoiceCode: '<?php echo $invoice_code; ?>',
+                quantity: quantityInput.value,
+                unitPrice: unitPriceInput.value,
+                discount: discountInput.value,
+                discountReason: document.getElementById('discountReason').value
+            };
+            
+            // Tạo FormData để gửi
+            const urlEncodedData = new URLSearchParams();
+            for (const [key, value] of Object.entries(formData)) {
+                urlEncodedData.append(key, value);
+            }
+            
+            // Gửi request
+            fetch(window.location.href, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: urlEncodedData.toString()
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Cập nhật thành công!');
+                    location.reload();
+                } else {
+                    alert('Có lỗi khi cập nhật: ' + data.message);
+                }
+            })
+            .catch(error => {
+                alert('Có lỗi xảy ra khi cập nhật dữ liệu');
+                console.error(error);
+            });
+        });
     });
     </script>
 </body>

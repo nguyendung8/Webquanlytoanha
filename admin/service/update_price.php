@@ -49,46 +49,28 @@ if (isset($_POST['submit'])) {
     $status = $price['Status']; // Giữ nguyên trạng thái
 
     // Khởi tạo giá trị cho các trường tùy thuộc vào loại phí
-    $calculation_method = '';
+    $price_calculation = '';
     $title = '';
     $price_from = 0;
     $price_to = 0;
     $price_value = 0;
-    $variable_data = '';
 
     if ($type_of_fee == 'Cố định') {
-        $calculation_method = isset($_POST['calculation_method']) ? mysqli_real_escape_string($conn, $_POST['calculation_method']) : '';
+        $price_calculation = isset($_POST['price_calculation']) ? mysqli_real_escape_string($conn, $_POST['price_calculation']) : '';
         $price_value = isset($_POST['fixed_price']) ? floatval($_POST['fixed_price']) : 0;
     } else {
-        // Lưu title, price_from, price_to và price trong chuỗi JSON để lưu nhiều dòng
+        // Lấy dòng đầu tiên làm giá trị chính
         $variable_titles = isset($_POST['variable_title']) ? $_POST['variable_title'] : [];
         $variable_price_froms = isset($_POST['variable_price_from']) ? $_POST['variable_price_from'] : [];
         $variable_price_tos = isset($_POST['variable_price_to']) ? $_POST['variable_price_to'] : [];
         $variable_prices = isset($_POST['variable_price']) ? $_POST['variable_price'] : [];
         
-        // Lấy dòng đầu tiên làm giá trị chính
         if (!empty($variable_titles)) {
             $title = $variable_titles[0];
             $price_from = !empty($variable_price_froms) ? floatval($variable_price_froms[0]) : 0;
             $price_to = !empty($variable_price_tos) ? floatval($variable_price_tos[0]) : 0;
             $price_value = !empty($variable_prices) ? floatval($variable_prices[0]) : 0;
         }
-        
-        // Tạo mảng để lưu các dòng biến đổi
-        $variable_rows = [];
-        for ($i = 0; $i < count($variable_titles); $i++) {
-            if (!empty($variable_titles[$i])) {
-                $variable_rows[] = [
-                    'title' => $variable_titles[$i],
-                    'price_from' => isset($variable_price_froms[$i]) ? floatval($variable_price_froms[$i]) : 0,
-                    'price_to' => isset($variable_price_tos[$i]) ? floatval($variable_price_tos[$i]) : 0,
-                    'price' => isset($variable_prices[$i]) ? floatval($variable_prices[$i]) : 0
-                ];
-            }
-        }
-        
-        // Chuyển đổi thành chuỗi JSON
-        $variable_data = json_encode($variable_rows);
     }
 
     try {
@@ -96,8 +78,8 @@ if (isset($_POST['submit'])) {
         $update_query = mysqli_query($conn, "
             UPDATE pricelist 
             SET Name = '$name', TypeOfFee = '$type_of_fee', Title = '$title', 
-                CalculationMethod = '$calculation_method', PriceFrom = $price_from, 
-                PriceTo = $price_to, Price = $price_value, VariableData = '$variable_data', 
+                PriceCalculation = '$price_calculation', PriceFrom = $price_from, 
+                PriceTo = $price_to, Price = $price_value, 
                 ApplyDate = '$apply_date'
             WHERE ID = '$price_id'
         ");
@@ -379,12 +361,12 @@ if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Hình thức tính<span class="required-mark">*</span></label>
-                                    <select name="calculation_method" class="form-select">
+                                    <select name="price_calculation" class="form-select">
                                         <option value="">-- Chọn hình thức tính --</option>
-                                        <option value="Đơn giá (m2)" <?php echo $price['CalculationMethod'] == 'Đơn giá (m2)' ? 'selected' : ''; ?>>Đơn giá (m2)</option>
-                                        <option value="Định mức (phòng)" <?php echo $price['CalculationMethod'] == 'Định mức (phòng)' ? 'selected' : ''; ?>>Định mức (phòng)</option>
-                                        <option value="Định mức (HK)" <?php echo $price['CalculationMethod'] == 'Định mức (HK)' ? 'selected' : ''; ?>>Định mức (HK)</option>
-                                        </select>
+                                        <option value="Đơn giá (m2)" <?php echo $price['PriceCalculation'] == 'Đơn giá (m2)' ? 'selected' : ''; ?>>Đơn giá (m2)</option>
+                                        <option value="Định mức (phòng)" <?php echo $price['PriceCalculation'] == 'Định mức (phòng)' ? 'selected' : ''; ?>>Định mức (phòng)</option>
+                                        <option value="Định mức (HK)" <?php echo $price['PriceCalculation'] == 'Định mức (HK)' ? 'selected' : ''; ?>>Định mức (HK)</option>
+                                    </select>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Giá<span class="required-mark">*</span></label>
