@@ -127,12 +127,14 @@ $query = "
         u.UserName AS UpdatedBy
     FROM vehicles v
     LEFT JOIN apartment a ON v.ApartmentID = a.ApartmentID
+    LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN ServiceVehicles sv ON v.VehicleCode = sv.VehicleCode
     LEFT JOIN services s ON sv.ServiceId = s.ServiceCode
     LEFT JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
     LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
     LEFT JOIN users u ON v.VehicleOwnerID = u.ResidentID
-    $where_clause
+    WHERE " . (@$selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . " " .
+    (!empty($where_conditions) ? "AND " . implode(" AND ", $where_conditions) : "") . "
     ORDER BY v.VehicleCode DESC
 ";
 
@@ -439,10 +441,48 @@ $query = "
                     </div>
                 </div>
 
+                <!-- Thêm sau page-header -->
+                <div class="project-filter mb-4">
+                    <?php
+                    // Query lấy danh sách dự án
+                    $projects_query = "
+                        SELECT DISTINCT p.ProjectID, p.Name 
+                        FROM Projects p
+                        JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                        JOIN staffs s ON sp.StaffId = s.ID
+                        JOIN users u ON s.DepartmentId = u.DepartmentId
+                        WHERE u.UserId = '$admin_id' 
+                        AND p.Status = 'active'
+                        ORDER BY p.Name";
+                    $projects_result = mysqli_query($conn, $projects_query);
+                    
+                    // Lấy project_id từ URL
+                    $selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+                    ?>
+                    
+                    <select class="form-select" style="width: 300px;" 
+                            onchange="window.location.href='vehicle_list.php?project_id='+this.value">
+                        <option value="">Chọn dự án</option>
+                        <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                            <option value="<?php echo $project['ProjectID']; ?>" 
+                                    <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                <?php echo $project['Name']; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </div>
+
+                <!-- Nút Thẻ xe -->
                 <div class="row justify-content-end mt-3 mr-4">
-                    <a href="vehicle_card_list.php" class="price-btn">
-                        Thẻ xe
-                    </a>
+                    <?php if(empty($selected_project)): ?>
+                        <button type="button" class="price-btn" onclick="showProjectAlert()">
+                            Thẻ xe
+                        </button>
+                    <?php else: ?>
+                        <a href="vehicle_card_list.php?project_id=<?php echo $selected_project; ?>" class="price-btn">
+                            Thẻ xe
+                        </a>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Search and Add Section -->
@@ -456,6 +496,8 @@ $query = "
                                 SELECT DISTINCT a.ApartmentID, a.Code, a.Name 
                                 FROM apartment a 
                                 INNER JOIN vehicles v ON a.ApartmentID = v.ApartmentID 
+                                INNER JOIN Buildings b ON a.BuildingId = b.ID
+                                WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
                                 ORDER BY a.Code
                             ");
                             while($apt = mysqli_fetch_assoc($apartment_query)) {
@@ -482,9 +524,16 @@ $query = "
                             <i class="fas fa-search"></i> Tìm kiếm
                         </button>
                     </div>
-                    <a href="create_vehicle.php" class="add-btn">
-                        <i class="fas fa-plus"></i> Thêm mới
-                    </a>
+                    <!-- Nút Thêm mới -->
+                    <?php if(empty($selected_project)): ?>
+                        <button type="button" class="add-btn" onclick="showProjectAlert()">
+                            <i class="fas fa-plus"></i> Thêm mới
+                        </button>
+                    <?php else: ?>
+                        <a href="create_vehicle.php?project_id=<?php echo $selected_project; ?>" class="add-btn">
+                            <i class="fas fa-plus"></i> Thêm mới
+                        </a>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Vehicles Table -->
@@ -536,13 +585,24 @@ $query = "
                                 </div>
                             </td>
                             <td class="action-buttons">
-                                <a href="update_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>" title="Sửa">
-                                    <i class="fas fa-edit"></i>
-                                </a>
-                                <a href="delete_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>" title="Xóa" 
-                                   onclick="return confirm('Bạn có chắc chắn muốn xóa phương tiện này?');">
-                                    <i class="fas fa-trash-alt"></i>
-                                </a>
+                                <?php if(empty($selected_project)): ?>
+                                    <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                <?php else: ?>
+                                    <a href="update_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>&project_id=<?php echo $selected_project; ?>" 
+                                       class="action-icon" title="Sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="delete_vehicle.php?id=<?php echo urlencode($vehicle['VehicleCode']); ?>&project_id=<?php echo $selected_project; ?>" 
+                                       class="action-icon" title="Xóa"
+                                       onclick="return confirm('Bạn có chắc chắn muốn xóa phương tiện này?');">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php } ?>
@@ -572,8 +632,36 @@ $query = "
 
     <script>
     $(document).ready(function() {
+        // Hàm hiển thị thông báo khi chưa chọn dự án
+        function showProjectAlert() {
+            var alertHtml = `
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            // Xóa thông báo cũ nếu có
+            $('.alert').remove();
+            
+            // Thêm thông báo mới vào đầu container
+            $('.manage-container').prepend(alertHtml);
+            
+            // Tự động ẩn sau 3 giây
+            setTimeout(function() {
+                $('.alert').fadeOut('slow', function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
         // Xử lý sự kiện click vào toggle
         $('.status-toggle').on('click', function() {
+            if (!<?php echo $selected_project ? 'true' : 'false'; ?>) {
+                showProjectAlert();
+                return;
+            }
+            
             const toggleElement = $(this);
             const vehicleId = toggleElement.data('vehicle');
             const currentStatus = toggleElement.hasClass('active') ? 'active' : 'inactive';
@@ -689,6 +777,9 @@ $query = "
         if(urlParams.has('apartment')) $('#apartment_filter').val(urlParams.get('apartment'));
         if(urlParams.has('type')) $('#vehicle_type_filter').val(urlParams.get('type'));
         if(urlParams.has('status')) $('#status_filter').val(urlParams.get('status'));
+
+        // Thêm vào window để có thể gọi từ onclick trong HTML
+        window.showProjectAlert = showProjectAlert;
     });
     </script>
 </body>

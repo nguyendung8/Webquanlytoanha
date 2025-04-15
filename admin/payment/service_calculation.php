@@ -21,6 +21,7 @@ $select_projects = mysqli_query($conn, "SELECT ProjectID, Name FROM Projects WHE
 if (isset($_POST['calculate_fee'])) {
     $invoice_period_month = mysqli_real_escape_string($conn, $_POST['month']);
     $invoice_period_year = mysqli_real_escape_string($conn, $_POST['year']);
+    $invoice_period = $invoice_period_month . '/' . $invoice_period_year;
     $due_date = mysqli_real_escape_string($conn, $_POST['due_date']);
     $apartment_filter = isset($_POST['apartment_filter']) ? mysqli_real_escape_string($conn, $_POST['apartment_filter']) : 'all';
     
@@ -37,7 +38,7 @@ if (isset($_POST['calculate_fee'])) {
     // Kiểm tra xem đã chọn căn hộ cụ thể hay không
     $apartment_clause = ($apartment_filter != 'all') ? "AND a.ApartmentID = '$apartment_filter'" : "";
     
-    // Lấy danh sách các căn hộ có hợp đồng
+    // Lấy danh sách các căn hộ có hợp đồng và chưa có bảng kê trong kỳ
     $apartment_query = "
         SELECT a.ApartmentID, a.Code, a.Name, a.ContractCode, c.Status AS ContractStatus
         FROM apartment a
@@ -45,15 +46,38 @@ if (isset($_POST['calculate_fee'])) {
         LEFT JOIN Contracts c ON a.ContractCode = c.ContractCode
         WHERE c.Status != 'pending' AND c.Status != 'expired' 
         $apartment_clause $project_clause
+        AND NOT EXISTS (
+            SELECT 1 
+            FROM debtstatements d 
+            WHERE d.ApartmentID = a.ApartmentID
+            AND d.InvoicePeriod = '$invoice_period'
+        )
     ";
     
     $apartments = mysqli_query($conn, $apartment_query);
     
     if (mysqli_num_rows($apartments) > 0) {
+        $processed_count = 0; // Đếm số căn hộ đã xử lý
+        $skipped_count = 0;   // Đếm số căn hộ bị bỏ qua
+        
         while ($apartment = mysqli_fetch_assoc($apartments)) {
             $apartment_id = $apartment['ApartmentID'];
             $contract_code = $apartment['ContractCode'];
             
+            // Kiểm tra xem căn hộ đã có bảng kê trong kỳ chưa
+            $check_existing = mysqli_query($conn, "
+                SELECT COUNT(*) as count 
+                FROM debtstatements 
+                WHERE ApartmentID = '$apartment_id'
+                AND InvoicePeriod = '$invoice_period'
+            ");
+            $existing = mysqli_fetch_assoc($check_existing);
+            
+            if ($existing['count'] > 0) {
+                $skipped_count++;
+                continue; // Bỏ qua căn hộ này nếu đã có bảng kê
+            }
+
             // Lấy mã bảng kê lớn nhất hiện tại
             $max_code_query = mysqli_query($conn, "
                 SELECT InvoiceCode 
@@ -75,67 +99,94 @@ if (isset($_POST['calculate_fee'])) {
 
             // Format số thành chuỗi 2 chữ số (01, 02, ..., 99)
             $invoice_code = 'BK' . str_pad($next_number, 2, '0', STR_PAD_LEFT);
-            $invoice_period = $invoice_period_month . '/' . $invoice_period_year;
             $issue_date = date('Y-m-d');
             
             $total_amount = 0;
             $service_details = [];
             
-            // Calculate fees for each service
+            // Trước khi tính toán, lấy danh sách dịch vụ trong hợp đồng
+            $contract_services_query = "
+                SELECT 
+                    s.ServiceCode,
+                    s.Name AS ServiceName,
+                    pl.Price,
+                    cs.ApplyDate,
+                    cs.EndDate
+                FROM ContractServices cs
+                INNER JOIN services s ON cs.ServiceId = s.ServiceCode
+                INNER JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
+                INNER JOIN pricelist pl ON sp.PriceId = pl.ID
+                INNER JOIN Contracts c ON cs.ContractCode = c.ContractCode
+                WHERE c.Status = 'active'
+                AND s.Status = 'active'
+                AND cs.ApplyDate <= CURDATE()
+                AND (cs.EndDate IS NULL OR cs.EndDate >= CURDATE())
+                AND cs.ContractCode = '$contract_code'";
+
+            $contract_services = mysqli_query($conn, $contract_services_query);
+            $valid_services = [];
+            
+            while ($service = mysqli_fetch_assoc($contract_services)) {
+                $valid_services[$service['ServiceCode']] = $service;
+            }
+
+            // Trong vòng lặp tính toán, chỉ tính các dịch vụ có trong hợp đồng
             foreach ($service_codes as $index => $service_code) {
-                $unit_price = $prices[$index] ?? 0;
-                $discount = $discounts[$index] ?? 0;
-                $discount_reason = $discount_reasons[$index] ?? '';
-                $quantity = 1; // Default quantity
-                
-                // Special handling for water and electricity
-                $service_info_query = mysqli_query($conn, "SELECT TypeOfService FROM services WHERE ServiceCode = '$service_code'");
-                $service_info = mysqli_fetch_assoc($service_info_query);
-                
-                if ($service_info['TypeOfService'] == 'Nước') {
-                    // Get water consumption
-                    $water_query = mysqli_query($conn, "
-                        SELECT Consumption
-                        FROM WaterMeterReading
-                        WHERE ApartmentID = '$apartment_id'
-                        AND MONTH(ClosingDate) = '$invoice_period_month'
-                        AND YEAR(ClosingDate) = '$invoice_period_year'
-                        ORDER BY ClosingDate DESC
-                        LIMIT 1
-                    ");
+                if (isset($valid_services[$service_code])) {
+                    $unit_price = $prices[$index] ?? 0;
+                    $discount = $discounts[$index] ?? 0;
+                    $discount_reason = $discount_reasons[$index] ?? '';
+                    $quantity = 1; // Default quantity
                     
-                    if (mysqli_num_rows($water_query) > 0) {
-                        $water_info = mysqli_fetch_assoc($water_query);
-                        $quantity = $water_info['Consumption'];
-                    }
-                } elseif ($service_info['TypeOfService'] == 'Điện') {
-                    // Get electricity consumption
-                    $electric_query = mysqli_query($conn, "
-                        SELECT Consumption
-                        FROM ElectricityMeterReading
-                        WHERE ApartmentID = '$apartment_id'
-                        AND MONTH(ClosingDate) = '$invoice_period_month'
-                        AND YEAR(ClosingDate) = '$invoice_period_year'
-                        ORDER BY ClosingDate DESC
-                        LIMIT 1
-                    ");
+                    // Special handling for water and electricity
+                    $service_info_query = mysqli_query($conn, "SELECT TypeOfService FROM services WHERE ServiceCode = '$service_code'");
+                    $service_info = mysqli_fetch_assoc($service_info_query);
                     
-                    if (mysqli_num_rows($electric_query) > 0) {
-                        $electric_info = mysqli_fetch_assoc($electric_query);
-                        $quantity = $electric_info['Consumption'];
+                    if ($service_info['TypeOfService'] == 'Nước') {
+                        // Get water consumption
+                        $water_query = mysqli_query($conn, "
+                            SELECT Consumption
+                            FROM WaterMeterReading
+                            WHERE ApartmentID = '$apartment_id'
+                            AND MONTH(ClosingDate) = '$invoice_period_month'
+                            AND YEAR(ClosingDate) = '$invoice_period_year'
+                            ORDER BY ClosingDate DESC
+                            LIMIT 1
+                        ");
+                        
+                        if (mysqli_num_rows($water_query) > 0) {
+                            $water_info = mysqli_fetch_assoc($water_query);
+                            $quantity = $water_info['Consumption'];
+                        }
+                    } elseif ($service_info['TypeOfService'] == 'Điện') {
+                        // Get electricity consumption
+                        $electric_query = mysqli_query($conn, "
+                            SELECT Consumption
+                            FROM ElectricityMeterReading
+                            WHERE ApartmentID = '$apartment_id'
+                            AND MONTH(ClosingDate) = '$invoice_period_month'
+                            AND YEAR(ClosingDate) = '$invoice_period_year'
+                            ORDER BY ClosingDate DESC
+                            LIMIT 1
+                        ");
+                        
+                        if (mysqli_num_rows($electric_query) > 0) {
+                            $electric_info = mysqli_fetch_assoc($electric_query);
+                            $quantity = $electric_info['Consumption'];
+                        }
                     }
+                    
+                    $amount = ($unit_price * $quantity) - $discount;
+                    $total_amount += $amount;
+                    
+                    $service_details[] = [
+                        'service_code' => $service_code,
+                        'unit_price' => $unit_price,
+                        'quantity' => $quantity,
+                        'discount' => $discount,
+                        'amount' => $amount
+                    ];
                 }
-                
-                $amount = ($unit_price * $quantity) - $discount;
-                $total_amount += $amount;
-                
-                $service_details[] = [
-                    'service_code' => $service_code,
-                    'unit_price' => $unit_price,
-                    'quantity' => $quantity,
-                    'discount' => $discount,
-                    'amount' => $amount
-                ];
             }
             
             // Trước khi thực hiện insert, tắt kiểm tra khóa ngoại
@@ -173,11 +224,23 @@ if (isset($_POST['calculate_fee'])) {
 
             // Sau khi hoàn thành, bật lại kiểm tra khóa ngoại
             mysqli_query($conn, "SET FOREIGN_KEY_CHECKS=1");
+
+            // Sau khi insert thành công
+            $processed_count++;
         }
         
-        $success_msg[] = 'Đã tính phí dịch vụ thành công';
+        // Thông báo kết quả chi tiết
+        if ($processed_count > 0) {
+            $success_msg[] = "Đã tính phí dịch vụ thành công cho $processed_count căn hộ.";
+        }
+        if ($skipped_count > 0) {
+            $success_msg[] = "Có $skipped_count căn hộ đã được tính phí trong kỳ $invoice_period và được bỏ qua.";
+        }
+        if ($processed_count == 0 && $skipped_count > 0) {
+            $error_msg[] = "Tất cả các căn hộ đã được tính phí trong kỳ $invoice_period.";
+        }
     } else {
-        $error_msg[] = 'Không tìm thấy căn hộ với hợp đồng phù hợp';
+        $error_msg[] = "Không tìm thấy căn hộ phù hợp để tính phí hoặc tất cả căn hộ đã được tính phí trong kỳ $invoice_period.";
     }
 }
 
@@ -207,20 +270,21 @@ $services_query = "
         pl.TypeOfFee,
         pl.Name AS PriceListName,
         pl.Price,
-        cs.ApplyDate,
+        COALESCE(cs.ApplyDate, CURDATE()) as ApplyDate,
         cs.EndDate,
         cs.ContractCode
     FROM services s
-    INNER JOIN ContractServices cs ON s.ServiceCode = cs.ServiceId
     LEFT JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
     LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
-    WHERE s.Status = 'active' 
-    AND cs.ApplyDate <= CURDATE()
-    AND (cs.EndDate IS NULL OR cs.EndDate >= CURDATE())
+    LEFT JOIN (
+        SELECT cs.* 
+        FROM ContractServices cs
+        INNER JOIN Contracts c ON cs.ContractCode = c.ContractCode
+        WHERE c.Status = 'active'
+    ) cs ON s.ServiceCode = cs.ServiceId
+    WHERE s.Status = 'active'
     " . (!empty($project_filter) ? "AND s.ProjectId = '$project_filter'" : "") . "
-    $contract_clause
-    ORDER BY s.ServiceCode
-";
+    ORDER BY s.ServiceCode";
 
 $services_result = mysqli_query($conn, $services_query);
 

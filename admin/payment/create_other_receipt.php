@@ -220,7 +220,7 @@ if(isset($_POST['submit'])) {
     $total = $quantity * $price;
     $accounting_date = mysqli_real_escape_string($conn, $_POST['accounting_date']);
     $content = mysqli_real_escape_string($conn, $_POST['content']);
-
+    
     // Tạo mã phiếu thu theo định dạng PT_YYYYMMDD_XXX
     $current_date = date('Ymd', strtotime($accounting_date)); // Sử dụng ngày hạch toán thay vì ngày hiện tại
     $last_receipt_query = mysqli_query($conn, "
@@ -245,9 +245,9 @@ if(isset($_POST['submit'])) {
     }
 
     if (!isset($error_msg)) {
-        $sequence_str = str_pad($new_sequence, 3, '0', STR_PAD_LEFT);
-        $receipt_id = "PT_" . $current_date . "_" . $sequence_str;
-
+    $sequence_str = str_pad($new_sequence, 3, '0', STR_PAD_LEFT);
+    $receipt_id = "PT_" . $current_date . "_" . $sequence_str;
+    
         // Kiểm tra xem mã đã tồn tại chưa
         $check_exists = mysqli_query($conn, "
             SELECT OtherReceiptID 
@@ -259,8 +259,8 @@ if(isset($_POST['submit'])) {
             $error_msg = "Mã phiếu thu đã tồn tại!";
         } else {
             // Thêm đoạn này ngay trước câu lệnh INSERT
-            mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
-
+        mysqli_query($conn, "SET FOREIGN_KEY_CHECKS = 0");
+        
             // Thực hiện INSERT như bình thường
             $insert_query = mysqli_query($conn, "
                 INSERT INTO OtherReceipt (
@@ -277,7 +277,7 @@ if(isset($_POST['submit'])) {
 
             if($insert_query) {
                 $success_msg = "Tạo phiếu thu thành công!";
-            } else {
+                } else {
                 $error_msg = "Có lỗi xảy ra: " . mysqli_error($conn);
             }
         }
@@ -514,14 +514,14 @@ if(isset($_POST['submit'])) {
                 }
 
                 // Lấy danh sách cư dân
-                $.ajax({
-                    url: window.location.href,
+                    $.ajax({
+                        url: window.location.href,
                     type: 'POST',
-                    data: {
+                        data: { 
                         get_residents: true,
-                        apartment_id: apartmentId
-                    },
-                    success: function(response) {
+                            apartment_id: apartmentId 
+                        },
+                        success: function(response) {
                         try {
                             const residents = JSON.parse(response);
                             let options = '<option value="">Chọn người nộp tiền</option>';

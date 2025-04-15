@@ -239,9 +239,9 @@ while ($detail = mysqli_fetch_assoc($details_query)) {
                             </div>
                         </div>
                         <div class="col-md-6 text-md-end no-print">
-                            <button class="btn btn-primary" onclick="window.print()">
-                                <i class="fas fa-print"></i> In bảng kê
-                            </button>
+                            <a href="export_invoice_pdf.php?invoice_code=<?php echo $invoice['InvoiceCode']; ?>" class="btn btn-primary" target="_blank">
+                                <i class="fas fa-file-pdf"></i> Xuất PDF
+                            </a>
                             <a href="bill_list.php" class="btn btn-secondary">
                                 <i class="fas fa-arrow-left"></i> Quay lại
                             </a>

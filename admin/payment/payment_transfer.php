@@ -10,8 +10,51 @@ if (!isset($admin_id)) {
     exit();
 }
 
-// Lấy danh sách tòa nhà
-$buildings_query = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
+// Xử lý Ajax request cho tòa nhà và căn hộ
+if(isset($_POST['action'])) {
+    if($_POST['action'] == 'get_buildings') {
+        $project_id = mysqli_real_escape_string($conn, $_POST['project_id']);
+        $query = "SELECT ID, Name FROM Buildings WHERE ProjectId = '$project_id' AND Status = 'active'";
+        $result = mysqli_query($conn, $query);
+        
+        $html = '<option value="">Chọn tòa nhà</option>';
+        while($row = mysqli_fetch_assoc($result)) {
+            $html .= '<option value="'.$row['ID'].'">'.$row['Name'].'</option>';
+        }
+        echo $html;
+        exit;
+    }
+    
+    if($_POST['action'] == 'get_apartments') {
+        $building_id = mysqli_real_escape_string($conn, $_POST['building_id']);
+        $query = "SELECT ApartmentID, Code FROM apartment WHERE BuildingId = '$building_id' AND Status = 'active'";
+        $result = mysqli_query($conn, $query);
+        
+        $html = '<option value="">Chọn căn hộ</option>';
+        while($row = mysqli_fetch_assoc($result)) {
+            $html .= '<option value="'.$row['ApartmentID'].'">'.$row['Code'].'</option>';
+        }
+        echo $html;
+        exit;
+    }
+}
+
+$selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+
+// Lấy danh sách dự án của nhân viên
+$projects_query = "SELECT DISTINCT p.ProjectID, p.Name 
+                  FROM Projects p
+                  JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                  JOIN staffs s ON sp.StaffId = s.ID
+                  JOIN users u ON s.DepartmentId = u.DepartmentId
+                  WHERE u.UserId = '$admin_id' 
+                  AND p.Status = 'active'
+                  ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
+
+// Sửa lại query lấy danh sách tòa nhà
+$buildings_query = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'" . 
+    ($selected_project ? " AND ProjectId = '$selected_project'" : ""));
 
 // Xử lý các tham số tìm kiếm
 $document_number = isset($_GET['document_number']) ? mysqli_real_escape_string($conn, $_GET['document_number']) : '';
@@ -132,8 +175,14 @@ $count_query = "
 $total_records = mysqli_fetch_assoc(mysqli_query($conn, $count_query))['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
-// Lấy danh sách căn hộ
-$apartments_query = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartment WHERE Status = 'active'");
+// Sửa lại query lấy danh sách căn hộ
+$apartments_query = mysqli_query($conn, "
+    SELECT a.ApartmentID, a.Code 
+    FROM apartment a 
+    JOIN Buildings b ON a.BuildingId = b.ID 
+    WHERE a.Status = 'active'" . 
+    ($selected_project ? " AND b.ProjectId = '$selected_project'" : "") .
+    ($building ? " AND b.ID = '$building'" : ""));
 ?>
 
 <!DOCTYPE html>
@@ -194,13 +243,31 @@ $apartments_query = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartment
 
                 <!-- Search Form -->
                 <div class="search-container">
-                    <form method="GET" class="row g-3">
+                    <form method="GET" class="row g-3" id="searchForm">
                         <div class="col-md-2">
-                            <input type="text" class="form-control" name="document_number" 
-                                   placeholder="Số hiệu chứng từ" value="<?php echo $document_number; ?>">
+                            <select class="form-select" name="project_id" id="projectSelect">
+                                <option value="">Chọn dự án</option>
+                                <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                                    <option value="<?php echo $project['ProjectID']; ?>" 
+                                            <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                        <?php echo $project['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
                         </div>
                         <div class="col-md-2">
-                            <select class="form-select" name="apartment">
+                            <select class="form-select" name="building" id="buildingSelect">
+                                <option value="">Chọn tòa nhà</option>
+                                <?php while($building_row = mysqli_fetch_assoc($buildings_query)) { ?>
+                                    <option value="<?php echo $building_row['ID']; ?>"
+                                            <?php echo ($building == $building_row['ID']) ? 'selected' : ''; ?>>
+                                        <?php echo $building_row['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="apartment" id="apartmentSelect">
                                 <option value="">Chọn căn hộ</option>
                                 <?php while($apt = mysqli_fetch_assoc($apartments_query)) { ?>
                                     <option value="<?php echo $apt['ApartmentID']; ?>" 
@@ -211,15 +278,8 @@ $apartments_query = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartment
                             </select>
                         </div>
                         <div class="col-md-2">
-                            <select class="form-select" name="building">
-                                <option value="">Chọn tòa nhà</option>
-                                <?php while($building_row = mysqli_fetch_assoc($buildings_query)) { ?>
-                                    <option value="<?php echo $building_row['ID']; ?>"
-                                            <?php echo ($building == $building_row['ID']) ? 'selected' : ''; ?>>
-                                        <?php echo $building_row['Name']; ?>
-                                    </option>
-                                <?php } ?>
-                            </select>
+                            <input type="text" class="form-control" name="document_number" 
+                                   placeholder="Số hiệu chứng từ" value="<?php echo $document_number; ?>">
                         </div>
                         <div class="col-md-1">
                             <button type="submit" class="btn btn-success w-100">
@@ -295,6 +355,7 @@ $apartments_query = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartment
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         // Xử lý checkbox select all
         document.getElementById('select-all').addEventListener('change', function() {
@@ -308,6 +369,56 @@ $apartments_query = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartment
             // Thêm logic xuất báo cáo ở đây
             alert('Chức năng xuất báo cáo đang được phát triển');
         }
+
+        $(document).ready(function() {
+            // Khi chọn dự án
+            $('#projectSelect').change(function() {
+                var projectId = $(this).val();
+                
+                // Reset các select box khác
+                $('#buildingSelect').html('<option value="">Chọn tòa nhà</option>');
+                $('#apartmentSelect').html('<option value="">Chọn căn hộ</option>');
+                
+                if(projectId) {
+                    // Load danh sách tòa nhà theo dự án
+                    $.ajax({
+                        url: window.location.pathname,
+                        type: 'POST',
+                        data: {
+                            action: 'get_buildings',
+                            project_id: projectId
+                        },
+                        success: function(data) {
+                            $('#buildingSelect').html(data);
+                        }
+                    });
+                }
+                this.form.submit();
+            });
+
+            // Khi chọn tòa nhà
+            $('#buildingSelect').change(function() {
+                var buildingId = $(this).val();
+                
+                // Reset căn hộ
+                $('#apartmentSelect').html('<option value="">Chọn căn hộ</option>');
+                
+                if(buildingId) {
+                    // Load danh sách căn hộ theo tòa nhà
+                    $.ajax({
+                        url: window.location.pathname,
+                        type: 'POST',
+                        data: {
+                            action: 'get_apartments',
+                            building_id: buildingId
+                        },
+                        success: function(data) {
+                            $('#apartmentSelect').html(data);
+                        }
+                    });
+                }
+            });
+        });
     </script>
 </body>
 </html>

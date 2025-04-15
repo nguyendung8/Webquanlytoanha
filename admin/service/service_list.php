@@ -363,6 +363,20 @@ if (isset($_GET['un_block'])) {
         .action-icon:hover {
             background-color: #f5f5f5;
         }
+
+        .project-filter {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .project-filter select {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 
@@ -396,6 +410,37 @@ if (isset($_GET['un_block'])) {
                 </div>
             </div>
 
+            <!-- Thêm sau page-header -->
+            <div class="project-filter mb-4">
+                <?php
+                // Query lấy danh sách dự án
+                $projects_query = "
+                    SELECT DISTINCT p.ProjectID, p.Name 
+                    FROM Projects p
+                    JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                    JOIN staffs s ON sp.StaffId = s.ID
+                    JOIN users u ON s.DepartmentId = u.DepartmentId
+                    WHERE u.UserId = '$admin_id' 
+                    AND p.Status = 'active'
+                    ORDER BY p.Name";
+                $projects_result = mysqli_query($conn, $projects_query);
+                
+                // Lấy project_id từ URL
+                $selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+                ?>
+                
+                <select class="form-select" style="width: 300px;" 
+                        onchange="window.location.href='service_list.php?project_id='+this.value">
+                    <option value="">Chọn dự án</option>
+                    <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                        <option value="<?php echo $project['ProjectID']; ?>" 
+                                <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                            <?php echo $project['Name']; ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </div>
+
             <div class="row justify-content-end mt-3 mr-4">
                 <a href="price_list.php" class="price-btn">
                      Bảng giá
@@ -415,9 +460,15 @@ if (isset($_GET['un_block'])) {
                         <i class="fas fa-search"></i> Tìm kiếm
                     </button>
                 </div>
-                <a href="create_service.php" class="add-btn">
-                    <i class="fas fa-plus"></i> Thêm mới
-                </a>
+                <?php if(empty($selected_project)): ?>
+                    <button type="button" class="add-btn" onclick="showProjectAlert()">
+                        <i class="fas fa-plus"></i> Thêm mới
+                    </button>
+                <?php else: ?>
+                    <a href="create_service.php?project_id=<?php echo $selected_project; ?>" class="add-btn">
+                        <i class="fas fa-plus"></i> Thêm mới
+                    </a>
+                <?php endif; ?>
             </div>
             
             <!-- Services Table -->
@@ -442,6 +493,7 @@ if (isset($_GET['un_block'])) {
                         SELECT s.*, u.UserName as UpdatedBy 
                         FROM services s 
                         LEFT JOIN users u ON s.ProjectId = u.UserId 
+                        WHERE " . ($selected_project ? "s.ProjectId = '$selected_project'" : "1=1") . "
                         ORDER BY s.ServiceCode
                     ") or die('Query failed');
 
@@ -464,13 +516,24 @@ if (isset($_GET['un_block'])) {
                             </div>
                         </td>
                         <td>
-                            <a href="update_service.php?code=<?php echo $service['ServiceCode']; ?>" class="action-icon">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                            <a href="service_delete.php?id=<?php echo $service['ServiceCode']; ?>" class="action-icon" 
-                               onclick="return confirm('Bạn có chắc chắn muốn xóa dịch vụ này?');">
-                                <i class="fas fa-trash"></i>
-                            </a>
+                            <?php if(empty($selected_project)): ?>
+                                <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            <?php else: ?>
+                                <a href="update_service.php?code=<?php echo $service['ServiceCode']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                   class="action-icon">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="service_delete.php?id=<?php echo $service['ServiceCode']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                   class="action-icon" 
+                                   onclick="return confirm('Bạn có chắc chắn muốn xóa dịch vụ này?');">
+                                    <i class="fas fa-trash"></i>
+                                </a>
+                            <?php endif; ?>
                         </td>
                     </tr>
                     <?php } ?>
@@ -497,37 +560,37 @@ if (isset($_GET['un_block'])) {
     $(document).ready(function() {
         // Xử lý sự kiện click vào toggle
         $('.status-toggle').on('click', function() {
+            if (!<?php echo $selected_project ? 'true' : 'false'; ?>) {
+                showProjectAlert();
+                return;
+            }
+            
             const toggleElement = $(this);
             const serviceCode = toggleElement.data('service');
             const currentStatus = toggleElement.hasClass('active') ? 'active' : 'inactive';
             const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
             
-            // Thêm class loading để disable và hiển thị trạng thái đang xử lý
             toggleElement.addClass('loading');
             
-            // Gửi AJAX request để cập nhật trạng thái
             $.ajax({
-                url: 'service_list.php', // Gửi request đến chính file này
+                url: 'service_list.php',
                 type: 'POST',
                 data: {
                     update_status: 1,
                     service_code: serviceCode,
-                    status: newStatus
+                    status: newStatus,
+                    project_id: '<?php echo $selected_project; ?>'
                 },
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        // Cập nhật UI dựa trên trạng thái mới
                         if (newStatus === 'active') {
                             toggleElement.addClass('active');
                         } else {
                             toggleElement.removeClass('active');
                         }
-                        
-                        // Hiển thị thông báo thành công
                         showNotification('success', 'Cập nhật trạng thái thành công');
                     } else {
-                        // Khôi phục trạng thái UI nếu có lỗi
                         showNotification('error', response.message || 'Lỗi khi cập nhật trạng thái');
                     }
                 },
@@ -535,7 +598,6 @@ if (isset($_GET['un_block'])) {
                     showNotification('error', 'Lỗi kết nối server');
                 },
                 complete: function() {
-                    // Loại bỏ trạng thái loading
                     toggleElement.removeClass('loading');
                 }
             });
@@ -551,15 +613,36 @@ if (isset($_GET['un_block'])) {
                 </div>
             `;
             
-            // Thêm thông báo vào trang
             $('#notifications').html(alert);
             
-            // Tự động ẩn sau 3 giây
             setTimeout(function() {
                 $('.notification-alert').alert('close');
             }, 3000);
         }
     });
+
+    // Hàm hiển thị thông báo khi chưa chọn dự án
+    function showProjectAlert() {
+        var alertHtml = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Xóa thông báo cũ nếu có
+        $('.alert').remove();
+        
+        // Thêm thông báo mới vào đầu container
+        $('.manage-container').prepend(alertHtml);
+        
+        // Tự động ẩn sau 3 giây
+        setTimeout(function() {
+            $('.alert').fadeOut('slow', function() {
+                $(this).remove();
+            });
+        }, 3000);
+    }
     </script>
 </body>
 

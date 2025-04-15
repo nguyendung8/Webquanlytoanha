@@ -105,7 +105,7 @@ $lowest_revenue_query = "
     LEFT JOIN ContractServices cs ON s.ServiceCode = cs.ServiceId
     LEFT JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
     LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
-    WHERE 1=1 
+    WHERE 1=1
     " . ($selected_project ? "AND s.ProjectId = '$selected_project'" : "") . "
     AND (cs.ApplyDate IS NULL OR DATE_FORMAT(cs.ApplyDate, '%Y-%m') = '$selected_month')
     GROUP BY s.ServiceCode, s.Name
@@ -239,16 +239,16 @@ $least_used_result = mysqli_query($conn, $least_used_query);
                 </div>
 
                 <div class="row mb-4">
-                    <div class="col-md-3">
+                        <div class="col-md-3">
                         <select class="form-select" id="projectSelect" name="project">
                             <option value="">Tất cả dự án</option>
                             <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
                                 <option value="<?php echo $project['ProjectID']; ?>" 
                                         <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
                                     <?php echo $project['Name']; ?>
-                                </option>
-                            <?php } ?>
-                        </select>
+                                    </option>
+                                <?php } ?>
+                            </select>
                     </div>
                     <div class="col-md-3">
                         <input type="month" class="form-control" id="monthSelect" 
@@ -331,7 +331,7 @@ $least_used_result = mysqli_query($conn, $least_used_query);
                                 <?php echo htmlspecialchars($lowest_revenue['ServiceName']); ?>
                             </div>
                             <div class="text-muted small">
-                                <?php 
+                                    <?php 
                                 if (isset($lowest_revenue['TotalRevenue'])) {
                                     echo number_format($lowest_revenue['TotalRevenue'], 0, ',', '.') . ' VNĐ';
                                 }
@@ -346,7 +346,7 @@ $least_used_result = mysqli_query($conn, $least_used_query);
                                 <?php echo htmlspecialchars($most_used['ServiceName']); ?>
                             </div>
                             <div class="text-muted small">
-                                <?php 
+                            <?php
                                 if (isset($most_used['UsageCount'])) {
                                     echo $most_used['UsageCount'] . ' lượt';
                                 }
@@ -368,7 +368,7 @@ $least_used_result = mysqli_query($conn, $least_used_query);
                                 ?>
                             </div>
                         </div>
-                    </div>
+                </div>
                 </div>
             </div>
         </div>

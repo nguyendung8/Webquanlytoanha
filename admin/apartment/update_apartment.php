@@ -152,6 +152,127 @@ if(isset($_POST['submit'])) {
         $message[] = 'Lỗi: ' . $e->getMessage();
     }
 }
+
+// Xử lý AJAX lấy danh sách cư dân
+if(isset($_GET['action']) && $_GET['action'] == 'get_residents') {
+    header('Content-Type: application/json');
+    $apartment_id = mysqli_real_escape_string($conn, $_GET['apartment_id']);
+    
+    $query = "SELECT DISTINCT r.ID, r.NationalId, u.UserName
+            FROM resident r 
+            INNER JOIN users u ON r.ID = u.ResidentID 
+            LEFT JOIN ResidentApartment ra ON r.ID = ra.ResidentId
+            WHERE r.NationalId IS NOT NULL 
+            AND r.ID NOT IN (
+                SELECT ResidentId 
+                FROM ResidentApartment 
+                WHERE ApartmentId = '$apartment_id'
+            )
+            ORDER BY u.UserName";
+    
+    $result = mysqli_query($conn, $query);
+    $residents = array();
+    while($row = mysqli_fetch_assoc($result)) {
+        $residents[] = $row;
+    }
+    
+    echo json_encode($residents);
+    exit;
+}
+
+// Xử lý AJAX lấy thông tin chi tiết cư dân
+if(isset($_GET['action']) && $_GET['action'] == 'get_resident_info') {
+    header('Content-Type: application/json');
+    $resident_id = mysqli_real_escape_string($conn, $_GET['resident_id']);
+    
+    $query = "SELECT r.ID, r.NationalId, r.Dob, r.Gender,
+                     u.UserName, u.Email, u.PhoneNumber
+            FROM resident r
+            INNER JOIN users u ON r.ID = u.ResidentID
+            WHERE r.ID = '$resident_id'";
+    
+    $result = mysqli_query($conn, $query);
+    if($row = mysqli_fetch_assoc($result)) {
+        echo json_encode($row);
+    }
+    exit;
+}
+
+// Xử lý AJAX thêm cư dân vào căn hộ
+if(isset($_POST['action']) && $_POST['action'] == 'add_resident') {
+    $resident_id = mysqli_real_escape_string($conn, $_POST['resident_id']);
+    $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
+    $relationship = mysqli_real_escape_string($conn, $_POST['relationship']);
+    
+    // Kiểm tra xem đã tồn tại chưa
+    $check_query = "
+        SELECT * FROM ResidentApartment 
+        WHERE ResidentId = '$resident_id' 
+        AND ApartmentId = '$apartment_id'
+    ";
+    $check_result = mysqli_query($conn, $check_query);
+    
+    if(mysqli_num_rows($check_result) > 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Cư dân này đã được thêm vào căn hộ'
+        ]);
+        exit;
+    }
+    
+    // Thêm mới
+    $insert_query = "
+        INSERT INTO ResidentApartment (ResidentId, ApartmentId, Relationship)
+        VALUES ('$resident_id', '$apartment_id', '$relationship')
+    ";
+    
+    if(mysqli_query($conn, $insert_query)) {
+        header('location: update_apartment.php?id=' . $apartment_id);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => mysqli_error($conn)
+        ]);
+    }
+    exit;
+}
+
+// Thêm vào đầu file, cùng với các xử lý AJAX khác
+if(isset($_POST['action']) && $_POST['action'] == 'save_resident') {
+    header('Content-Type: application/json');
+    
+    $resident_id = mysqli_real_escape_string($conn, $_POST['resident_id']);
+    $apartment_id = mysqli_real_escape_string($conn, $_POST['apartment_id']);
+    $relationship = mysqli_real_escape_string($conn, $_POST['relationship']);
+    
+    // Kiểm tra đã tồn tại chưa
+    $check_query = "SELECT * FROM ResidentApartment 
+                   WHERE ResidentId = '$resident_id' 
+                   AND ApartmentId = '$apartment_id'";
+    $check_result = mysqli_query($conn, $check_query);
+    
+    if(mysqli_num_rows($check_result) > 0) {
+        echo json_encode([
+            'success' => false,
+            'message' => 'Cư dân này đã được thêm vào căn hộ'
+        ]);
+        exit;
+    }
+    
+    // Thêm mới
+    $insert_query = "INSERT INTO ResidentApartment (ResidentId, ApartmentId, Relationship) 
+                    VALUES ('$resident_id', '$apartment_id', '$relationship')";
+    
+    if(mysqli_query($conn, $insert_query)) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode([
+            'success' => false,
+            'message' => mysqli_error($conn)
+        ]);
+    }
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -372,6 +493,18 @@ if(isset($_POST['submit'])) {
                             <input type="hidden" name="description" id="description">
                         </div>
 
+                        <div class="mb-3">
+                            <label for="relationship" class="form-label">Quan hệ (*)</label>
+                            <select class="form-select" id="relationship" name="relationship" required>
+                                <option value="">Chọn quan hệ</option>
+                                <option value="Khách thuê">Khách thuê</option>
+                                <option value="Vợ/Chồng">Vợ/Chồng</option>
+                                <option value="Con">Con</option>
+                                <option value="Bố mẹ">Bố mẹ</option>
+                                <option value="Anh chị em">Anh chị em</option>
+                            </select>
+                        </div>
+
                         <div class="btn-container">
                             <button type="submit" name="submit" class="btn btn-submit">Cập nhật</button>
                             <a href="apartment_management.php" class="btn btn-cancel">Hủy</a>
@@ -445,6 +578,9 @@ if(isset($_POST['submit'])) {
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Cư dân</h5>
+                            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addResidentModal">
+                                <i class="fas fa-plus"></i> Thêm cư dân
+                            </button>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -477,6 +613,7 @@ if(isset($_POST['submit'])) {
                     <div class="card mb-4">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Phương tiện</h5>
+                            <a href="/webquanlytoanha/admin/service/create_vehicle.php" class="btn btn-primary">Thêm phương tiện</a>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -509,6 +646,7 @@ if(isset($_POST['submit'])) {
         </div>
     </div>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     <script>
@@ -549,6 +687,191 @@ if(isset($_POST['submit'])) {
                     });
                 });
         });
+
+        // Thêm xử lý khi chọn CCCD
+        $('#nationalId').change(function() {
+            const residentId = $(this).val();
+            if(!residentId) {
+                // Reset form nếu không chọn CCCD
+                $('#residentName').val('');
+                $('#phone').val('');
+                $('#email').val('');
+                $('#dob').val('');
+                $('#gender').val('');
+                return;
+            }
+            
+            // Lấy thông tin cư dân
+            $.ajax({
+                url: 'get_resident_info.php',
+                method: 'GET',
+                data: { 
+                    resident_id: residentId 
+                },
+                dataType: 'json',
+                success: function(data) {
+                    if(data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    
+                    // Auto fill các trường thông tin
+                    $('#residentName').val(data.UserName);
+                    $('#phone').val(data.PhoneNumber);
+                    $('#email').val(data.Email);
+                    $('#dob').val(data.Dob);
+                    $('#gender').val(data.Gender);
+                }
+            });
+        });
+
+        // Xử lý khi click nút Lưu
+        $('#btnSave').click(function() {
+            const residentId = $('#nationalId').val();
+            const relationship = $('#relationship').val();
+            const apartmentId = <?php echo $apartment_id; ?>;
+
+            // Kiểm tra dữ liệu
+            if(!residentId || !relationship) {
+                alert('Vui lòng chọn đầy đủ thông tin');
+                return;
+            }
+
+            // Gửi request lưu
+            $.ajax({
+                url: 'update_apartment.php',
+                method: 'POST',
+                data: {
+                    action: 'save_resident',
+                    resident_id: residentId,
+                    apartment_id: apartmentId,
+                    relationship: relationship
+                },
+                success: function(response) {
+                    const result = JSON.parse(response);
+                    if(result.success) {
+                        alert('Thêm cư dân thành công!');
+                        location.reload();
+                    } else {
+                        alert('Lỗi: ' + result.message);
+                    }
+                }
+            });
+        });
+    </script>
+
+    <!-- Modal thêm cư dân -->
+    <div class="modal fade" id="addResidentModal" tabindex="-1" aria-labelledby="addResidentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addResidentModalLabel">Thêm cư dân</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form action="" method="POST" id="addResidentForm">
+                        <input type="hidden" name="action" value="add_resident">
+                        <input type="hidden" name="apartment_id" value="<?php echo $apartment_id; ?>">
+                        
+                        <div class="mb-3">
+                            <label for="resident_id" class="form-label">Căn cước công dân (*)</label>
+                            <select class="form-select" id="resident_id" name="resident_id" required>
+                                <option value="">Chọn CCCD</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="residentName" class="form-label">Cư dân (*)</label>
+                            <input type="text" class="form-control" id="residentName" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Số điện thoại</label>
+                            <input type="text" class="form-control" id="phone" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dob" class="form-label">Ngày sinh</label>
+                            <input type="text" class="form-control" id="dob" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="gender" class="form-label">Giới tính</label>
+                            <input type="text" class="form-control" id="gender" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label for="relationship" class="form-label">Quan hệ (*)</label>
+                            <select class="form-select" id="relationship" name="relationship" required>
+                                <option value="">Chọn quan hệ</option>
+                                <option value="Khách thuê">Khách thuê</option>
+                                <option value="Vợ/Chồng">Vợ/Chồng</option>
+                                <option value="Con">Con</option>
+                                <option value="Bố mẹ">Bố mẹ</option>
+                                <option value="Anh chị em">Anh chị em</option>
+                            </select>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary">Lưu</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        // Load danh sách CCCD khi mở modal
+        $('#addResidentModal').on('show.bs.modal', function () {
+            const apartmentId = <?php echo $apartment_id; ?>;
+            
+            $.ajax({
+                url: 'get_residents.php',
+                method: 'GET',
+                data: { 
+                    apartment_id: apartmentId 
+                },
+                dataType: 'json',
+                success: function(residents) {
+                    let options = '<option value="">Chọn CCCD</option>';
+                    residents.forEach(resident => {
+                        options += `<option value="${resident.ID}">${resident.NationalId} - ${resident.UserName}</option>`;
+                    });
+                    $('#resident_id').html(options);
+                }
+            });
+        });
+
+        // Lấy thông tin cư dân khi chọn CCCD
+        $('#resident_id').change(function() {
+            const residentId = $(this).val();
+            if(!residentId) {
+                $('#residentName').val('');
+                $('#phone').val('');
+                $('#email').val('');
+                $('#dob').val('');
+                $('#gender').val('');
+                return;
+            }
+
+            $.ajax({
+                url: 'get_resident_info.php',
+                method: 'GET',
+                data: { 
+                    resident_id: residentId 
+                },
+                dataType: 'json',
+                success: function(data) {
+                    $('#residentName').val(data.UserName);
+                    $('#phone').val(data.PhoneNumber);
+                    $('#email').val(data.Email);
+                    $('#dob').val(data.Dob);
+                    $('#gender').val(data.Gender);
+                }
+            });
+        });
+    });
     </script>
 </body>
 </html>

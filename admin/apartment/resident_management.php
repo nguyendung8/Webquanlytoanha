@@ -68,6 +68,21 @@ if (isset($_GET['id'])) {
 // Lấy danh sách tòa nhà cho filter
 $select_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
 
+// Lấy danh sách dự án mà staff được phân quyền
+$projects_query = "
+    SELECT DISTINCT p.ProjectID, p.Name 
+    FROM Projects p
+    JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+    JOIN staffs s ON sp.StaffId = s.ID
+    JOIN users u ON s.DepartmentId = u.DepartmentId
+    WHERE u.UserId = '$admin_id' 
+    AND p.Status = 'active'
+    ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
+
+// Lấy project_id từ URL
+$selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+
 // Xử lý các tham số tìm kiếm và phân trang
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 $building_filter = isset($_GET['building']) ? mysqli_real_escape_string($conn, $_GET['building']) : '';
@@ -121,7 +136,9 @@ $select_residents = mysqli_query($conn, "
     LEFT JOIN users u ON r.ID = u.ResidentID
     LEFT JOIN ResidentApartment ra ON r.ID = ra.ResidentId
     LEFT JOIN apartment a ON ra.ApartmentId = a.ApartmentID
-    $where_clause 
+    LEFT JOIN Buildings b ON a.BuildingId = b.ID
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
+    " . (!empty($where_conditions) ? " AND " . implode(" AND ", $where_conditions) : "") . "
     ORDER BY r.ID 
     LIMIT $offset, $records_per_page
 ") or die('Select query failed: ' . mysqli_error($conn));
@@ -251,6 +268,28 @@ $select_residents = mysqli_query($conn, "
             gap: 8px;
             text-decoration: none;
         }
+
+        .project-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .btn-close:focus {
+            box-shadow: none;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+            color: #664d03;
+        }
     </style>
 </head>
 
@@ -269,6 +308,19 @@ $select_residents = mysqli_query($conn, "
                         <span style="margin: 0 8px;">›</span>
                         <span>Quản lý cư dân</span>
                     </div>
+                </div>
+
+                <div class="mb-4 mt-4">
+                    <select class="project-select form-select" style="width: 300px;" 
+                            onchange="window.location.href='resident_management.php?project_id='+this.value">
+                        <option value="">Chọn dự án</option>
+                        <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                            <option value="<?php echo $project['ProjectID']; ?>" 
+                                    <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                <?php echo $project['Name']; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
                 </div>
 
                 <!-- Search Section -->
@@ -303,9 +355,15 @@ $select_residents = mysqli_query($conn, "
                             </button>
                         </div>
                         <div class="col-md-3 text-end">
-                            <a href="create_resident.php" class="btn add-btn">
-                                <i class="fas fa-plus"></i> Thêm mới
-                            </a>
+                            <?php if(empty($selected_project)): ?>
+                                <button type="button" class="btn add-btn" onclick="showProjectAlert()">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </button>
+                            <?php else: ?>
+                                <a href="create_resident.php?project_id=<?php echo $selected_project; ?>" class="btn add-btn">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -341,16 +399,30 @@ $select_residents = mysqli_query($conn, "
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="#" class="action-icon" title="Đăng nhập"><i class="fas fa-sign-in-alt"></i></a>
-                                    <a href="update_resident.php?id=<?php echo $resident['ID']; ?>" class="action-icon" title="Cập nhật">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="resident_management.php?id=<?php echo $resident['ID']; ?>" 
-                                       class="action-icon" 
-                                       title="Xóa" 
-                                       onclick="return confirm('Bạn có chắc muốn xóa cư dân này?');">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
+                                    <?php if(empty($selected_project)): ?>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-sign-in-alt"></i>
+                                        </button>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <a href="#" class="action-icon" title="Đăng nhập">
+                                            <i class="fas fa-sign-in-alt"></i>
+                                        </a>
+                                        <a href="update_resident.php?id=<?php echo $resident['ID']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                           class="action-icon" title="Cập nhật">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="resident_management.php?id=<?php echo $resident['ID']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                           class="action-icon" title="Xóa"
+                                           onclick="return confirm('Bạn có chắc muốn xóa cư dân này?');">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php
@@ -428,5 +500,41 @@ $select_residents = mysqli_query($conn, "
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function showProjectAlert() {
+        var alertHtml = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        var existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        var container = document.querySelector('.manage-container');
+        container.insertAdjacentHTML('afterbegin', alertHtml);
+        
+        setTimeout(function() {
+            var alert = document.querySelector('.alert');
+            if (alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 3000);
+    }
+
+    // Cập nhật URL khi chọn dự án
+    document.querySelector('.project-select').addEventListener('change', function() {
+        var projectId = this.value;
+        if (projectId) {
+            var currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('project_id', projectId);
+            window.location.href = currentUrl.toString();
+        }
+    });
+    </script>
 </body>
 </html>

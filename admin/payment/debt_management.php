@@ -4,11 +4,23 @@ include '../../database/DBController.php';
 session_start();
 
 $admin_id = $_SESSION['admin_id'];
+$selected_project = isset($_GET['project_id']) ? $_GET['project_id'] : '';
 
 if (!isset($admin_id)) {
     header('location: /webquanlytoanha/index.php');
     exit();
 }
+
+// Lấy danh sách dự án của nhân viên
+$projects_query = "SELECT DISTINCT p.ProjectID, p.Name 
+                  FROM Projects p
+                  JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                  JOIN staffs s ON sp.StaffId = s.ID
+                  JOIN users u ON s.DepartmentId = u.DepartmentId
+                  WHERE u.UserId = '$admin_id' 
+                  AND p.Status = 'active'
+                  ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
 
 // Lấy danh sách tòa nhà cho filter
 $select_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
@@ -60,7 +72,8 @@ $query = "
     LEFT JOIN ResidentApartment ra ON a.ApartmentID = ra.ApartmentId AND ra.Relationship = 'Chủ hộ'
     LEFT JOIN resident res ON ra.ResidentId = res.ID
     LEFT JOIN users u ON res.ID = u.ResidentID
-    $where_clause
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
+    " . (!empty($where_conditions) ? " AND " . implode(" AND ", $where_conditions) : "") . "
     ORDER BY e.OccurrenceDate DESC
     LIMIT $offset, $records_per_page
 ";
@@ -323,6 +336,17 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartmen
                 <div class="search-container">
                     <form class="row g-3">
                         <div class="col-md-3">
+                            <select class="form-select" name="project_id" onchange="this.form.submit()">
+                                <option value="">Chọn dự án</option>
+                                <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                                    <option value="<?php echo $project['ProjectID']; ?>" 
+                                            <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                        <?php echo $project['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <select class="form-select" name="building">
                                 <option value="">Chọn tòa nhà</option>
                                 <?php while($building = mysqli_fetch_assoc($select_buildings)) { ?>
@@ -332,16 +356,6 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartmen
                                 <?php } ?>
                             </select>
                         </div>
-                        <!-- <div class="col-md-3">
-                            <select class="form-select" name="apartment">
-                                <option value="">Chọn căn hộ</option>
-                                <?php while($apt = mysqli_fetch_assoc($select_apartments)) { ?>
-                                    <option value="<?php echo $apt['ApartmentID']; ?>" <?php echo ($apartment_filter == $apt['ApartmentID']) ? 'selected' : ''; ?>>
-                                        <?php echo $apt['Code']; ?>
-                                    </option>
-                                <?php } ?>
-                            </select>
-                        </div> -->
                         <div class="col-md-4">
                             <input type="text" class="form-control" name="search" placeholder="Tìm kiếm..." value="<?php echo $search; ?>">
                         </div>
@@ -352,9 +366,15 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code FROM apartmen
                         </div>
                     </form>
                     <div class="mt-3 d-flex justify-content-end gap-2">
-                        <button type="button" class="btn btn-danger" onclick="exportToPDF()">
-                            <i class="fas fa-file-pdf"></i> PDF
-                        </button>
+                        <?php if(empty($selected_project)): ?>
+                            <button type="button" class="btn btn-danger" onclick="alert('Vui lòng chọn dự án trước khi thực hiện thao tác này!');">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                        <?php else: ?>
+                            <button type="button" class="btn btn-danger" onclick="exportToPDF()">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
 

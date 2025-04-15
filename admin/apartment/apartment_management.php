@@ -10,20 +10,43 @@ if (!isset($admin_id)) {
     exit();
 }
 
-// Lấy danh sách tòa nhà cho filter
-$select_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
+// Lấy danh sách dự án mà staff được phân quyền
+$projects_query = "
+    SELECT DISTINCT p.ProjectID, p.Name 
+    FROM Projects p
+    JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+    JOIN staffs s ON sp.StaffId = s.ID
+    JOIN users u ON s.DepartmentId = u.DepartmentId
+    WHERE u.UserId = '$admin_id' 
+    AND p.Status = 'active'
+    ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
 
-// Xử lý các tham số tìm kiếm và phân trang
+if (!$projects_result) {
+    die("Query failed: " . mysqli_error($conn));
+}
+
+// Lấy project_id từ URL hoặc mặc định là rỗng
+$selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+
+// Lấy danh sách tòa nhà theo dự án được chọn
+$buildings_query = "
+    SELECT DISTINCT b.ID, b.Name 
+    FROM Buildings b
+    WHERE b.Status = 'active'
+    " . ($selected_project ? "AND b.ProjectId = '$selected_project'" : "") . "
+    ORDER BY b.Name";
+$select_buildings = mysqli_query($conn, $buildings_query);
+
+// Các tham số tìm kiếm và phân trang
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 $building_filter = isset($_GET['building']) ? mysqli_real_escape_string($conn, $_GET['building']) : '';
 $status_filter = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET['status']) : '';
-
-// Thiết lập phân trang
 $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $records_per_page;
 
-// Xây dựng câu query với điều kiện tìm kiếm
+// Xây dựng điều kiện WHERE
 $where_conditions = [];
 if (!empty($search)) {
     $where_conditions[] = "(a.Code LIKE '%$search%' OR a.Name LIKE '%$search%')";
@@ -34,24 +57,29 @@ if (!empty($building_filter)) {
 if (!empty($status_filter)) {
     $where_conditions[] = "a.Status = '$status_filter'";
 }
+if (!empty($selected_project)) {
+    $where_conditions[] = "b.ProjectId = '$selected_project'";
+}
 
 $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
 
 // Query đếm tổng số bản ghi
-$count_query = mysqli_query($conn, "
-    SELECT COUNT(*) as total 
+$count_query = "
+    SELECT COUNT(DISTINCT a.ApartmentID) as total 
     FROM apartment a 
     LEFT JOIN Buildings b ON a.BuildingId = b.ID 
-    $where_clause
-");
-$total_records = mysqli_fetch_assoc($count_query)['total'];
+    LEFT JOIN Floors f ON a.FloorId = f.ID
+    $where_clause";
+$count_result = mysqli_query($conn, $count_query);
+$total_records = mysqli_fetch_assoc($count_result)['total'];
 $total_pages = ceil($total_records / $records_per_page);
 
 // Query lấy danh sách căn hộ
 $select_apartments = mysqli_query($conn, "
-    SELECT a.*, b.Name as BuildingName 
+    SELECT a.*, b.Name as BuildingName, f.Name as FloorName
     FROM apartment a 
     LEFT JOIN Buildings b ON a.BuildingId = b.ID 
+    LEFT JOIN Floors f ON a.FloorId = f.ID
     $where_clause 
     ORDER BY a.ApartmentID 
     LIMIT $offset, $records_per_page
@@ -191,6 +219,28 @@ $select_apartments = mysqli_query($conn, "
             gap: 8px;
             text-decoration: none;
         }
+
+        .project-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .btn-close:focus {
+            box-shadow: none;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            border-color: #ffecb5;
+            color: #664d03;
+        }
     </style>
 </head>
 
@@ -211,9 +261,24 @@ $select_apartments = mysqli_query($conn, "
                     </div>
                 </div>
 
+                <!-- Thêm vào sau phần breadcrumb và trước phần search -->
+                <div class="mb-4 mt-4">
+                    <select class="project-select form-select" style="width: 300px;" 
+                            onchange="window.location.href='apartment_management.php?project_id='+this.value">
+                        <option value="">Chọn dự án</option>
+                        <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                            <option value="<?php echo $project['ProjectID']; ?>" 
+                                    <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                <?php echo $project['Name']; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </div>
+
                 <!-- Search Section -->
                 <div class="search-container">
                     <form action="" method="GET" class="row g-3">
+                        <input type="hidden" name="project_id" value="<?php echo $selected_project; ?>">
                         <div class="col-md-3">
                             <input type="text" name="search" class="form-control" 
                                    placeholder="Nhập từ khóa tìm kiếm..." 
@@ -246,9 +311,15 @@ $select_apartments = mysqli_query($conn, "
                             </button>
                         </div>
                         <div class="col-md-3 text-end">
-                            <a href="create_apartment.php" class="btn add-btn">
-                                <i class="fas fa-plus"></i> Thêm mới
-                            </a>
+                            <?php if(empty($selected_project)): ?>
+                                <button type="button" class="btn add-btn" onclick="showProjectAlert()">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </button>
+                            <?php else: ?>
+                                <a href="create_apartment.php?project_id=<?php echo $selected_project; ?>" class="btn add-btn">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -280,7 +351,7 @@ $select_apartments = mysqli_query($conn, "
                                 <td><?php echo $apartment['Name']; ?></td>
                                 <td><?php echo $apartment['BuildingName']; ?></td>
                                 <td>
-                                    <i class="fas fa-building"></i> Tầng: <?php echo $apartment['FloorId']; ?> 
+                                    <i class="fas fa-building"></i> Tầng: <?php echo $apartment['FloorName']; ?> 
                                     <i class="fas fa-bed ms-2"></i> <?php echo $apartment['NumberOffBedroom']; ?>
                                 </td>
                                 <td>
@@ -297,8 +368,16 @@ $select_apartments = mysqli_query($conn, "
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="update_apartment.php?id=<?php echo $apartment['ApartmentID']; ?>" 
-                                       class="text-warning me-2"><i class="fas fa-edit"></i></a>
+                                    <?php if(empty($selected_project)): ?>
+                                        <button type="button" class="text-warning me-2 btn btn-link p-0" onclick="showProjectAlert()">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <a href="update_apartment.php?id=<?php echo $apartment['ApartmentID']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                           class="text-warning me-2">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php
@@ -318,7 +397,7 @@ $select_apartments = mysqli_query($conn, "
                         <ul class="pagination mb-0">
                             <?php if ($page > 1): ?>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=1<?php 
+                                    <a class="page-link" href="?page=1&project_id=<?php echo $selected_project; ?><?php 
                                         echo !empty($search) ? "&search=$search" : '';
                                         echo !empty($building_filter) ? "&building=$building_filter" : '';
                                         echo !empty($status_filter) ? "&status=$status_filter" : '';
@@ -334,7 +413,7 @@ $select_apartments = mysqli_query($conn, "
                             for ($i = $start_page; $i <= $end_page; $i++):
                             ?>
                                 <li class="page-item <?php echo ($i == $page) ? 'active' : ''; ?>">
-                                    <a class="page-link" href="?page=<?php echo $i; ?><?php 
+                                    <a class="page-link" href="?page=<?php echo $i; ?>&project_id=<?php echo $selected_project; ?><?php 
                                         echo !empty($search) ? "&search=$search" : '';
                                         echo !empty($building_filter) ? "&building=$building_filter" : '';
                                         echo !empty($status_filter) ? "&status=$status_filter" : '';
@@ -345,7 +424,7 @@ $select_apartments = mysqli_query($conn, "
 
                             <?php if ($page < $total_pages): ?>
                                 <li class="page-item">
-                                    <a class="page-link" href="?page=<?php echo $total_pages; ?><?php 
+                                    <a class="page-link" href="?page=<?php echo $total_pages; ?>&project_id=<?php echo $selected_project; ?><?php 
                                         echo !empty($search) ? "&search=$search" : '';
                                         echo !empty($building_filter) ? "&building=$building_filter" : '';
                                         echo !empty($status_filter) ? "&status=$status_filter" : '';
@@ -359,7 +438,7 @@ $select_apartments = mysqli_query($conn, "
                         <span class="me-2">Hiển thị</span>
                         <select class="form-select" style="width: auto;" onchange="window.location.href=this.value">
                             <?php foreach ([10, 25, 50, 100] as $per_page): ?>
-                                <option value="?page=1<?php 
+                                <option value="?page=1&project_id=<?php echo $selected_project; ?><?php 
                                     echo !empty($search) ? "&search=$search" : '';
                                     echo !empty($building_filter) ? "&building=$building_filter" : '';
                                     echo !empty($status_filter) ? "&status=$status_filter" : '';
@@ -376,5 +455,45 @@ $select_apartments = mysqli_query($conn, "
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    function showProjectAlert() {
+        // Tạo và hiển thị alert bootstrap
+        var alertHtml = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Kiểm tra xem đã có alert nào chưa
+        var existingAlert = document.querySelector('.alert');
+        if (existingAlert) {
+            existingAlert.remove();
+        }
+        
+        // Thêm alert mới vào đầu container
+        var container = document.querySelector('.manage-container');
+        container.insertAdjacentHTML('afterbegin', alertHtml);
+        
+        // Tự động đóng alert sau 3 giây
+        setTimeout(function() {
+            var alert = document.querySelector('.alert');
+            if (alert) {
+                var bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }
+        }, 3000);
+    }
+
+    // Thêm project_id vào tất cả các URL khi chọn dự án
+    document.querySelector('.project-select').addEventListener('change', function() {
+        var projectId = this.value;
+        if (projectId) {
+            var currentUrl = new URL(window.location.href);
+            currentUrl.searchParams.set('project_id', projectId);
+            window.location.href = currentUrl.toString();
+        }
+    });
+    </script>
 </body>
 </html>

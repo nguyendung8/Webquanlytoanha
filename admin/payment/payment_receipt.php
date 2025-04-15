@@ -4,6 +4,7 @@ include '../../database/DBController.php';
 session_start();
 
 $admin_id = $_SESSION['admin_id'];
+$selected_project = isset($_GET['project_id']) ? $_GET['project_id'] : '';
 
 if (!isset($admin_id)) {
     header('location: /webquanlytoanha/index.php');
@@ -88,7 +89,8 @@ $query = "
     LEFT JOIN apartment a ON r.ApartmentID = a.ApartmentID
     LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN staffs s ON r.StaffID = s.ID
-    $receipt_where)
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
+    " . (!empty($receipt_conditions) ? " AND " . implode(" AND ", $receipt_conditions) : "") . ")
     
     UNION ALL
     
@@ -110,7 +112,8 @@ $query = "
     LEFT JOIN apartment a ON or2.ApartmentID = a.ApartmentID
     LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN staffs s ON or2.StaffID = s.ID
-    $other_receipt_where)
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
+    " . (!empty($other_receipt_conditions) ? " AND " . implode(" AND ", $other_receipt_conditions) : "") . ")
     
     ORDER BY CreatedAt DESC
     LIMIT $offset, $records_per_page
@@ -120,6 +123,17 @@ $select_receipts = mysqli_query($conn, $query);
 
 // Lấy danh sách căn hộ cho filter
 $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM apartment");
+
+// Lấy danh sách dự án của nhân viên
+$projects_query = "SELECT DISTINCT p.ProjectID, p.Name 
+                  FROM Projects p
+                  JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                  JOIN staffs s ON sp.StaffId = s.ID
+                  JOIN users u ON s.DepartmentId = u.DepartmentId
+                  WHERE u.UserId = '$admin_id' 
+                  AND p.Status = 'active'
+                  ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
 
 ?>
 
@@ -131,6 +145,7 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
     <title>Quản lý phiếu thu/chi</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .stats-card {
             background: white;
@@ -350,6 +365,38 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
                 text-align: center;
             }
         }
+
+        .custom-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            min-width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            animation: slideDown 0.5s ease-in-out;
+            text-align: center;
+        }
+
+        @keyframes slideDown {
+            from {
+                top: -100px;
+                opacity: 0;
+            }
+            to {
+                top: 20px;
+                opacity: 1;
+            }
+        }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 <body>
@@ -387,59 +434,79 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
                         <!-- Phiếu Thu Tab -->
                         <div class="tab-pane active" id="receipt-tab">
                             <div class="search-container">
-                                <form class="row g-3">
+                    <form class="row g-3">
+                        <div class="col-md-2">
+                                        <select class="form-select" name="project_id" onchange="this.form.submit()">
+                                            <option value="">Chọn dự án</option>
+                                            <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                                                <option value="<?php echo $project['ProjectID']; ?>" 
+                                                        <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                                    <?php echo $project['Name']; ?>
+                                                </option>
+                                            <?php } ?>
+                                        </select>
+                                    </div>
                                     <div class="col-md-2">
                                         <input type="text" class="form-control" name="search" placeholder="Mã phiếu" value="<?php echo $search; ?>">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <select class="form-select" name="building">
-                                            <option value="">Chọn tòa nhà</option>
-                                            <?php while($building = mysqli_fetch_assoc($select_buildings)) { ?>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="building">
+                                <option value="">Chọn tòa nhà</option>
+                                <?php while($building = mysqli_fetch_assoc($select_buildings)) { ?>
                                                 <option value="<?php echo $building['ID']; ?>" <?php echo ($building_filter == $building['ID']) ? 'selected' : ''; ?>>
-                                                    <?php echo $building['Name']; ?>
-                                                </option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <select class="form-select" name="apartment">
-                                            <option value="">Chọn căn hộ</option>
-                                            <?php while($apt = mysqli_fetch_assoc($select_apartments)) { ?>
+                                        <?php echo $building['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="apartment">
+                                <option value="">Chọn căn hộ</option>
+                                <?php while($apt = mysqli_fetch_assoc($select_apartments)) { ?>
                                                 <option value="<?php echo $apt['ApartmentID']; ?>" <?php echo ($apartment_filter == $apt['ApartmentID']) ? 'selected' : ''; ?>>
-                                                    <?php echo $apt['Code'] . ' - ' . $apt['Name']; ?>
-                                                </option>
-                                            <?php } ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
+                                        <?php echo $apt['Code'] . ' - ' . $apt['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
                                         <select class="form-select" name="payment_method">
                                             <option value="">Chọn hình thức</option>
                                             <option value="Tiền mặt" <?php echo ($payment_method == 'Tiền mặt') ? 'selected' : ''; ?>>Tiền mặt</option>
                                             <option value="Chuyển khoản" <?php echo ($payment_method == 'Chuyển khoản') ? 'selected' : ''; ?>>Chuyển khoản</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="submit" class="btn btn-success w-100">
-                                            <i class="fas fa-search"></i> Tìm kiếm
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-search"></i> Tìm kiếm
+                            </button>
+                        </div>
+                    </form>
+                    <div class="mt-3 d-flex justify-content-end">
+                                    <?php if(empty($selected_project)): ?>
+                                        <button type="button" class="btn btn-success me-2" onclick="alert('Vui lòng chọn dự án trước khi thực hiện thao tác này!');">
+                                            <i class="fas fa-plus"></i> Lập phiếu thu
                                         </button>
-                                    </div>
-                                </form>
-                                <div class="mt-3 d-flex justify-content-end">
-                                    <a href="create_receipt.php?type=Thu" class="btn btn-success me-2">
-                                        <i class="fas fa-plus"></i> Lập phiếu thu
-                                    </a>
-                                    <a href="create_other_receipt.php" class="btn btn-danger">
-                                        <i class="fas fa-plus"></i> Lập phiếu thu khác
-                                    </a>
-                                </div>
-                            </div>
+                                        <button type="button" class="btn btn-danger" onclick="alert('Vui lòng chọn dự án trước khi thực hiện thao tác này!');">
+                                            <i class="fas fa-plus"></i> Lập phiếu thu khác
+                                        </button>
+                                    <?php else: ?>
+                                        <a href="create_receipt.php?type=Thu" class="btn btn-success me-2">
+                            <i class="fas fa-plus"></i> Lập phiếu thu
+                        </a>
+                                        <a href="create_other_receipt.php" class="btn btn-danger">
+                                            <i class="fas fa-plus"></i> Lập phiếu thu khác
+                                        </a>
+                                    <?php endif; ?>
+                    </div>
+                </div>
 
                             <!-- Receipts Table -->
-                            <div class="table-responsive">
+                <div class="table-responsive">
                                 <table class="table table-bordered receipt-table">
-                                    <thead>
-                                        <tr>
-                                            <th>STT</th>
+                        <thead>
+                            <tr>
+                                <th>STT</th>
                                             <th>Mã chứng từ</th>
                                             <th>Hình thức</th>
                                             <th>Loại phiếu</th>
@@ -448,75 +515,81 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
                                             <th>Căn hộ</th>
                                             <th>Số tiền</th>
                                             <th>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php 
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php
                                         if(mysqli_num_rows($select_receipts) > 0){
-                                            $i = $offset + 1;
+                                $i = $offset + 1;
                                             while($receipt = mysqli_fetch_assoc($select_receipts)){
                                                 $receipt_type = $receipt['SourceTable'] == 'Receipt' ? 'Phiếu thu thường' : 'Phiếu thu khác';
-                                        ?>
-                                        <tr>
-                                            <td><?php echo $i++; ?></td>
+                            ?>
+                            <tr>
+                                <td><?php echo $i++; ?></td>
                                             <td><?php echo $receipt['ReceiptID']; ?></td>
                                             <td><?php echo $receipt['PaymentMethod']; ?></td>
                                             <td>
                                                 <span class="badge bg-success">
                                                     <?php echo $receipt_type; ?>
-                                                </span>
-                                            </td>
+                                    </span>
+                                </td>
                                             <td><?php echo number_format($receipt['Total']); ?> VNĐ</td>
                                             <td><?php echo $receipt['Payer']; ?></td>
                                             <td><?php echo $receipt['ApartmentCode']; ?></td>
                                             <td><?php echo number_format($receipt['Total']); ?> VNĐ</td>
                                             <td>
-                                                <?php if($receipt['SourceTable'] == 'Receipt'): ?>
-                                                    <a href="update_receipt.php?id=<?php echo $receipt['ID']; ?>" class="btn btn-sm btn-warning" title="Sửa">
+                                                <?php if(empty($selected_project)): ?>
+                                                    <button type="button" class="btn btn-sm btn-warning" onclick="alert('Vui lòng chọn dự án trước khi thực hiện thao tác này!');">
                                                         <i class="fas fa-edit"></i>
-                                                    </a>
+                                                    </button>
                                                 <?php else: ?>
-                                                    <a href="update_other_receipt.php?id=<?php echo $receipt['ID']; ?>" class="btn btn-sm btn-warning" title="Sửa">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
+                                                    <?php if($receipt['SourceTable'] == 'Receipt'): ?>
+                                                        <a href="update_receipt.php?id=<?php echo $receipt['ID']; ?>" class="btn btn-sm btn-warning" title="Sửa">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <a href="update_other_receipt.php?id=<?php echo $receipt['ID']; ?>" class="btn btn-sm btn-warning" title="Sửa">
+                                                            <i class="fas fa-edit"></i>
+                                                        </a>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                                 
                                                 <!-- <button class="btn btn-sm btn-danger delete-receipt" 
                                                         data-id="<?php echo $receipt['ID']; ?>" 
                                                         data-type="<?php echo $receipt['SourceTable']; ?>" 
-                                                        title="Xóa">
-                                                    <i class="fas fa-trash"></i>
+                                                title="Xóa">
+                                            <i class="fas fa-trash"></i>
                                                 </button> -->
-                                            </td>
-                                        </tr>
-                                        <?php
-                                            }
-                                        } else {
+                                </td>
+                            </tr>
+                            <?php
+                                }
+                            } else {
                                             echo '<tr><td colspan="11" class="text-center">Không có dữ liệu</td></tr>';
-                                        }
-                                        ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
 
-                            <!-- Pagination -->
-                            <div class="d-flex justify-content-between align-items-center mt-4">
-                                <div>Tổng số: <?php echo $total_records; ?> bản ghi</div>
-                                <nav>
-                                    <ul class="pagination mb-0">
-                                        <?php for($i = 1; $i <= $total_pages; $i++): ?>
-                                        <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
-                                            <a class="page-link" href="?page=<?php echo $i; ?><?php 
-                                                echo !empty($search) ? "&search=$search" : '';
-                                                echo !empty($building_filter) ? "&building=$building_filter" : '';
-                                                echo !empty($apartment_filter) ? "&apartment=$apartment_filter" : '';
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>Tổng số: <?php echo $total_records; ?> bản ghi</div>
+                    <nav>
+                        <ul class="pagination mb-0">
+                            <?php for($i = 1; $i <= $total_pages; $i++): ?>
+                            <li class="page-item <?php echo ($page == $i) ? 'active' : ''; ?>">
+                                <a class="page-link" href="?page=<?php echo $i; ?><?php 
+                                    echo !empty($search) ? "&search=$search" : '';
+                                    echo !empty($building_filter) ? "&building=$building_filter" : '';
+                                    echo !empty($apartment_filter) ? "&apartment=$apartment_filter" : '';
                                                 echo !empty($type_filter) ? "&type=$type_filter" : '';
                                                 echo !empty($payment_method) ? "&payment_method=$payment_method" : '';
-                                            ?>"><?php echo $i; ?></a>
-                                        </li>
-                                        <?php endfor; ?>
-                                    </ul>
-                                </nav>
+                                ?>"><?php echo $i; ?></a>
+                            </li>
+                            <?php endfor; ?>
+                        </ul>
+                    </nav>
                             </div>
                         </div>
 
@@ -533,27 +606,17 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Xử lý xóa phiếu thu/chi
-        $('.delete-receipt').click(function() {
-            if(confirm('Bạn có chắc chắn muốn xóa phiếu này?')) {
-                const receiptId = $(this).data('id');
-                const receiptType = $(this).data('type');
-                
-                // Thực hiện AJAX call để xóa phiếu
-                $.post('delete_receipt.php', {
-                    receipt_id: receiptId,
-                    receipt_type: receiptType
-                }, function(response) {
-                    if(response.success) {
-                        location.reload();
-                    } else {
-                        alert('Có lỗi xảy ra khi xóa phiếu!');
-                    }
-                });
-            }
-        });
+        function showProjectAlert() {
+            window.alert('Vui lòng chọn dự án trước khi thực hiện thao tác này!');
+        }
+
+        $(document).ready(function() {
+            $('.action-btn').on('click', function(e) {
+                e.preventDefault();
+                showProjectAlert();
+            });
+    });
     </script>
 </body>
 </html>

@@ -89,10 +89,38 @@ if(isset($_POST['submit'])) {
     
     mysqli_begin_transaction($conn);
     try {
+        // Kiểm tra xem có phụ lục nào đang active không
+        $check_active_appendix = mysqli_query($conn, "
+            SELECT ContractAppendixId 
+            FROM ContractAppendixs 
+            WHERE ContractCode = '$contract_code' 
+            AND Status = 'active'
+        ");
+
+        // Nếu có phụ lục đang active, cập nhật status thành 'Hủy' và EndDate = NOW()
+        if(mysqli_num_rows($check_active_appendix) > 0) {
+            mysqli_query($conn, "
+                UPDATE ContractAppendixs 
+                SET Status = 'Hủy',
+                    EndDate = NOW()
+                WHERE ContractCode = '$contract_code' 
+                AND Status = 'active'
+            ") or throw new Exception(mysqli_error($conn));
+        }
+
         // Thêm phụ lục hợp đồng mới
         mysqli_query($conn, "
-            INSERT INTO ContractAppendixs (ContractCode, CretionDate, Status) 
-            VALUES ('$contract_code', '$cretion_date', 'active')
+            INSERT INTO ContractAppendixs (
+                ContractCode, 
+                CretionDate, 
+                Status,
+                EndDate
+            ) VALUES (
+                '$contract_code', 
+                '$cretion_date', 
+                'active',
+                '$end_date'
+            )
         ") or throw new Exception(mysqli_error($conn));
 
         // Cập nhật ngày kết thúc trong hợp đồng gốc
@@ -105,15 +133,31 @@ if(isset($_POST['submit'])) {
         
         // Xử lý các dịch vụ được chọn
         if(isset($_POST['service_selected'])) {
+            // Xóa tất cả các dịch vụ hiện tại của hợp đồng
+            mysqli_query($conn, "
+                DELETE FROM ContractServices 
+                WHERE ContractCode = '$contract_code'
+            ") or throw new Exception(mysqli_error($conn));
+
+            // Thêm các dịch vụ mới
             foreach($_POST['service_selected'] as $index => $service_id) {
                 $service_apply_date = mysqli_real_escape_string($conn, $_POST['service_apply_date'][$index]);
                 $service_end_date = !empty($_POST['service_end_date'][$index]) ? 
                     "'" . mysqli_real_escape_string($conn, $_POST['service_end_date'][$index]) . "'" : "NULL";
                 
-                // Thêm dịch vụ mới cho hợp đồng
+                // Thêm dịch vụ mới
                 mysqli_query($conn, "
-                    INSERT INTO ContractServices (ContractCode, ServiceId, ApplyDate, EndDate) 
-                    VALUES ('$contract_code', '$service_id', '$service_apply_date', $service_end_date)
+                    INSERT INTO ContractServices (
+                        ContractCode, 
+                        ServiceId, 
+                        ApplyDate, 
+                        EndDate
+                    ) VALUES (
+                        '$contract_code', 
+                        '$service_id', 
+                        '$service_apply_date', 
+                        $service_end_date
+                    )
                 ") or throw new Exception(mysqli_error($conn));
             }
         }

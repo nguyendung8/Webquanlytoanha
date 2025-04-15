@@ -1,3 +1,4 @@
+// căn hộ
 CREATE TABLE `apartment` (
   `ApartmentID` int(11) NOT NULL,
   `Name` varchar(255) DEFAULT NULL,
@@ -14,7 +15,7 @@ CREATE TABLE `apartment` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
-
+//bảng kê
 CREATE TABLE `debtstatements` (
   `InvoiceCode` varchar(50) NOT NULL,
   `InvoicePeriod` varchar(50) DEFAULT NULL,
@@ -30,7 +31,7 @@ CREATE TABLE `debtstatements` (
   `ApartmentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-
+//chi tiết bảng kê
 CREATE TABLE `debtstatementdetail` (
     `InvoiceCode` varchar(50) NOT NULL,
     `ServiceCode` varchar(50) NOT NULL,
@@ -46,8 +47,7 @@ CREATE TABLE `debtstatementdetail` (
 );
 
 
-
-
+// phòng ban
 CREATE TABLE `departments` (
   `ID` int(11) NOT NULL,
   `Name` varchar(255) DEFAULT NULL,
@@ -59,6 +59,7 @@ CREATE TABLE `departments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
+// phiếu chi
 CREATE TABLE `payments` (
   `PaymentID` int(11) NOT NULL,
   `PaymentMethod` varchar(50) DEFAULT NULL,
@@ -76,7 +77,7 @@ CREATE TABLE `payments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
-
+// phiếu thu
 CREATE TABLE `receipt` (
   `ReceiptID` varchar(20) NOT NULL,
   `PaymentMethod` varchar(50) DEFAULT NULL COMMENT 'Hình thức thanh toán',
@@ -94,6 +95,7 @@ CREATE TABLE `receipt` (
   `Status` varchar(50) DEFAULT 'pending' COMMENT 'Trạng thái phiếu'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+// chi tiết phiếu thu
 CREATE TABLE `receiptdetails` (
   `ReceiptID` varchar(20) NOT NULL,
   `ServiceCode` varchar(50) NOT NULL COMMENT 'Mã dịch vụ',
@@ -103,6 +105,8 @@ CREATE TABLE `receiptdetails` (
   `Note` text DEFAULT NULL COMMENT 'Ghi chú'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+
+// phiếu thu khác
 CREATE TABLE `OtherReceipt` (
   `OtherReceiptID` varchar(20) NOT NULL PRIMARY KEY,
   `ApartmentID` int(11) DEFAULT NULL,
@@ -118,6 +122,7 @@ CREATE TABLE `OtherReceipt` (
   FOREIGN KEY (ApartmentID) REFERENCES apartment(ApartmentID)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+// cư dân
 CREATE TABLE `resident` (
   `ID` int(11) NOT NULL,
   `NationalId` varchar(50) DEFAULT NULL,
@@ -125,6 +130,7 @@ CREATE TABLE `resident` (
   `Gender` varchar(10) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// bảng liên kết cư dân và căn hộ
 CREATE TABLE ResidentApartment (
     ResidentId INT NOT NULL,
     ApartmentId INT NOT NULL,
@@ -134,14 +140,14 @@ CREATE TABLE ResidentApartment (
     FOREIGN KEY (ApartmentId) REFERENCES Apartment(ApartmentID) ON DELETE CASCADE
 );
 
-
+// công ty
 CREATE TABLE Companies (
     CompanyId INT PRIMARY KEY AUTO_INCREMENT,
     Code VARCHAR(50) UNIQUE NOT NULL,
     Name VARCHAR(255) NOT NULL
 );
 
-
+// phường xã
 CREATE TABLE TownShips (
     TownShipId INT PRIMARY KEY AUTO_INCREMENT,
     Code VARCHAR(50) UNIQUE NOT NULL,
@@ -150,7 +156,7 @@ CREATE TABLE TownShips (
     FOREIGN KEY (CompanyId) REFERENCES Companies(CompanyId) ON DELETE CASCADE
 );
 
-
+// dự án
 CREATE TABLE Projects (
     ProjectID INT PRIMARY KEY AUTO_INCREMENT,
     Name VARCHAR(255) NOT NULL,
@@ -167,6 +173,7 @@ CREATE TABLE Projects (
     FOREIGN KEY (ManagerId) REFERENCES Staffs(ID) ON DELETE SET NULL
 )
 
+// tiền thừa
 CREATE TABLE `excesspayment` (
   `ExcessPaymentID` int(11) NOT NULL,
   `OccurrenceDate` date NOT NULL,
@@ -179,6 +186,7 @@ CREATE TABLE `excesspayment` (
   FOREIGN KEY (ReceiptID) REFERENCES Receipt(ReceiptID) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+// thông tin thanh toán
 CREATE TABLE PaymentInformation (
     Id INT PRIMARY KEY AUTO_INCREMENT,
     AccountName VARCHAR(255) NOT NULL,
@@ -191,6 +199,7 @@ CREATE TABLE PaymentInformation (
     FOREIGN KEY (ProjectId) REFERENCES Projects(ProjectID) ON DELETE CASCADE
 );
 
+// tòa nhà
 CREATE TABLE Buildings (
     ID INT PRIMARY KEY AUTO_INCREMENT,
     Name VARCHAR(255) NOT NULL,
@@ -200,6 +209,7 @@ CREATE TABLE Buildings (
     FOREIGN KEY (ProjectId) REFERENCES Projects(ProjectID) ON DELETE CASCADE
 );
 
+// tầng
 CREATE TABLE Floors (
     ID INT PRIMARY KEY AUTO_INCREMENT,
     Name VARCHAR(255) NOT NULL,
@@ -208,7 +218,7 @@ CREATE TABLE Floors (
     FOREIGN KEY (BuildingId) REFERENCES Buildings(ID) ON DELETE CASCADE
 );
 
-
+// nhân viên
 CREATE TABLE `staffs` (
   `ID` int(11) NOT NULL,
   `Name` varchar(255) DEFAULT NULL,
@@ -221,6 +231,7 @@ CREATE TABLE `staffs` (
   `Status` varchar(50) DEFAULT 'active'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// bảng liên kết nhân viên và dự án
 CREATE TABLE StaffProjects (
     ProjectId INT NOT NULL,
     StaffId INT NOT NULL,
@@ -229,7 +240,7 @@ CREATE TABLE StaffProjects (
     FOREIGN KEY (StaffId) REFERENCES Staffs(ID) ON DELETE CASCADE
 );
 
-
+// tài khoản người dùng
 CREATE TABLE `users` (
   `UserId` int(11) NOT NULL,
   `UserName` varchar(255) NOT NULL,
@@ -241,6 +252,7 @@ CREATE TABLE `users` (
   `ResidentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// dịch vụ
 CREATE TABLE `services` (
   `ServiceCode` varchar(50) NOT NULL,
   `Name` varchar(255) NOT NULL,
@@ -258,7 +270,7 @@ CREATE TABLE `services` (
   `ProjectId` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-
+// bảng liên kết dịch vụ và danh sách giá
 CREATE TABLE ServicePrice (
     ServiceId VARCHAR(50) NOT NULL,
     PriceId INT NOT NULL,
@@ -267,8 +279,7 @@ CREATE TABLE ServicePrice (
     FOREIGN KEY (PriceId) REFERENCES PriceList(ID) ON DELETE CASCADE
 );
 
-
-
+// danh sách giá
 CREATE TABLE `pricelist` (
   `ID` int(11) NOT NULL,
   `Name` varchar(255) NOT NULL,
@@ -283,7 +294,7 @@ CREATE TABLE `pricelist` (
   `PriceTo` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
-
+// thẻ phương tiện
 CREATE TABLE `vehiclecards` (
   `VehicleCardCode` varchar(50) NOT NULL,
   `Status` varchar(50) DEFAULT 'Chưa cấp phát',
@@ -292,6 +303,7 @@ CREATE TABLE `vehiclecards` (
   `NumberPlate` varchar(50) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// phương tiện
 CREATE TABLE `vehicles` (
   `VehicleCode` varchar(50) NOT NULL,
   `TypeVehicle` varchar(100) DEFAULT NULL,
@@ -308,6 +320,7 @@ CREATE TABLE `vehicles` (
   `ApartmentID` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// bảng liên kết dịch vụ và phương tiện
 CREATE TABLE ServiceVehicles (
     ServiceId VARCHAR(50) NOT NULL,
     VehicleCode VARCHAR(50) NOT NULL,
@@ -318,6 +331,7 @@ CREATE TABLE ServiceVehicles (
     FOREIGN KEY (VehicleCode) REFERENCES Vehicles(VehicleCode) ON DELETE CASCADE
 );
 
+// hợp đồng
 CREATE TABLE Contracts (
     ContractCode VARCHAR(50) PRIMARY KEY,
     Status VARCHAR(50) DEFAULT 'active',
@@ -327,6 +341,7 @@ CREATE TABLE Contracts (
     EndDate DATE
 );
 
+// bảng liên kết hợp đồng và dịch vụ
 CREATE TABLE ContractServices (
     ContractCode VARCHAR(50) NOT NULL,
     ServiceId VARCHAR(50) NOT NULL,
@@ -337,6 +352,7 @@ CREATE TABLE ContractServices (
     FOREIGN KEY (ServiceId) REFERENCES Services(ServiceCode) ON DELETE CASCADE
 );
 
+// phụ lục hợp đồng
 CREATE TABLE ContractAppendixs (
     ContractAppendixId INT AUTO_INCREMENT PRIMARY KEY,
     Status VARCHAR(50) DEFAULT 'active',
@@ -345,6 +361,7 @@ CREATE TABLE ContractAppendixs (
     FOREIGN KEY (ContractCode) REFERENCES Contracts(ContractCode) ON DELETE CASCADE
 );
 
+// chỉ số nước
 CREATE TABLE `WaterMeterReading` (
   `WaterMeterID` int(11) NOT NULL AUTO_INCREMENT,
   `InitialReading` float DEFAULT NULL,
@@ -359,6 +376,7 @@ CREATE TABLE `WaterMeterReading` (
   FOREIGN KEY (`StaffID`) REFERENCES `staffs`(`ID`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+// chỉ số điện
 CREATE TABLE `ElectricityMeterReading` (
   `ElectricityMeterID` int(11) NOT NULL AUTO_INCREMENT,
   `InitialReading` float DEFAULT NULL,

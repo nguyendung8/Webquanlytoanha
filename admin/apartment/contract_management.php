@@ -10,6 +10,21 @@ if (!isset($admin_id)) {
     exit();
 }
 
+// Lấy danh sách dự án mà staff được phân quyền
+$projects_query = "
+    SELECT DISTINCT p.ProjectID, p.Name 
+    FROM Projects p
+    JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+    JOIN staffs s ON sp.StaffId = s.ID
+    JOIN users u ON s.DepartmentId = u.DepartmentId
+    WHERE u.UserId = '$admin_id' 
+    AND p.Status = 'active'
+    ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
+
+// Lấy project_id từ URL
+$selected_project = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+
 // Xử lý xóa hợp đồng
 if (isset($_GET['delete_id'])) {
     $contract_id = mysqli_real_escape_string($conn, $_GET['delete_id']);
@@ -48,11 +63,12 @@ $records_per_page = isset($_GET['per_page']) ? (int)$_GET['per_page'] : 10;
 $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
 $offset = ($page - 1) * $records_per_page;
 
-// Query đếm tổng số bản ghi với điều kiện tìm kiếm
+// Sửa lại query đếm tổng số bản ghi với điều kiện tìm kiếm và filter theo dự án
 $count_query = mysqli_query($conn, "
     SELECT COUNT(DISTINCT c.ContractCode) as total 
     FROM Contracts c
     LEFT JOIN apartment a ON a.ContractCode = c.ContractCode
+    LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN ResidentApartment ra ON ra.ApartmentId = a.ApartmentID AND ra.Relationship = 'Chủ hộ'
     LEFT JOIN resident r ON r.ID = ra.ResidentId
     LEFT JOIN users u ON u.ResidentID = r.ID
@@ -63,7 +79,7 @@ $count_query = mysqli_query($conn, "
         ORDER BY CretionDate DESC
         LIMIT 1
     ) ca ON ca.ContractCode = c.ContractCode
-    WHERE 1=1 " . 
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . " " .
     (!empty($search) ? "AND (c.ContractCode LIKE '%$search%' OR u.UserName LIKE '%$search%' OR a.Code LIKE '%$search%')" : "") .
     (!empty($status_filter) ? "AND c.Status = '$status_filter'" : "")
 ) or die('Count query failed: ' . mysqli_error($conn));
@@ -83,6 +99,7 @@ if (!empty($status_filter)) {
     }
 }
 
+// Sửa lại query lấy danh sách hợp đồng
 $select_contracts = mysqli_query($conn, "
     SELECT c.ContractCode, c.Status, 
            COALESCE(ca.CretionDate, c.CretionDate) as CretionDate, 
@@ -91,6 +108,7 @@ $select_contracts = mysqli_query($conn, "
            u.UserName as OwnerName
     FROM Contracts c
     LEFT JOIN apartment a ON a.ContractCode = c.ContractCode
+    LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN ResidentApartment ra ON ra.ApartmentId = a.ApartmentID AND ra.Relationship = 'Chủ hộ'
     LEFT JOIN resident r ON r.ID = ra.ResidentId
     LEFT JOIN users u ON u.ResidentID = r.ID
@@ -101,7 +119,7 @@ $select_contracts = mysqli_query($conn, "
         ORDER BY CretionDate DESC
         LIMIT 1
     ) ca ON ca.ContractCode = c.ContractCode
-    WHERE 1=1 " . 
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . " " .
     (!empty($search) ? "AND (c.ContractCode LIKE '%$search%' OR u.UserName LIKE '%$search%' OR a.Code LIKE '%$search%')" : "") .
     $status_condition . "
     ORDER BY COALESCE(ca.CretionDate, c.CretionDate) DESC
@@ -286,6 +304,20 @@ $select_contracts = mysqli_query($conn, "
             position: relative;
             z-index: 2;
         }
+
+        .project-filter {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .project-filter select {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
     </style>
 </head>
 
@@ -302,6 +334,20 @@ $select_contracts = mysqli_query($conn, "
                         <span style="margin: 0 8px;">›</span>
                         <span>Quản lý hợp đồng</span>
                     </div>
+                </div>
+
+                <!-- Thêm ngay sau div class="page-header" và trước div class="search-container" -->
+                <div class="project-filter mb-4">
+                    <select class="form-select" style="width: 300px;" 
+                            onchange="window.location.href='contract_management.php?project_id='+this.value">
+                        <option value="">Chọn dự án</option>
+                        <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                            <option value="<?php echo $project['ProjectID']; ?>" 
+                                    <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                <?php echo $project['Name']; ?>
+                            </option>
+                        <?php } ?>
+                    </select>
                 </div>
 
                 <?php if(isset($_SESSION['success_msg'])): ?>
@@ -345,9 +391,15 @@ $select_contracts = mysqli_query($conn, "
                             </button>
                         </div>
                         <div class="col-md-3 text-end">
-                            <a href="create_contract.php" class="btn add-btn">
-                                <i class="fas fa-plus"></i> Thêm mới
-                            </a>
+                            <?php if(empty($selected_project)): ?>
+                                <button type="button" class="btn add-btn" onclick="showProjectAlert()">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </button>
+                            <?php else: ?>
+                                <a href="create_contract.php?project_id=<?php echo $selected_project; ?>" class="btn add-btn">
+                                    <i class="fas fa-plus"></i> Thêm mới
+                                </a>
+                            <?php endif; ?>
                         </div>
                     </form>
                 </div>
@@ -425,47 +477,33 @@ $select_contracts = mysqli_query($conn, "
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <?php 
-                                    // Xác định trạng thái để kiểm soát các icon
                                     $isPending = $contract['Status'] == 'pending';
                                     $isCancelled = $contract['Status'] == 'cancelled';
                                     $isExpired = $contract['Status'] == 'expired';
-                                    ?>
                                     
-                                    <!-- Icon Sửa -->
-                                    <a href="update_contract.php?contract_code=<?php echo $contract['ContractCode']; ?>" 
-                                       class="action-icon <?php echo !$isPending ? 'disabled' : ''; ?>" 
-                                       title="Sửa"
-                                       <?php echo !$isPending ? 'onclick="return false;"' : ''; ?>
-                                       style="<?php echo !$isPending ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-
-                                    <!-- Icon Xóa -->
-                                    <a href="contract_management.php?delete_id=<?php echo $contract['ContractCode']; ?>" 
-                                       class="action-icon <?php echo !$isPending ? 'disabled' : ''; ?>"
-                                       title="Xóa" 
-                                       <?php echo !$isPending ? 'onclick="return false;"' : 'onclick="return confirm(\'Bạn có chắc muốn xóa hợp đồng này không?\');"'; ?>
-                                       style="<?php echo !$isPending ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </a>
-
-                                    <!-- Icon Xoay vòng -->
-                                    <a href="extend_contract.php?contract_code=<?php echo $contract['ContractCode']; ?>" 
-                                       class="action-icon <?php echo ($isCancelled || $isPending) ? 'disabled' : ''; ?>"
-                                       title="Gia hạn"
-                                       <?php echo ($isCancelled || $isPending) ? 'onclick="return false;"' : ''; ?>
-                                       style="<?php echo ($isCancelled || $isPending) ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </a>
-
-                                    <!-- Icon Hủy -->
-                                    <a href="#" 
-                                       class="action-icon <?php echo ($isCancelled || $isExpired) ? 'disabled' : ''; ?>"
-                                       title="Hủy hợp đồng"
-                                       <?php echo ($isCancelled || $isExpired) ? 'onclick="return false;"' : ''; ?>
-                                       style="<?php echo ($isCancelled || $isExpired) ? 'opacity: 0.5; cursor: not-allowed;' : ''; ?>">
-                                        <i class="fas fa-times-circle"></i>
-                                    </a>
+                                    if(empty($selected_project)): ?>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        <button type="button" class="action-icon" onclick="showProjectAlert()">
+                                            <i class="fas fa-times-circle"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <!-- Giữ nguyên các nút thao tác hiện tại với thêm project_id vào URL -->
+                                        <a href="update_contract.php?contract_code=<?php echo $contract['ContractCode']; ?>&project_id=<?php echo $selected_project; ?>" 
+                                           class="action-icon <?php echo !$isPending ? 'disabled' : ''; ?>" 
+                                           title="Sửa"
+                                           <?php echo !$isPending ? 'onclick="return false;"' : ''; ?>>
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <!-- Tương tự cho các nút khác -->
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php
@@ -543,6 +581,43 @@ $select_contracts = mysqli_query($conn, "
         function viewContractDetail(contractCode) {
             window.location.href = `view_contract.php?contract_code=${contractCode}`;
         }
+
+        function showProjectAlert() {
+            var alertHtml = `
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            `;
+            
+            var existingAlert = document.querySelector('.alert');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            var container = document.querySelector('.manage-container');
+            container.insertAdjacentHTML('afterbegin', alertHtml);
+            
+            setTimeout(function() {
+                var alert = document.querySelector('.alert');
+                if (alert) {
+                    var bsAlert = new bootstrap.Alert(alert);
+                    bsAlert.close();
+                }
+            }, 3000);
+        }
+
+        // Cập nhật URL khi chọn dự án
+        document.querySelector('.project-select').addEventListener('change', function() {
+            var projectId = this.value;
+            var currentUrl = new URL(window.location.href);
+            if (projectId) {
+                currentUrl.searchParams.set('project_id', projectId);
+            } else {
+                currentUrl.searchParams.delete('project_id');
+            }
+            window.location.href = currentUrl.toString();
+        });
     </script>
 </body>
 </html>

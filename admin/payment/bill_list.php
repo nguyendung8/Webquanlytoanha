@@ -4,11 +4,23 @@ include '../../database/DBController.php';
 session_start();
 
 $admin_id = $_SESSION['admin_id'];
+$selected_project = isset($_GET['project_id']) ? $_GET['project_id'] : '';
 
 if (!isset($admin_id)) {
     header('location: /webquanlytoanha/index.php');
     exit();
 }
+
+// Lấy danh sách dự án của nhân viên
+$projects_query = "SELECT DISTINCT p.ProjectID, p.Name 
+                  FROM Projects p
+                  JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                  JOIN staffs s ON sp.StaffId = s.ID
+                  JOIN users u ON s.DepartmentId = u.DepartmentId
+                  WHERE u.UserId = '$admin_id' 
+                  AND p.Status = 'active'
+                  ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
 
 // Lấy danh sách tòa nhà cho filter
 $select_buildings = mysqli_query($conn, "SELECT ID, Name FROM Buildings WHERE Status = 'active'");
@@ -38,6 +50,8 @@ if (!empty($apartment_filter)) {
 if (!empty($status_filter)) {
     $where_conditions[] = "d.Status = '$status_filter'";
 }
+// Thêm điều kiện lọc trạng thái khác 'Chờ xác nhận'
+$where_conditions[] = "d.Status != 'Chờ xác nhận'";
 
 $where_clause = !empty($where_conditions) ? "WHERE " . implode(" AND ", $where_conditions) : "";
 
@@ -57,8 +71,10 @@ $query = "
            (SELECT SUM(dd.PaidAmount) FROM debtstatementdetail dd WHERE dd.InvoiceCode = d.InvoiceCode) as TotalPaid
     FROM debtstatements d
     LEFT JOIN apartment a ON d.ApartmentID = a.ApartmentID
+    LEFT JOIN Buildings b ON a.BuildingId = b.ID
     LEFT JOIN staffs s ON d.StaffID = s.ID
-    $where_clause
+    WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
+    " . (!empty($where_conditions) ? "AND " . implode(" AND ", $where_conditions) : "") . "
     ORDER BY d.IssueDate DESC
     LIMIT $offset, $records_per_page
 ";
@@ -287,7 +303,9 @@ if(isset($error_msg)){
     <title>Danh sách bảng kê</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <link rel="stylesheet" href="css/admin_style.css">
     <style>
         .stats-card {
@@ -430,6 +448,29 @@ if(isset($error_msg)){
             padding: 4px 8px;
             margin: 0 2px;
         }
+
+        .custom-alert {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            min-width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            animation: slideDown 0.5s ease-in-out;
+            text-align: center;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translate(-50%, -100%);
+                opacity: 0;
+            }
+            to {
+                transform: translate(-50%, 0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 
@@ -455,6 +496,17 @@ if(isset($error_msg)){
                 <!-- Search Form -->
                 <div class="search-container mb-4">
                     <form class="row g-3">
+                        <div class="col-md-2">
+                            <select class="form-select" name="project_id" onchange="this.form.submit()">
+                                <option value="">Chọn dự án</option>
+                                <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                                    <option value="<?php echo $project['ProjectID']; ?>" 
+                                            <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                        <?php echo $project['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
                         <div class="col-md-2">
                             <input type="text" class="form-control" name="search" placeholder="Mã bảng kê">
                         </div>
@@ -496,12 +548,21 @@ if(isset($error_msg)){
                         </div>
                     </form>
                     <div class="mt-3 d-flex justify-content-end">
-                        <a href="service_calculation.php" class="btn btn-success" style="margin-right: 10px;">
-                            <i class="fas fa-calculator"></i> Tính phí dịch vụ
-                        </a>
-                        <a href="payment_receipt.php" class="btn btn-success">
-                            <i class="fas fa-plus"></i> Lập phiếu thu
-                        </a>
+                        <?php if(empty($selected_project)): ?>
+                            <button type="button" class="btn btn-success btn-calculate action-btn" style="margin-right: 10px;">
+                                <i class="fas fa-calculator"></i> Tính phí dịch vụ
+                            </button>
+                            <button type="button" class="btn btn-success btn-receipt action-btn">
+                                <i class="fas fa-plus"></i> Lập phiếu thu
+                            </button>
+                        <?php else: ?>
+                            <a href="service_calculation.php" class="btn btn-success" style="margin-right: 10px;">
+                                <i class="fas fa-calculator"></i> Tính phí dịch vụ
+                            </a>
+                            <a href="payment_receipt.php" class="btn btn-success">
+                                <i class="fas fa-plus"></i> Lập phiếu thu
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -551,30 +612,44 @@ if(isset($error_msg)){
                                     </span>
                                 </td>
                                 <td>
-                                    <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
-                                        <button type="submit" name="delete_bill" 
-                                                class="btn btn-sm btn-danger" 
-                                                onclick="return confirm('Bạn có chắc chắn muốn xóa bảng kê này?')"
-                                                title="Xóa">
+                                    <?php if(empty($selected_project)): ?>
+                                        <button class="btn btn-sm btn-info view-invoice" title="Xem giấy báo phí" 
+                                                data-invoice-code="<?php echo $bill['InvoiceCode']; ?>">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </button>
+                                        <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-sm btn-danger action-btn" title="Xóa">
                                             <i class="fas fa-trash"></i>
                                         </button>
-                                    </form>
-                                    <!-- Thêm nút gửi thông báo -->
-                                     <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
-                                    <form method="POST" style="display: inline;">
-                                        <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
-                                        <button type="submit" name="send_notification" 
-                                                class="btn btn-sm btn-warning" 
-                                                onclick="return confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')"
-                                                title="Gửi thông báo">
-                                            <i class="fas fa-bell"></i>
-                                        </button>
-                                    </form> 
-                                    <?php } ?>
+                                        <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
+                                            <button type="button" class="btn btn-sm btn-warning action-btn" title="Gửi thông báo">
+                                                <i class="fas fa-bell"></i>
+                                            </button>
+                                        <?php } ?>
+                                    <?php else: ?>
+                                        <form method="POST" style="display: inline;">
+                                            <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
+                                            <button type="submit" name="delete_bill" 
+                                                    class="btn btn-sm btn-danger" 
+                                                    onclick="return confirm('Bạn có chắc chắn muốn xóa bảng kê này?')"
+                                                    title="Xóa">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                        <?php if($bill['Status'] == 'Chờ thanh toán' || $bill['Status'] == 'Quá hạn'){ ?>
+                                            <form method="POST" style="display: inline;">
+                                                <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
+                                                <button type="submit" name="send_notification" 
+                                                        class="btn btn-sm btn-warning" 
+                                                        onclick="return confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')"
+                                                        title="Gửi thông báo">
+                                                    <i class="fas fa-bell"></i>
+                                                </button>
+                                            </form>
+                                        <?php } ?>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php
@@ -620,43 +695,288 @@ if(isset($error_msg)){
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-    // Xử lý sự kiện gửi thông báo qua email
-    $(document).on('click', '.send-notification', function() {
-        const invoiceCode = $(this).data('invoice-code');
-        const button = $(this);
+    function showProjectAlert() {
+        // Xóa thông báo cũ nếu có
+        $('.custom-alert').remove();
         
-        // Hiển thị hộp thoại xác nhận
-        if (confirm('Bạn có chắc chắn muốn gửi thông báo nhắc thu phí cho căn hộ này?')) {
-            button.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
-            
-            // Gọi AJAX để gửi thông báo
-            $.ajax({
-                url: window.location.href,
-                method: 'POST',
-                data: {
-                    send_notification: true,
-                    invoice_code: invoiceCode
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        // Hiển thị thông báo thành công
-                        alert(response.message);
-                        button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
-                    } else {
-                        // Hiển thị thông báo lỗi
-                        alert(response.message);
-                        button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
-                    }
-                },
-                error: function() {
-                    alert('Đã xảy ra lỗi khi gửi thông báo!');
-                    button.html('<i class="fas fa-bell"></i>').prop('disabled', false);
-                }
+        // Tạo thông báo mới
+        const alertHtml = `
+            <div class="custom-alert alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Thêm thông báo vào sau header
+        $('.page-header').before(alertHtml);
+        
+        // Tự động ẩn sau 3 giây
+        setTimeout(function() {
+            $('.custom-alert').fadeOut('slow', function() {
+                $(this).remove();
+            });
+        }, 3000);
+    }
+
+    $(document).ready(function() {
+        // Gắn event cho các nút thao tác khi chưa chọn dự án
+        if (!<?php echo $selected_project ? 'true' : 'false'; ?>) {
+            // Chặn nút tính phí và lập phiếu thu
+            $('.btn-calculate, .btn-receipt').on('click', function(e) {
+                e.preventDefault();
+                showProjectAlert();
+            });
+
+            // Chặn các nút thao tác trong bảng
+            $('.action-btn').on('click', function(e) {
+                e.preventDefault();
+                showProjectAlert();
             });
         }
+    });
+    </script>
+
+    <!-- Modal Giấy báo phí -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1" aria-labelledby="invoiceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="invoiceModalLabel">Giấy báo phí</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="invoiceModalBody">
+                    <div class="invoice-content">
+                        <div class="row mb-3 text-center">
+                            <div class="col-4">
+                                <img src="/webquanlytoanha/assets/logo.png" alt="Logo" height="80">
+                            </div>
+                            <div class="col-8 text-start">
+                                <h5>VĂN PHÒNG BAN QUẢN LÝ BUILDMATE</h5>
+                                <p class="mb-0">12 Chùa Bộc, Quang Trung, Đống Đa, Hà Nội</p>
+                                <p class="mb-0">Hotline CSKH: 0978343328 - Hotline kỹ thuật: 0978343328 - Hotline bảo vệ: 0978343328</p>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4 mb-3 text-center">
+                            <div class="col-12">
+                                <h4 class="fw-bold" id="invoiceTitle">GIẤY BÁO PHÍ THÁNG</h4>
+                            </div>
+                        </div>
+                        
+                        <div class="row justify-content-between mb-3">
+                            <div class="col-6">
+                                <p class="mb-0"><strong>Kính gửi/Respectfully:</strong> <span id="residentName"></span></p>
+                                <p class="mb-0"><strong>Mã số căn hộ/Apartment code:</strong> <span id="apartmentCode"></span></p>
+                            </div>
+                            <div class="col-6 text-end">
+                                <p class="mb-0"><strong>Số:</strong> <span id="invoiceNumber"></span></p>
+                                <p class="mb-0"><strong>Tổng tiền thanh toán/Total:</strong> <span id="invoiceTotal"></span></p>
+                            </div>
+                        </div>
+                        
+                        <div class="table-responsive mb-3">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>STT</th>
+                                        <th>Diễn giải (Explanation)</th>
+                                        <th>Nợ trước (Prior debt)</th>
+                                        <th>Phát sinh trong tháng (Addition on a month)</th>
+                                        <th>Thanh toán (Paid)</th>
+                                        <th>Tổng (Total)</th>
+                                        <th>Ghi chú</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invoiceSummaryBody">
+                                    <!-- Dữ liệu tổng hợp sẽ được điền vào đây -->
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h5>THÔNG TIN CHI TIẾT/THE INFORMATION IN DETAIL</h5>
+                            <div id="invoiceDetails">
+                                <!-- Các chi tiết dịch vụ sẽ được điền vào đây -->
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h5>PHƯƠNG THỨC THANH TOÁN/PAYMENT METHODS</h5>
+                            <div class="mb-2">
+                                <strong>1/Thanh toán tiền mặt/ By cash:</strong>
+                                <p>Tại Văn phòng ban quản lý Buildmate</p>
+                            </div>
+                            
+                            <div>
+                                <strong>2/Thanh toán chuyển khoản/ ByTranfer to:</strong>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>Chủ tài khoản (Name)</th>
+                                        <th>Số tài khoản (Account number)</th>
+                                        <th>Ngân hàng (Bank)</th>
+                                        <th></th>
+                                    </tr>
+                                    <tr>
+                                        <td>Trần Thị Kim Anh</td>
+                                        <td>0888738572</td>
+                                        <td>Ngân hàng Quân đội MB Bank</td>
+                                        <td>
+                                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=0888738572" alt="QR Code" height="100">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan="4">
+                                            <p>Nội dung chuyển khoản: "Căn hộ - Loại phí - Diễn giải". Ví dụ: "B1002 - PQL, Nước, Xe - T4/19"</p>
+                                            <p>Details Of Payment: "Apartment's code - Charge code - Noted". EX:"B1002 - Management fee, Water, Parking fee - T4/19 "</p>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-8">
+                                <strong>Ghi chú/Note:</strong>
+                                <ul>
+                                    <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán.</li>
+                                    <li>Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày.</li>
+                                    <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này.</li>
+                                    <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ.</li>
+                                </ul>
+                            </div>
+                            <div class="col-4 text-center">
+                                <p>Hà Nội, Ngày <span id="currentDate"></span></p>
+                                <p><strong>Trưởng ban quản lý</strong></p>
+                                <div style="height: 80px;"></div>
+                                <p><strong id="managerName">Hoàng Văn Nam_Trưởng ban</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    $(document).ready(function() {
+        // Xử lý sự kiện click nút xem giấy báo phí
+        $('.view-invoice').on('click', function() {
+            const invoiceCode = $(this).data('invoice-code');
+            
+            // Gọi AJAX để lấy dữ liệu bảng kê
+            $.ajax({
+                url: 'bill_approval.php',
+                method: 'POST',
+                data: {
+                    get_invoice_data: true,
+                    invoice_code: invoiceCode
+                },
+                success: function(response) {
+                    if(response.success) {
+                        const data = response;
+                        const invoice = data.invoice;
+                        const details = data.details;
+                        const resident = data.resident;
+                        
+                        // Cập nhật thông tin trong modal
+                        $('#invoiceTitle').text('GIẤY BÁO PHÍ THÁNG ' + invoice.InvoicePeriod);
+                        $('#residentName').text(resident ? resident.Name : invoice.ApartmentName);
+                        $('#apartmentCode').text(invoice.ApartmentCode);
+                        $('#invoiceNumber').text(invoice.InvoiceCode);
+                        $('#invoiceTotal').text(new Intl.NumberFormat('vi-VN').format(invoice.Total) + ' VNĐ');
+                        
+                        // Cập nhật bảng tổng hợp
+                        $('#invoiceSummaryBody').html(`
+                            <tr>
+                                <td>1</td>
+                                <td>Phí quản lý</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.OutstandingDebt)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total - invoice.OutstandingDebt - invoice.Discount)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.PaidAmount)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total)}</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>Tổng</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.OutstandingDebt)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total - invoice.OutstandingDebt - invoice.Discount)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.PaidAmount)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total)}</td>
+                                <td></td>
+                            </tr>
+                        `);
+                        
+                        // Cập nhật chi tiết dịch vụ
+                        let detailsHtml = '';
+                        details.forEach((service, index) => {
+                            const serviceAmount = service.Quantity * service.UnitPrice;
+                            detailsHtml += `
+                                <div class="mb-4">
+                                    <h5>${index + 1}/${service.ServiceName || 'Dịch vụ'}</h5>
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Tháng (Month)</th>
+                                                <th>Diện tích (SQM) (1)</th>
+                                                <th>Đơn giá (Unit price) (2)</th>
+                                                <th>Thành tiền (Amount)(3)=(1)x(2)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Nợ trước/ Debt</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td>0</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Tháng ${invoice.InvoicePeriod}</td>
+                                                <td>${service.Quantity}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(service.UnitPrice)}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(serviceAmount)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Giảm giá/ Discount</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(service.Discount)}</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Thanh toán/ Paid</td>
+                                                <td></td>
+                                                <td></td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(service.PaidAmount)}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        });
+                        $('#invoiceDetails').html(detailsHtml);
+                        
+                        // Cập nhật ngày và tên trưởng ban
+                        const today = new Date().toLocaleDateString('vi-VN');
+                        $('#currentDate').text(today);
+                        if(invoice.ManagerName) {
+                            $('#managerName').text(invoice.ManagerName);
+                        }
+                        
+                        // Hiển thị modal
+                        $('#invoiceModal').modal('show');
+                    } else {
+                        alert('Không thể lấy thông tin bảng kê: ' + response.message);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    alert('Đã xảy ra lỗi khi lấy thông tin bảng kê');
+                }
+            });
+        });
     });
     </script>
 </body>

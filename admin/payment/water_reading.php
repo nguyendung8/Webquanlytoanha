@@ -28,6 +28,19 @@ if (!isset($admin_id)) {
     exit();
 }
 
+// Lấy danh sách dự án của nhân viên
+$selected_project = isset($_GET['project_id']) ? $_GET['project_id'] : '';
+
+$projects_query = "SELECT DISTINCT p.ProjectID, p.Name 
+                  FROM Projects p
+                  JOIN StaffProjects sp ON p.ProjectID = sp.ProjectId
+                  JOIN staffs s ON sp.StaffId = s.ID
+                  JOIN users u ON s.DepartmentId = u.DepartmentId
+                  WHERE u.UserId = '$admin_id' 
+                  AND p.Status = 'active'
+                  ORDER BY p.Name";
+$projects_result = mysqli_query($conn, $projects_query);
+
 // Xử lý AJAX request để lấy chỉ số cuối của tháng trước
 if (isset($_GET['action']) && $_GET['action'] === 'get_last_reading') {
     header('Content-Type: application/json');
@@ -89,6 +102,48 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_last_reading') {
                 'message' => 'Chưa có chỉ số'
             ]);
         }
+    }
+    exit;
+}
+
+// Xử lý AJAX request để lấy danh sách căn hộ theo dự án
+if (isset($_GET['action']) && $_GET['action'] === 'get_apartments') {
+    header('Content-Type: application/json');
+    
+    $project_id = isset($_GET['project_id']) ? mysqli_real_escape_string($conn, $_GET['project_id']) : '';
+    
+    if($project_id) {
+        $query = "
+            SELECT DISTINCT a.ApartmentID, a.Code, a.Name, b.Name as BuildingName
+            FROM apartment a
+            INNER JOIN Buildings b ON a.BuildingId = b.ID
+            WHERE b.ProjectId = ?
+            AND a.Status != 'deleted'
+            ORDER BY b.Name, a.Code";
+            
+        $stmt = $conn->prepare($query);
+        $stmt->bind_param('i', $project_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        
+        if(!$result) {
+            echo json_encode(['success' => false, 'message' => mysqli_error($conn)]);
+            exit;
+        }
+        
+        $apartments = [];
+        while($row = $result->fetch_assoc()) {
+            $apartments[] = [
+                'ApartmentID' => $row['ApartmentID'],
+                'Code' => $row['Code'],
+                'Name' => $row['Name'],
+                'BuildingName' => $row['BuildingName']
+            ];
+        }
+        
+        echo json_encode(['success' => true, 'apartments' => $apartments]);
+    } else {
+        echo json_encode(['success' => false, 'message' => 'Không có dự án được chọn']);
     }
     exit;
 }
@@ -264,7 +319,9 @@ $select_apartments = mysqli_query($conn, "SELECT ApartmentID, Code, Name FROM ap
 $query = "SELECT w.*, a.Code as ApartmentCode, a.Name as ApartmentName, s.Name as StaffName 
           FROM WaterMeterReading w
           LEFT JOIN apartment a ON w.ApartmentID = a.ApartmentID
+          LEFT JOIN Buildings b ON a.BuildingId = b.ID
           LEFT JOIN staffs s ON w.StaffID = s.ID
+          WHERE " . ($selected_project ? "b.ProjectId = '$selected_project'" : "1=1") . "
           ORDER BY w.ClosingDate DESC";
 
 $select_readings = mysqli_query($conn, $query);
@@ -281,6 +338,7 @@ $select_readings = mysqli_query($conn, $query);
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="css/admin_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         .stats-card {
             background: white;
@@ -445,6 +503,15 @@ $select_readings = mysqli_query($conn, $query);
         .nav-tabs .nav-link:hover {
             border: none;
         }
+
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+            min-width: 300px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
     </style>
 </head>
 
@@ -473,6 +540,17 @@ $select_readings = mysqli_query($conn, $query);
                 <!-- Search Form -->
                 <div class="search-container mb-4">
                     <form class="row g-3">
+                        <div class="col-md-3">
+                            <select class="form-select" name="project_id" onchange="this.form.submit()">
+                                <option value="">Chọn dự án</option>
+                                <?php while($project = mysqli_fetch_assoc($projects_result)) { ?>
+                                    <option value="<?php echo $project['ProjectID']; ?>" 
+                                            <?php echo ($selected_project == $project['ProjectID']) ? 'selected' : ''; ?>>
+                                        <?php echo $project['Name']; ?>
+                                    </option>
+                                <?php } ?>
+                            </select>
+                        </div>
                         <div class="col-md-3">
                             <select class="form-select" name="apartment">
                                 <option value="">Chọn căn hộ</option>
@@ -508,11 +586,17 @@ $select_readings = mysqli_query($conn, $query);
                             </button>
                         </div>
                     </form>
-                                    <!-- Add New Button -->
+                    <!-- Add New Button -->
                     <div class="mt-3 d-flex justify-content-end">
-                        <button type="button" class="btn add-btn" data-bs-toggle="modal" data-bs-target="#addReadingModal">
-                            <i class="fas fa-plus"></i> Thêm chỉ số
-                        </button>
+                        <?php if(empty($selected_project)): ?>
+                            <button type="button" class="btn add-btn" onclick="showProjectAlert()">
+                                <i class="fas fa-plus"></i> Thêm chỉ số
+                            </button>
+                        <?php else: ?>
+                            <button type="button" class="btn add-btn" data-bs-toggle="modal" data-bs-target="#addReadingModal">
+                                <i class="fas fa-plus"></i> Thêm chỉ số
+                            </button>
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -563,23 +647,32 @@ $select_readings = mysqli_query($conn, $query);
                                 <td><?php echo $row['Consumption']; ?></td>
                                 <td><?php echo date('d-m-Y', strtotime($row['ClosingDate'])); ?></td>
                                 <td>
-                                    <button class="btn btn-link text-primary" onclick="viewReading(<?php 
-                                        echo htmlspecialchars(json_encode([
-                                            'id' => $row['WaterMeterID'],
-                                            'apartmentCode' => $row['ApartmentCode'],
-                                            'apartmentName' => $row['ApartmentName'],
-                                            'initialReading' => $row['InitialReading'],
-                                            'finalReading' => $row['FinalReading'],
-                                            'consumption' => $row['Consumption'],
-                                            'closingDate' => date('d-m-Y', strtotime($row['ClosingDate'])),
-                                            'image' => $row['Image']
-                                        ])); 
-                                    ?>)">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-link text-danger" onclick="deleteReading(<?php echo $row['WaterMeterID']; ?>)">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
+                                    <?php if(empty($selected_project)): ?>
+                                        <button class="btn btn-link text-primary" onclick="showProjectAlert()">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-link text-danger" onclick="showProjectAlert()">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php else: ?>
+                                        <button class="btn btn-link text-primary" onclick="viewReading(<?php 
+                                            echo htmlspecialchars(json_encode([
+                                                'id' => $row['WaterMeterID'],
+                                                'apartmentCode' => $row['ApartmentCode'],
+                                                'apartmentName' => $row['ApartmentName'],
+                                                'initialReading' => $row['InitialReading'],
+                                                'finalReading' => $row['FinalReading'],
+                                                'consumption' => $row['Consumption'],
+                                                'closingDate' => date('d-m-Y', strtotime($row['ClosingDate'])),
+                                                'image' => $row['Image']
+                                            ])); 
+                                        ?>)">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-link text-danger" onclick="deleteReading(<?php echo $row['WaterMeterID']; ?>)">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                             <?php
@@ -753,8 +846,8 @@ $select_readings = mysqli_query($conn, $query);
     }
 
     function getInitialReading() {
-        const apartmentId = document.getElementById('apartment_id').value;
-        const closingMonth = document.querySelector('input[name="closing_month"]').value;
+        const apartmentId = document.getElementById('apartment_id')?.value;
+        const closingMonth = document.querySelector('input[name="closing_month"]')?.value;
         
         if (apartmentId && closingMonth) {
             // Lấy tháng trước của tháng được chọn
@@ -764,82 +857,150 @@ $select_readings = mysqli_query($conn, $query);
             const previousMonth = date.toISOString().slice(0, 7);
 
             // Reset giá trị về 0 trước khi gọi API
-            document.getElementById('initial_reading').value = '0';
+            const initialReadingInput = document.getElementById('initial_reading');
+            if (initialReadingInput) {
+                initialReadingInput.value = '0';
+            }
 
             // Gọi API trong cùng file với parameter action
             fetch(`water_reading.php?action=get_last_reading&apartment_id=${apartmentId}&month=${previousMonth}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        document.getElementById('initial_reading').value = data.final_reading;
-                        // Có thể thêm thông báo nhỏ để hiển thị message
-                        // console.log(data.message);
-                    } else {
-                        document.getElementById('initial_reading').value = '0';
+                    if (data.success && initialReadingInput) {
+                        initialReadingInput.value = data.final_reading;
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    document.getElementById('initial_reading').value = '0';
+                    if (initialReadingInput) {
+                        initialReadingInput.value = '0';
+                    }
+                });
+        }
+    }
+
+    function updateApartmentList(projectId) {
+        const apartmentSelect = document.getElementById('apartment_id');
+        
+        if (!apartmentSelect) return;
+        
+        // Reset select box
+        apartmentSelect.innerHTML = '<option value="">Chọn căn hộ</option>';
+        
+        if(projectId) {
+            fetch(`water_reading.php?action=get_apartments&project_id=${projectId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if(data.success && data.apartments && data.apartments.length > 0) {
+                        data.apartments.forEach(apt => {
+                            const option = document.createElement('option');
+                            option.value = apt.ApartmentID;
+                            option.textContent = `${apt.BuildingName} - ${apt.Code} - ${apt.Name}`;
+                            apartmentSelect.appendChild(option);
+                        });
+                    } else {
+                        console.error('Error:', data.message);
+                        apartmentSelect.innerHTML = '<option value="">Không có căn hộ</option>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    apartmentSelect.innerHTML = '<option value="">Lỗi khi tải danh sách căn hộ</option>';
                 });
         } else {
-            document.getElementById('initial_reading').value = '0';
+            apartmentSelect.innerHTML = '<option value="" disabled>Vui lòng chọn dự án trước</option>';
         }
     }
 
-    // Thêm sự kiện khi mở modal để reset giá trị
-    document.querySelector('[data-bs-toggle="modal"]').addEventListener('click', function() {
-        document.getElementById('initial_reading').value = '0';
-        document.getElementById('final_reading').value = '';
-        document.getElementById('apartment_id').value = '';
-        document.querySelector('input[name="closing_month"]').value = new Date().toISOString().slice(0, 7);
-    });
+    // Đợi cho DOM load xong
+    document.addEventListener('DOMContentLoaded', function() {
+        // Cập nhật sự kiện cho project select
+        const projectSelect = document.querySelector('select[name="project_id"]');
+        if (projectSelect) {
+            projectSelect.addEventListener('change', function() {
+                updateApartmentList(this.value);
+            });
+        }
 
-    // Thêm sự kiện khi chọn căn hộ hoặc thay đổi tháng
-    document.getElementById('apartment_id').addEventListener('change', getInitialReading);
-    document.querySelector('input[name="closing_month"]').addEventListener('change', getInitialReading);
+        // Thêm sự kiện cho apartment select và closing month input
+        const apartmentSelect = document.getElementById('apartment_id');
+        const closingMonthInput = document.querySelector('input[name="closing_month"]');
 
-    // Validate form trước khi submit
-    document.getElementById('addReadingForm').addEventListener('submit', function(e) {
-        const initialReading = parseFloat(document.getElementById('initial_reading').value) || 0;
-        const finalReading = parseFloat(document.getElementById('final_reading').value) || 0;
-        
-        if (finalReading < initialReading) {
-            e.preventDefault();
-            alert('Chỉ số cuối phải lớn hơn hoặc bằng chỉ số đầu');
+        if (apartmentSelect) {
+            apartmentSelect.addEventListener('change', getInitialReading);
+        }
+        if (closingMonthInput) {
+            closingMonthInput.addEventListener('change', getInitialReading);
+        }
+
+        // Validate form trước khi submit
+        const addReadingForm = document.getElementById('addReadingForm');
+        if (addReadingForm) {
+            addReadingForm.addEventListener('submit', function(e) {
+                const initialReading = parseFloat(document.getElementById('initial_reading')?.value) || 0;
+                const finalReading = parseFloat(document.getElementById('final_reading')?.value) || 0;
+                
+                if (finalReading < initialReading) {
+                    e.preventDefault();
+                    alert('Chỉ số cuối phải lớn hơn hoặc bằng chỉ số đầu');
+                }
+            });
+        }
+
+        // Validate form cập nhật
+        const updateReadingForm = document.getElementById('updateReadingForm');
+        if (updateReadingForm) {
+            updateReadingForm.addEventListener('submit', function(e) {
+                const initialReading = parseFloat(document.getElementById('viewInitialReading')?.value) || 0;
+                const finalReading = parseFloat(document.getElementById('viewFinalReading')?.value) || 0;
+                
+                if (finalReading < initialReading) {
+                    e.preventDefault();
+                    alert('Chỉ số cuối phải lớn hơn hoặc bằng chỉ số đầu');
+                }
+            });
+        }
+
+        // Cập nhật danh sách căn hộ khi mở modal
+        const addReadingModal = document.getElementById('addReadingModal');
+        if (addReadingModal) {
+            addReadingModal.addEventListener('show.bs.modal', function() {
+                const selectedProject = projectSelect?.value;
+                if(selectedProject) {
+                    updateApartmentList(selectedProject);
+                }
+            });
+        }
+
+        // Khởi tạo danh sách căn hộ nếu đã có dự án được chọn
+        const initialProject = projectSelect?.value;
+        if(initialProject) {
+            updateApartmentList(initialProject);
         }
     });
 
-    // Hàm xem chi tiết
-    function viewReading(data) {
-        document.getElementById('viewImage').src = data.image;
-        document.getElementById('viewApartment').value = data.apartmentCode + ' - ' + data.apartmentName;
-        document.getElementById('viewClosingDate').value = data.closingDate;
-        document.getElementById('viewInitialReading').value = data.initialReading;
-        document.getElementById('viewFinalReading').value = data.finalReading;
-        document.getElementById('viewReadingId').value = data.id;
+    function showProjectAlert() {
+        // Xóa thông báo cũ nếu có
+        $('.alert').remove();
         
-        new bootstrap.Modal(document.getElementById('viewReadingModal')).show();
+        // Tạo thông báo mới
+        const alertHtml = `
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                <strong>Thông báo!</strong> Vui lòng chọn dự án trước khi thực hiện thao tác này.
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Thêm thông báo vào đầu container
+        $('.container-fluid').prepend(alertHtml);
+        
+        // Tự động ẩn sau 3 giây
+        setTimeout(function() {
+            $('.alert').fadeOut('slow', function() {
+                $(this).remove();
+            });
+        }, 3000);
     }
-
-    // Hàm xóa
-    function deleteReading(readingId) {
-        if(confirm('Bạn có chắc chắn muốn xóa chỉ số này?')) {
-            document.getElementById('deleteReadingId').value = readingId;
-            document.getElementById('deleteForm').submit();
-        }
-    }
-
-    // Validate form cập nhật
-    document.getElementById('updateReadingForm').addEventListener('submit', function(e) {
-        const initialReading = parseFloat(document.getElementById('viewInitialReading').value) || 0;
-        const finalReading = parseFloat(document.getElementById('viewFinalReading').value) || 0;
-        
-        if (finalReading < initialReading) {
-            e.preventDefault();
-            alert('Chỉ số cuối phải lớn hơn hoặc bằng chỉ số đầu');
-        }
-    });
     </script>
 </body>
 </html>

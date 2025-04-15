@@ -607,7 +607,7 @@ if(isset($_GET['cancel_appendix'])) {
                                 <th>Mã phụ lục</th>
                                 <th>Ngày tạo</th>
                                 <th>Ngày hiệu lực</th>
-                                <th>Ngày kết hạn</th>
+                                <th>Ngày hết hạn</th>
                                 <th>Trạng thái</th>
                                 <th>Thao tác</th>
                             </tr>
@@ -623,7 +623,7 @@ if(isset($_GET['cancel_appendix'])) {
                                 <td><?php echo $appendix['ContractAppendixId']; ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($appendix['CretionDate'])); ?></td>
                                 <td><?php echo date('d/m/Y', strtotime($appendix['CretionDate'])); ?></td>
-                                <td><?php echo $contract_data['EndDate'] ? date('d/m/Y', strtotime($contract_data['EndDate'])) : ''; ?></td>
+                                <td><?php echo $appendix['EndDate'] ? date('d/m/Y', strtotime($appendix['EndDate'])) : ''; ?></td>
                                 <td>
                                     <span class="status-badge <?php echo $isActive ? 'status-active' : 'status-cancelled'; ?>">
                                         <?php echo $isActive ? 'Hoạt động' : 'Đã hủy'; ?>
