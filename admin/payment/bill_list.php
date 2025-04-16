@@ -471,6 +471,18 @@ if(isset($error_msg)){
                 opacity: 1;
             }
         }
+
+        /* Add these styles to your existing CSS */
+        .price-tiers {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .price-tiers div {
+            padding: 2px 0;
+        }
+        .service-detail table td {
+            vertical-align: middle;
+        }
     </style>
 </head>
 
@@ -882,16 +894,7 @@ if(isset($error_msg)){
                         $('#invoiceSummaryBody').html(`
                             <tr>
                                 <td>1</td>
-                                <td>Phí quản lý</td>
-                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.OutstandingDebt)}</td>
-                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total - invoice.OutstandingDebt - invoice.Discount)}</td>
-                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.PaidAmount)}</td>
-                                <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total)}</td>
-                                <td></td>
-                            </tr>
-                            <tr>
-                                <td>2</td>
-                                <td>Tổng</td>
+                                <td>Tổng phí dịch vụ</td>
                                 <td>${new Intl.NumberFormat('vi-VN').format(invoice.OutstandingDebt)}</td>
                                 <td>${new Intl.NumberFormat('vi-VN').format(invoice.Total - invoice.OutstandingDebt - invoice.Discount)}</td>
                                 <td>${new Intl.NumberFormat('vi-VN').format(invoice.PaidAmount)}</td>
@@ -902,44 +905,57 @@ if(isset($error_msg)){
                         
                         // Cập nhật chi tiết dịch vụ
                         let detailsHtml = '';
-                        details.forEach((service, index) => {
-                            const serviceAmount = service.Quantity * service.UnitPrice;
+                        details.forEach((detail, index) => {
+                            let priceInfo = '';
+                            if(detail.TypeOfFee === 'Lũy tiến') {
+                                const tiers = JSON.parse(detail.VariableData || '[]');
+                                priceInfo = '<div class="price-tiers">';
+                                tiers.forEach(tier => {
+                                    priceInfo += `<div>Từ ${new Intl.NumberFormat('vi-VN').format(tier.price_from)} 
+                                                đến ${new Intl.NumberFormat('vi-VN').format(tier.price_to)}: 
+                                                ${new Intl.NumberFormat('vi-VN').format(tier.price)} VNĐ</div>`;
+                                });
+                                priceInfo += '</div>';
+                            } else {
+                                priceInfo = new Intl.NumberFormat('vi-VN').format(detail.UnitPrice) + ' VNĐ';
+                            }
+
                             detailsHtml += `
-                                <div class="mb-4">
-                                    <h5>${index + 1}/${service.ServiceName || 'Dịch vụ'}</h5>
+                                <div class="service-detail mb-4">
+                                    <h5>${index + 1}/ ${detail.ServiceName}</h5>
                                     <table class="table table-bordered">
                                         <thead>
                                             <tr>
-                                                <th>Tháng (Month)</th>
-                                                <th>Diện tích (SQM) (1)</th>
-                                                <th>Đơn giá (Unit price) (2)</th>
-                                                <th>Thành tiền (Amount)(3)=(1)x(2)</th>
+                                                <th>Kỳ</th>
+                                                <th>Số lượng</th>
+                                                <th>Đơn giá</th>
+                                                <th>Thành tiền</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
                                                 <td>Nợ trước/ Debt</td>
-                                                <td></td>
-                                                <td></td>
+                                                <td>0</td>
+                                                <td>0</td>
                                                 <td>0</td>
                                             </tr>
                                             <tr>
                                                 <td>Tháng ${invoice.InvoicePeriod}</td>
-                                                <td>${service.Quantity}</td>
-                                                <td>${new Intl.NumberFormat('vi-VN').format(service.UnitPrice)}</td>
-                                                <td>${new Intl.NumberFormat('vi-VN').format(serviceAmount)}</td>
+                                                <td>${detail.Quantity}</td>
+                                                <td>${priceInfo}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(detail.RemainingBalance)} VNĐ</td>
                                             </tr>
                                             <tr>
                                                 <td>Giảm giá/ Discount</td>
                                                 <td></td>
                                                 <td></td>
-                                                <td>${new Intl.NumberFormat('vi-VN').format(service.Discount)}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(detail.Discount)} VNĐ</td>
                                             </tr>
                                             <tr>
                                                 <td>Thanh toán/ Paid</td>
                                                 <td></td>
                                                 <td></td>
-                                                <td>${new Intl.NumberFormat('vi-VN').format(service.PaidAmount)}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(detail.PaidAmount)} VNĐ</td>
                                             </tr>
                                         </tbody>
                                     </table>

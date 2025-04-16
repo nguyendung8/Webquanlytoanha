@@ -286,8 +286,8 @@ if (isset($_POST['submit'])) {
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Trưởng ban quản lý <span class="required">*</span></label>
-                                <select name="manager_id" class="form-select" required>
+                                <label class="form-label">Trưởng ban quản lý</label>
+                                <select name="manager_id" class="form-select">
                                     <option value="">Chọn trưởng ban quản lý</option>
                                     <?php
                                     $select_managers = mysqli_query($conn, "SELECT * FROM `Staffs` WHERE Position LIKE '%Trưởng BQL%' OR Position LIKE '%Trưởng ban%' ORDER BY Name");

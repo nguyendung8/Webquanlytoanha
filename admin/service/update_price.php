@@ -40,6 +40,9 @@ if (mysqli_num_rows($get_service_price) > 0) {
 // Lấy danh sách dịch vụ active để hiển thị trong dropdown
 $select_services = mysqli_query($conn, "SELECT * FROM services WHERE Status = 'active'");
 
+// Thêm đoạn code này vào phần đầu file, sau khi kết nối database
+mysqli_set_charset($conn, "utf8mb4");
+
 // Xử lý cập nhật bảng giá
 if (isset($_POST['submit'])) {
     $name = mysqli_real_escape_string($conn, $_POST['name']);
@@ -79,7 +82,7 @@ if (isset($_POST['submit'])) {
             for ($i = 0; $i < count($variable_titles); $i++) {
                 if (!empty($variable_titles[$i])) {
                     $variable_rows[] = [
-                        'title' => $variable_titles[$i],
+                        'title' => mb_convert_encoding($variable_titles[$i], 'UTF-8', 'auto'),
                         'price_from' => isset($variable_price_froms[$i]) ? floatval($variable_price_froms[$i]) : 0,
                         'price_to' => isset($variable_price_tos[$i]) ? floatval($variable_price_tos[$i]) : 0,
                         'price' => isset($variable_prices[$i]) ? floatval($variable_prices[$i]) : 0
@@ -87,8 +90,8 @@ if (isset($_POST['submit'])) {
                 }
             }
             
-            // Chuyển đổi thành chuỗi JSON
-            $variable_data = json_encode($variable_rows);
+            // Chuyển đổi thành chuỗi JSON với encoding UTF-8
+            $variable_data = json_encode($variable_rows, JSON_UNESCAPED_UNICODE);
         } else {
             // Fallback nếu không có dữ liệu
             $title = '';

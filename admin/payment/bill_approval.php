@@ -117,9 +117,12 @@ if(isset($_POST['approve_bill'])) {
             
             // Lấy thông tin chi tiết bảng kê
             $details_query = mysqli_query($conn, "
-                SELECT d.*, s.Name as ServiceName, s.TypeOfService
+                SELECT d.*, s.Name as ServiceName, s.TypeOfService,
+                       pl.TypeOfFee, pl.VariableData
                 FROM debtstatementdetail d
                 LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
+                LEFT JOIN serviceprice sp ON s.ServiceCode = sp.ServiceId
+                LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
                 WHERE d.InvoiceCode = '$invoice_code'
             ");
             
@@ -193,6 +196,22 @@ if(isset($_POST['approve_bill'])) {
 if(isset($_POST['get_invoice_data']) && isset($_POST['invoice_code'])) {
     $invoice_code = mysqli_real_escape_string($conn, $_POST['invoice_code']);
     
+    // Lấy thông tin bảng kê có thêm thông tin về giá và cách tính
+    $details_query = mysqli_query($conn, "
+        SELECT d.*, s.Name as ServiceName, s.TypeOfService,
+               pl.TypeOfFee, pl.VariableData
+        FROM debtstatementdetail d
+        LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
+        LEFT JOIN serviceprice sp ON s.ServiceCode = sp.ServiceId
+        LEFT JOIN pricelist pl ON sp.PriceId = pl.ID
+        WHERE d.InvoiceCode = '$invoice_code'
+    ");
+    
+    $details = [];
+    while($detail = mysqli_fetch_assoc($details_query)) {
+        $details[] = $detail;
+    }
+    
     // Lấy thông tin bảng kê có thêm thông tin về trưởng ban quản lý
     $invoice_query = mysqli_query($conn, "
         SELECT d.*, a.Code as ApartmentCode, a.Name as ApartmentName, a.ApartmentID,
@@ -227,19 +246,6 @@ if(isset($_POST['get_invoice_data']) && isset($_POST['invoice_code'])) {
             LIMIT 1
         ");
         $resident = mysqli_num_rows($resident_query) > 0 ? mysqli_fetch_assoc($resident_query) : null;
-        
-        // Lấy chi tiết bảng kê
-        $details_query = mysqli_query($conn, "
-            SELECT d.*, s.Name as ServiceName, s.TypeOfService
-            FROM debtstatementdetail d
-            LEFT JOIN services s ON d.ServiceCode = s.ServiceCode
-            WHERE d.InvoiceCode = '$invoice_code'
-        ");
-        
-        $details = [];
-        while($detail = mysqli_fetch_assoc($details_query)) {
-            $details[] = $detail;
-        }
         
         // Trả về kết quả
         header('Content-Type: application/json');
@@ -587,6 +593,9 @@ if(isset($_SESSION['error_msg'])) {
                                 </td>
                                 <td>
                                     <?php if(empty($selected_project)): ?>
+                                        <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
                                         <button type="button" class="btn btn-sm btn-success action-btn">
                                             <i class="fas fa-check"></i> Duyệt
                                         </button>
@@ -594,6 +603,9 @@ if(isset($_SESSION['error_msg'])) {
                                             <i class="fas fa-file-invoice"></i>
                                         </button>
                                     <?php else: ?>
+                                        <a href="detail_bill.php?invoice_code=<?php echo $bill['InvoiceCode']; ?>" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
                                         <form method="POST" style="display: inline;">
                                             <input type="hidden" name="invoice_code" value="<?php echo $bill['InvoiceCode']; ?>">
                                             <button type="submit" name="approve_bill" 
@@ -687,6 +699,93 @@ if(isset($_SESSION['error_msg'])) {
                 showProjectAlert();
             });
         }
+
+        $('.view-invoice').on('click', function() {
+            const invoiceCode = $(this).data('invoice-code');
+            
+            // Gọi AJAX để lấy dữ liệu
+            $.ajax({
+                url: window.location.href,
+                method: 'POST',
+                data: {
+                    get_invoice_data: true,
+                    invoice_code: invoiceCode
+                },
+                success: function(response) {
+                    if(response.success) {
+                        // Cập nhật thông tin cơ bản
+                        $('#invoiceTitle').text('GIẤY BÁO PHÍ THÁNG ' + response.invoice.InvoicePeriod);
+                        $('#residentName').text(response.resident ? response.resident.Name : response.apartment.Name);
+                        $('#apartmentCode').text(response.apartment.Code);
+                        $('#invoiceNumber').text(response.invoice.InvoiceCode);
+                        $('#invoiceTotal').text(new Intl.NumberFormat('vi-VN').format(response.invoice.Total) + ' VNĐ');
+                        $('#currentDate').text(new Date().toLocaleDateString('vi-VN'));
+                        $('#managerName').text(response.invoice.ManagerName);
+
+                        // Cập nhật bảng tổng hợp
+                        let summaryHtml = `
+                            <tr>
+                                <td>1</td>
+                                <td>Tổng phí dịch vụ</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(response.invoice.OutstandingDebt)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(response.invoice.Total - response.invoice.OutstandingDebt)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(response.invoice.PaidAmount)}</td>
+                                <td>${new Intl.NumberFormat('vi-VN').format(response.invoice.Total)}</td>
+                                <td></td>
+                            </tr>
+                        `;
+                        $('#invoiceSummaryBody').html(summaryHtml);
+
+                        // Cập nhật chi tiết dịch vụ
+                        let detailsHtml = '';
+                        response.details.forEach((detail, index) => {
+                            let priceInfo = '';
+                            if(detail.TypeOfFee === 'Lũy tiến') {
+                                const tiers = JSON.parse(detail.VariableData || '[]');
+                                tiers.forEach(tier => {
+                                    priceInfo += `<div>Từ ${tier.price_from} đến ${tier.price_to}: ${new Intl.NumberFormat('vi-VN').format(tier.price)} VNĐ</div>`;
+                                });
+                            } else {
+                                priceInfo = new Intl.NumberFormat('vi-VN').format(detail.UnitPrice) + ' VNĐ';
+                            }
+
+                            detailsHtml += `
+                                <div class="service-detail mb-4">
+                                    <h5>${index + 1}/ ${detail.ServiceName}</h5>
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Kỳ</th>
+                                                <th>Số lượng</th>
+                                                <th>Đơn giá</th>
+                                                <th>Thành tiền</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>${response.invoice.InvoicePeriod}</td>
+                                                <td>${detail.Quantity}</td>
+                                                <td>${priceInfo}</td>
+                                                <td>${new Intl.NumberFormat('vi-VN').format(detail.RemainingBalance)} VNĐ</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            `;
+                        });
+                        $('#invoiceDetails').html(detailsHtml);
+
+                        // Hiển thị modal
+                        $('#invoiceModal').modal('show');
+                    } else {
+                        alert('Không thể tải thông tin bảng kê: ' + response.message);
+                    }
+                },
+                error: function() {
+                    alert('Có lỗi xảy ra khi tải thông tin bảng kê');
+                }
+            });
+        });
     });
     </script>
 
@@ -840,18 +939,9 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
         <tbody>
             <tr>
                 <td>1</td>
-                <td>Phí quản lý</td>
+                <td>Tổng phí dịch vụ</td>
                 <td>'.number_format($invoice['OutstandingDebt']).'</td>
-                <td>'.number_format($invoice['Total'] - $invoice['OutstandingDebt'] - $invoice['Discount']).'</td>
-                <td>'.number_format($invoice['PaidAmount']).'</td>
-                <td>'.number_format($invoice['Total']).'</td>
-                <td></td>
-            </tr>
-            <tr>
-                <td>2</td>
-                <td>Tổng</td>
-                <td>'.number_format($invoice['OutstandingDebt']).'</td>
-                <td>'.number_format($invoice['Total'] - $invoice['OutstandingDebt'] - $invoice['Discount']).'</td>
+                <td>'.number_format($invoice['Total'] - $invoice['OutstandingDebt']).'</td>
                 <td>'.number_format($invoice['PaidAmount']).'</td>
                 <td>'.number_format($invoice['Total']).'</td>
                 <td></td>
@@ -862,7 +952,21 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
     // Tạo chi tiết dịch vụ
     $details_content = '';
     foreach($details as $index => $service) {
-        $service_amount = $service['Quantity'] * $service['UnitPrice'];
+        // Xử lý hiển thị đơn giá dựa trên loại phí
+        $price_info = '';
+        if($service['TypeOfFee'] === 'Lũy tiến') {
+            $tiers = json_decode($service['VariableData'] ?? '[]', true);
+            foreach($tiers as $tier) {
+                $price_info .= sprintf(
+                    'Từ %s đến %s: %s VNĐ<br>',
+                    number_format($tier['price_from']),
+                    number_format($tier['price_to']),
+                    number_format($tier['price'])
+                );
+            }
+        } else {
+            $price_info = number_format($service['UnitPrice']) . ' VNĐ';
+        }
         
         $details_content .= '
         <div style="margin-bottom: 20px;">
@@ -870,36 +974,18 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
             <table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse; width: 100%;">
                 <thead>
                     <tr style="background-color: #f2f2f2;">
-                        <th>Tháng (Month)</th>
-                        <th>Diện tích (SQM) (1)</th>
-                        <th>Đơn giá (Unit price) (2)</th>
-                        <th>Thành tiền (Amount)(3)=(1)x(2)</th>
+                        <th>Kỳ</th>
+                        <th>Số lượng</th>
+                        <th>Đơn giá</th>
+                        <th>Thành tiền</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
-                        <td>Nợ trước/ Debt</td>
-                        <td></td>
-                        <td></td>
-                        <td>0</td>
-                    </tr>
-                    <tr>
                         <td>Tháng '.$invoice['InvoicePeriod'].'</td>
                         <td>'.$service['Quantity'].'</td>
-                        <td>'.number_format($service['UnitPrice']).'</td>
-                        <td>'.number_format($service_amount).'</td>
-                    </tr>
-                    <tr>
-                        <td>Giảm giá/ Discount</td>
-                        <td></td>
-                        <td></td>
-                        <td>'.number_format($service['Discount']).'</td>
-                    </tr>
-                    <tr>
-                        <td>Thanh toán/ Paid</td>
-                        <td></td>
-                        <td></td>
-                        <td>'.number_format($service['PaidAmount']).'</td>
+                        <td>'.$price_info.'</td>
+                        <td>'.number_format($service['RemainingBalance']).' VNĐ</td>
                     </tr>
                 </tbody>
             </table>
@@ -933,12 +1019,12 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
         '.$summary_table.'
         
         <div style="margin-top: 20px;">
-            <h3>THÔNG TIN CHI TIẾT/THE INFORMATION IN DETAIL</h3>
+            <h5>THÔNG TIN CHI TIẾT/THE INFORMATION IN DETAIL</h5>
             '.$details_content.'
         </div>
         
         <div style="margin-top: 20px;">
-            <h3>PHƯƠNG THỨC THANH TOÁN/PAYMENT METHODS</h3>
+            <h5>PHƯƠNG THỨC THANH TOÁN/PAYMENT METHODS</h5>
             
             <div style="margin-bottom: 15px;">
                 <strong>1/Thanh toán tiền mặt/ By cash:</strong>
@@ -968,19 +1054,19 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
             </div>
         </div>
         
-        <div style="font-size: 16px; margin-bottom: 20px;">
-            <p><strong>Lưu ý:</strong></p>
+        <div style="margin-top: 20px;">
+            <strong>Ghi chú/Note:</strong>
             <ul>
-                <li>Quý cư dân vui lòng thanh toán đúng hạn để tránh bị phạt chậm trả hoặc ngắt dịch vụ.</li>
-                <li>Sau thời hạn thanh toán, Ban quản lý sẽ liên hệ trực tiếp với các căn hộ chưa đóng phí để nhắc nhở và hỗ trợ.</li>
-                <li>Trường hợp quý cư dân có khó khăn về tài chính, vui lòng liên hệ với Ban quản lý để được hỗ trợ.</li>
-                <li>Nếu sau 30 ngày kể từ ngày hết hạn thanh toán mà quý cư dân vẫn chưa đóng phí, Ban quản lý sẽ buộc phải ngắt một số dịch vụ tiện ích như điện, nước, wifi, v.v... cho đến khi quý cư dân thanh toán đầy đủ.</li>
+                <li>Thời hạn nộp các khoản phí là 45 ngày kể từ ngày phát sinh phí chưa thanh toán.</li>
+                <li>Ban Quản lý sẽ cảnh thông báo trước nợ 05 ngày trước khi tiến hành ngưng cung cấp dịch vụ đối với các căn hộ nợ các khoản phí quá 45 ngày.</li>
+                <li>Nếu quý khách hàng đã thanh toán phí, xin vui lòng bỏ qua thông báo này.</li>
+                <li>Trường hợp Quý cư dân vì lý do đặc biệt chưa thanh toán kịp thời thì gian quy định, xin vui lòng thông báo cho Ban Quản lý để được hỗ trợ.</li>
             </ul>
         </div>
 
         <div style="display: flex; margin-top: 20px;">
             <div style="width: 70%;">
-                <p style="font-size: 16px; margin-bottom: 20px;">Trân trọng cảm ơn!</p>
+                <p>Trân trọng cảm ơn!</p>
             </div>
             <div style="width: 30%; text-align: center;">
                 <p>Hà Nội, Ngày '.$today.'</p>
@@ -989,8 +1075,6 @@ function createInvoiceEmailContent($invoice, $details, $resident) {
                 <p><strong>'.$manager_name.'</strong></p>
             </div>
         </div>
-
-        <p style="font-size: 16px; font-weight: bold;">Ban Quản Lý Tòa nhà Buildmate.</p>
     </div>';
     
     return $content;
