@@ -54,10 +54,12 @@ if (isset($_POST['submit'])) {
     $price_from = 0;
     $price_to = 0;
     $price_value = 0;
+    $variable_data = '';
 
     if ($type_of_fee == 'Cố định') {
         $price_calculation = isset($_POST['price_calculation']) ? mysqli_real_escape_string($conn, $_POST['price_calculation']) : '';
         $price_value = isset($_POST['fixed_price']) ? floatval($_POST['fixed_price']) : 0;
+        $variable_data = ''; // Set variable_data to empty string for fixed price type
     } else {
         // Lấy dòng đầu tiên làm giá trị chính
         $variable_titles = isset($_POST['variable_title']) ? $_POST['variable_title'] : [];
@@ -65,11 +67,35 @@ if (isset($_POST['submit'])) {
         $variable_price_tos = isset($_POST['variable_price_to']) ? $_POST['variable_price_to'] : [];
         $variable_prices = isset($_POST['variable_price']) ? $_POST['variable_price'] : [];
         
+        // Đảm bảo các mảng này không rỗng
         if (!empty($variable_titles)) {
             $title = $variable_titles[0];
             $price_from = !empty($variable_price_froms) ? floatval($variable_price_froms[0]) : 0;
             $price_to = !empty($variable_price_tos) ? floatval($variable_price_tos[0]) : 0;
             $price_value = !empty($variable_prices) ? floatval($variable_prices[0]) : 0;
+            
+            // Tạo mảng để lưu các dòng biến đổi
+            $variable_rows = [];
+            for ($i = 0; $i < count($variable_titles); $i++) {
+                if (!empty($variable_titles[$i])) {
+                    $variable_rows[] = [
+                        'title' => $variable_titles[$i],
+                        'price_from' => isset($variable_price_froms[$i]) ? floatval($variable_price_froms[$i]) : 0,
+                        'price_to' => isset($variable_price_tos[$i]) ? floatval($variable_price_tos[$i]) : 0,
+                        'price' => isset($variable_prices[$i]) ? floatval($variable_prices[$i]) : 0
+                    ];
+                }
+            }
+            
+            // Chuyển đổi thành chuỗi JSON
+            $variable_data = json_encode($variable_rows);
+        } else {
+            // Fallback nếu không có dữ liệu
+            $title = '';
+            $price_from = 0;
+            $price_to = 0;
+            $price_value = 0;
+            $variable_data = '[]'; // JSON array trống
         }
     }
 
@@ -79,7 +105,7 @@ if (isset($_POST['submit'])) {
             UPDATE pricelist 
             SET Name = '$name', TypeOfFee = '$type_of_fee', Title = '$title', 
                 PriceCalculation = '$price_calculation', PriceFrom = $price_from, 
-                PriceTo = $price_to, Price = $price_value, 
+                PriceTo = $price_to, Price = $price_value, VariableData = '$variable_data',
                 ApplyDate = '$apply_date'
             WHERE ID = '$price_id'
         ");
@@ -107,14 +133,62 @@ if (!empty($price['VariableData'])) {
     $variable_rows = json_decode($price['VariableData'], true);
 }
 
-// Nếu không có dữ liệu biến đổi hoặc là loại Cố định, sử dụng dữ liệu cơ bản
+// Nếu không có dữ liệu biến đổi và không phải loại Cố định, tạo dòng mặc định từ dữ liệu cơ bản
 if (empty($variable_rows) && $price['TypeOfFee'] != 'Cố định') {
     $variable_rows[] = [
-        'title' => $price['Title'],
-        'price_from' => $price['PriceFrom'],
-        'price_to' => $price['PriceTo'],
-        'price' => $price['Price']
+        'title' => $price['Title'] ?? '',
+        'price_from' => $price['PriceFrom'] ?? 0,
+        'price_to' => $price['PriceTo'] ?? 0,
+        'price' => $price['Price'] ?? 0
     ];
+}
+
+// Giả sử $price là bản ghi từ bảng pricelist
+$variable_data = json_decode($price['VariableData'], true);
+
+// Thêm dòng này trước dòng 146, ngay sau khi lấy $variable_data
+$value_to_calculate = isset($_GET['value']) ? floatval($_GET['value']) : 0; // Giá trị mặc định là 0
+
+// Tùy thuộc vào loại phí, xử lý tính toán
+if (isset($value_to_calculate) && $price['TypeOfFee'] == 'Lũy tiến') {
+    // Tính phí theo lũy tiến
+    $total_fee = 0;
+    $remaining_value = $value_to_calculate;
+    
+    if (!empty($variable_data)) {
+        foreach ($variable_data as $tier) {
+            if ($remaining_value <= 0) break;
+            
+            $tier_from = $tier['price_from'];
+            $tier_to = $tier['price_to'];
+            $tier_price = $tier['price'];
+            
+            $tier_value = min($remaining_value, $tier_to - $tier_from);
+            $tier_fee = $tier_value * $tier_price;
+            
+            $total_fee += $tier_fee;
+            $remaining_value -= $tier_value;
+        }
+    }
+} elseif (isset($value_to_calculate) && ($price['TypeOfFee'] == 'Nhân khẩu' || $price['TypeOfFee'] == 'Định mức')) {
+    // Tìm mức giá phù hợp dựa trên giá trị cần tính
+    $matched_tier = null;
+    
+    if (!empty($variable_data)) {
+        foreach ($variable_data as $tier) {
+            if ($value_to_calculate >= $tier['price_from'] && $value_to_calculate <= $tier['price_to']) {
+                $matched_tier = $tier;
+                break;
+            }
+        }
+    }
+    
+    if ($matched_tier) {
+        $total_fee = $value_to_calculate * $matched_tier['price'];
+    } else {
+        // Xử lý khi không tìm thấy mức phù hợp
+        $total_fee = 0;
+    }
 }
 ?>
 

@@ -75,8 +75,8 @@ if (isset($_POST['submit'])) {
         try {
             // Thêm mới vào bảng pricelist
             mysqli_query($conn, "
-                INSERT INTO pricelist (Code, Name, TypeOfFee, Title, PriceCalculation, PriceFrom, PriceTo, Price, ApplyDate, Status) 
-                VALUES ('$code', '$name', '$type_of_fee', '$title', '$calculation_method', $price_from, $price_to, $price, '$apply_date', '$status')
+                INSERT INTO pricelist (Code, Name, TypeOfFee, Title, PriceCalculation, PriceFrom, PriceTo, Price, VariableData, ApplyDate, Status) 
+                VALUES ('$code', '$name', '$type_of_fee', '$title', '$calculation_method', $price_from, $price_to, $price, '$variable_data', '$apply_date', '$status')
             ");
             
             $price_id = mysqli_insert_id($conn);
@@ -86,8 +86,8 @@ if (isset($_POST['submit'])) {
             
             $_SESSION['success_msg'] = 'Đã thêm bảng giá thành công!';
             header('location: price_list.php');
-        exit();
-    } catch (Exception $e) {
+            exit();
+        } catch (Exception $e) {
             $error = 'Đã xảy ra lỗi: ' . $e->getMessage();
         }
     }

@@ -291,7 +291,8 @@ CREATE TABLE `pricelist` (
   `PriceCalculation` varchar(100) DEFAULT NULL,
   `Title` varchar(255) DEFAULT NULL,
   `PriceFrom` int(11) DEFAULT NULL,
-  `PriceTo` int(11) DEFAULT NULL
+  `PriceTo` int(11) DEFAULT NULL,
+  `VariableData` TEXT DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 // thẻ phương tiện
