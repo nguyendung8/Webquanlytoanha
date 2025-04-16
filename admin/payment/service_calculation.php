@@ -104,7 +104,7 @@ if (isset($_POST['calculate_fee'])) {
             $total_amount = 0;
             $service_details = [];
             
-            // Trước khi tính toán, lấy danh sách dịch vụ trong hợp đồng
+            // Đơn giản hóa query, chỉ join các bảng cần thiết và điều kiện cơ bản
             $contract_services_query = "
                 SELECT 
                     s.ServiceCode,
@@ -116,14 +116,10 @@ if (isset($_POST['calculate_fee'])) {
                 INNER JOIN services s ON cs.ServiceId = s.ServiceCode
                 INNER JOIN ServicePrice sp ON s.ServiceCode = sp.ServiceId
                 INNER JOIN pricelist pl ON sp.PriceId = pl.ID
-                INNER JOIN Contracts c ON cs.ContractCode = c.ContractCode
-                WHERE c.Status = 'active'
-                AND s.Status = 'active'
-                AND cs.ApplyDate <= CURDATE()
-                AND (cs.EndDate IS NULL OR cs.EndDate >= CURDATE())
-                AND cs.ContractCode = '$contract_code'";
+                WHERE cs.ContractCode = '$contract_code'";
 
             $contract_services = mysqli_query($conn, $contract_services_query);
+
             $valid_services = [];
             
             while ($service = mysqli_fetch_assoc($contract_services)) {
@@ -133,29 +129,29 @@ if (isset($_POST['calculate_fee'])) {
             // Trong vòng lặp tính toán, chỉ tính các dịch vụ có trong hợp đồng
             foreach ($service_codes as $index => $service_code) {
                 if (isset($valid_services[$service_code])) {
-                    $unit_price = $prices[$index] ?? 0;
+                    $service = $valid_services[$service_code];
                     $discount = $discounts[$index] ?? 0;
                     $discount_reason = $discount_reasons[$index] ?? '';
-                    $quantity = 1; // Default quantity
-                    
-                    // Special handling for water and electricity
+                    $quantity = 1;
+
+                    // Kiểm tra loại dịch vụ
                     $service_info_query = mysqli_query($conn, "SELECT TypeOfService FROM services WHERE ServiceCode = '$service_code'");
                     $service_info = mysqli_fetch_assoc($service_info_query);
-                    
+
                     if ($service_info['TypeOfService'] == 'Nước') {
-                        // Get water consumption
-                        $water_query = mysqli_query($conn, "
+                        $water_query = "
                             SELECT Consumption
                             FROM WaterMeterReading
                             WHERE ApartmentID = '$apartment_id'
                             AND MONTH(ClosingDate) = '$invoice_period_month'
                             AND YEAR(ClosingDate) = '$invoice_period_year'
                             ORDER BY ClosingDate DESC
-                            LIMIT 1
-                        ");
+                            LIMIT 1";
                         
-                        if (mysqli_num_rows($water_query) > 0) {
-                            $water_info = mysqli_fetch_assoc($water_query);
+                        $water_result = mysqli_query($conn, $water_query);
+                        
+                        if (mysqli_num_rows($water_result) > 0) {
+                            $water_info = mysqli_fetch_assoc($water_result);
                             $quantity = $water_info['Consumption'];
                         }
                     } elseif ($service_info['TypeOfService'] == 'Điện') {
@@ -176,12 +172,48 @@ if (isset($_POST['calculate_fee'])) {
                         }
                     }
                     
-                    $amount = ($unit_price * $quantity) - $discount;
+                    // Lấy thông tin về loại phí và biến động giá
+                    $price_info_query = mysqli_query($conn, "
+                        SELECT pl.Price, pl.TypeOfFee, pl.VariableData
+                        FROM ServicePrice sp
+                        JOIN pricelist pl ON sp.PriceId = pl.ID
+                        WHERE sp.ServiceId = '$service_code'
+                    ");
+                    $price_info = mysqli_fetch_assoc($price_info_query);
+                    
+                    // Tính toán đơn giá dựa trên TypeOfFee
+                    $amount = 0;
+                    if ($price_info['TypeOfFee'] == 'Cố định') {
+                        $amount = $price_info['Price'] * $quantity;
+                    } else {
+                        // Với các loại phí: Lũy tiến, Nhân khẩu, Định mức
+                        $variable_data = json_decode($price_info['VariableData'], true);
+                        if ($variable_data) {
+                            foreach ($variable_data as $tier) {
+                                if ($quantity > $tier['price_from']) {
+                                    // Tính số lượng trong mức này
+                                    $tier_quantity = min(
+                                        $quantity - $tier['price_from'],
+                                        $tier['price_to'] - $tier['price_from']
+                                    );
+                                    $amount += $tier_quantity * $tier['price'];
+                                    
+                                    // Nếu số lượng không vượt quá mức này thì dừng
+                                    if ($quantity <= $tier['price_to']) {
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Trừ discount
+                    $amount = $amount - $discount;
                     $total_amount += $amount;
                     
                     $service_details[] = [
                         'service_code' => $service_code,
-                        'unit_price' => $unit_price,
+                        'unit_price' => $price_info['Price'], // giữ lại giá gốc để reference
                         'quantity' => $quantity,
                         'discount' => $discount,
                         'amount' => $amount
