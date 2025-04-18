@@ -2,32 +2,53 @@
 include 'database/DBController.php';
 session_start();
 
+// Sửa cách include Mailer.php
+$baseDir = __DIR__;
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/SMTP.php';
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/Exception.php';
+require_once $baseDir . '/admin/utils/Mailer.php';
+
+$message = '';
+$message_type = '';
+$success_message = '';
+
 if (isset($_POST['submit'])) {
     $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $current_password = mysqli_real_escape_string($conn, md5($_POST['current_password']));
-    $new_password = mysqli_real_escape_string($conn, $_POST['new_password']);
-    $confirm_password = mysqli_real_escape_string($conn, $_POST['confirm_password']);
-
-    // Kiểm tra email và mật khẩu hiện tại
-    $check_query = "SELECT * FROM `users` WHERE email = '$email' AND password = '$current_password'";
-    $check_result = mysqli_query($conn, $check_query) or die('Query failed');
+    
+    // Kiểm tra email có tồn tại trong hệ thống không
+    $check_query = "SELECT * FROM `users` WHERE email = '$email'";
+    $check_result = mysqli_query($conn, $check_query);
 
     if (mysqli_num_rows($check_result) > 0) {
-        // Kiểm tra mật khẩu mới và xác nhận mật khẩu
-        if ($new_password === $confirm_password) {
-            $hashed_password = md5($new_password);
-            $update_query = "UPDATE `users` SET password = '$hashed_password' WHERE email = '$email'";
+        // Lấy thông tin người dùng
+        $user_data = mysqli_fetch_assoc($check_result);
+        $fullname = $user_data['UserName'];
+        
+        // Đặt lại mật khẩu mặc định
+        $default_password = '123456';
+        $hashed_password = md5($default_password);
+        
+        // Cập nhật mật khẩu mới
+        $update_query = "UPDATE `users` SET password = '$hashed_password' WHERE email = '$email'";
+        
+        if (mysqli_query($conn, $update_query)) {
+            // Gửi email thông báo mật khẩu mới
+            $mailer = new Mailer();
+            $emailSent = $mailer->sendNewAccountEmail($fullname, $email, $default_password);
             
-            if (mysqli_query($conn, $update_query)) {
-                $success_message = 'Mật khẩu đã được cập nhật thành công!';
+            if ($emailSent) {
+                $success_message = 'Mật khẩu đã được đặt lại thành công và thông báo đã được gửi đến email của bạn';
             } else {
-                $message = 'Có lỗi xảy ra khi cập nhật mật khẩu!';
+                $success_message = 'Mật khẩu đã được đặt lại thành công nhưng không thể gửi email thông báo';
             }
         } else {
-            $message = 'Mật khẩu mới không khớp!';
+            $message = 'Có lỗi xảy ra khi cập nhật mật khẩu!';
+            $message_type = 'danger';
         }
     } else {
-        $message = 'Email hoặc mật khẩu hiện tại không chính xác!';
+        $message = 'Email không tồn tại trong hệ thống!';
+        $message_type = 'danger';
     }
 }
 ?>
@@ -192,13 +213,13 @@ if (isset($_POST['submit'])) {
     <div class="login-container">
         <div class="container">
             <div class="login-card">
-                <?php if (isset($message) && isset($_POST['submit'])) : ?>
+                <?php if ($message): ?>
                     <div class="error-message">
                         <?php echo $message; ?>
                     </div>
                 <?php endif; ?>
 
-                <?php if (isset($success_message)) : ?>
+                <?php if ($success_message): ?>
                     <div class="success-message">
                         <?php echo $success_message; ?>
                     </div>
@@ -206,7 +227,7 @@ if (isset($_POST['submit'])) {
 
                 <div class="login-header">
                     <img width="100px" src="/webquanlytoanha/assets/logo.png" alt="logo" class="logo-img">
-                    <div class="title-login">Đổi Mật Khẩu</div>
+                    <div class="title-login">Quên Mật Khẩu</div>
                 </div>
                 <div class="login-body">
                     <form action="" method="post">
@@ -219,38 +240,8 @@ if (isset($_POST['submit'])) {
                                        placeholder="Email của bạn" required>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <div class="input-group">
-                                <span class="input-group-text bg-transparent border-end-0">
-                                    <i class="fas fa-lock text-muted"></i>
-                                </span>
-                                <input type="password" name="current_password" class="form-control border-start-0" 
-                                       placeholder="Mật khẩu hiện tại" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <div class="input-group">
-                                <span class="input-group-text bg-transparent border-end-0">
-                                    <i class="fas fa-key text-muted"></i>
-                                </span>
-                                <input type="password" name="new_password" class="form-control border-start-0" 
-                                       placeholder="Mật khẩu mới" required>
-                            </div>
-                            <div class="password-requirements">
-                                Mật khẩu phải có ít nhất 6 ký tự
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <div class="input-group">
-                                <span class="input-group-text bg-transparent border-end-0">
-                                    <i class="fas fa-key text-muted"></i>
-                                </span>
-                                <input type="password" name="confirm_password" class="form-control border-start-0" 
-                                       placeholder="Xác nhận mật khẩu mới" required>
-                            </div>
-                        </div>
                         <button type="submit" name="submit" class="btn btn-login btn-success w-100">
-                            Đổi Mật Khẩu
+                            Đặt Lại Mật Khẩu
                         </button>
                     </form>
                     <div class="register-link">

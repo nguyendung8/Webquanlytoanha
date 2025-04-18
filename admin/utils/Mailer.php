@@ -2,9 +2,11 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require '../../vendor/phpmailer/phpmailer/src/PHPMailer.php';
-require '../../vendor/phpmailer/phpmailer/src/SMTP.php';
-require '../../vendor/phpmailer/phpmailer/src/Exception.php';
+// Sử dụng __DIR__ để xác định đường dẫn tuyệt đối
+$baseDir = dirname(dirname(__DIR__)); // Lấy thư mục gốc của dự án
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/PHPMailer.php';
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/SMTP.php';
+require_once $baseDir . '/vendor/phpmailer/phpmailer/src/Exception.php';
 
 class Mailer {
     private $mail;

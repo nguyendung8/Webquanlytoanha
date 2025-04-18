@@ -487,7 +487,7 @@ if(isset($_POST['update_township'])) {
                                     <td><?php echo $project['Address']; ?></td>
                                     <td><?php echo $project['Phone']; ?></td>
                                     <td><div class="project-description"><?php echo nl2br($project['Description']); ?></div></td>
-                                    <td><?php echo $project['ManagerName'] ? $project['ManagerName'] : 'N/A'; ?></td>
+                                    <td><?php echo $project['ManagerName'] ? $project['ManagerName'] : '--'; ?></td>
                                     <td>
                                         <label class="switch">
                                             <input type="checkbox" class="status-toggle" data-id="<?php echo $project['ProjectID']; ?>" <?php echo $is_active ? 'checked' : ''; ?>>

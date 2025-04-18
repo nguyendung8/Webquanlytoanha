@@ -23,17 +23,52 @@ if (isset($_POST['submit'])) {
     $address = mysqli_real_escape_string($conn, $_POST['address']);
     $projects = isset($_POST['projects']) ? $_POST['projects'] : [];
     
-    // Mật khẩu mặc định là 123456
-    $default_password = '123456';
-    $password = md5($default_password);
-    
+    // Validate trước khi xử lý
+    $has_error = false;
+    $message = [];
+
     // Kiểm tra email đã tồn tại chưa
-    $check_email = mysqli_query($conn, "SELECT * FROM `users` WHERE Email = '$email'") or die('Query failed');
-    
+    $check_email = mysqli_query($conn, "SELECT * FROM `users` WHERE Email = '$email'");
     if (mysqli_num_rows($check_email) > 0) {
+        $has_error = true;
         $message[] = 'Email đã tồn tại!';
-    } else {
-        // Bắt đầu transaction để đảm bảo tính toàn vẹn dữ liệu
+    }
+
+    // Nếu là Trưởng BQL, kiểm tra các dự án đã chọn có Trưởng BQL chưa
+    if ($position === 'Trưởng BQL') {
+        if (empty($projects)) {
+            $has_error = true;
+            $message[] = 'Vui lòng chọn ít nhất một dự án cho Trưởng BQL!';
+        } else {
+            $project_ids = implode(',', array_map(function($id) use ($conn) {
+                return mysqli_real_escape_string($conn, $id);
+            }, $projects));
+            
+            $check_manager = mysqli_query($conn, "
+                SELECT p.ProjectID, p.Name, s.Name as ManagerName
+                FROM Projects p
+                LEFT JOIN Staffs s ON p.ManagerId = s.ID
+                WHERE p.ProjectID IN ($project_ids) AND p.ManagerId != 0
+            ");
+            
+            if (mysqli_num_rows($check_manager) > 0) {
+                $has_error = true;
+                $conflicting_projects = [];
+                while ($row = mysqli_fetch_assoc($check_manager)) {
+                    $conflicting_projects[] = $row['Name'] . ' (Trưởng BQL hiện tại: ' . $row['ManagerName'] . ')';
+                }
+                $message[] = 'Các dự án sau đã có Trưởng BQL: <br>' . implode('<br>', $conflicting_projects);
+            }
+        }
+    }
+
+    // Nếu không có lỗi thì mới tiếp tục xử lý
+    if (!$has_error) {
+        // Mật khẩu mặc định là 123456
+        $default_password = '123456';
+        $password = md5($default_password);
+
+        // Bắt đầu transaction
         mysqli_begin_transaction($conn);
         
         try {
@@ -56,10 +91,20 @@ if (isset($_POST['submit'])) {
             // Thêm các dự án được chọn
             if (!empty($projects)) {
                 foreach ($projects as $project_id) {
+                    // Thêm vào StaffProjects
                     mysqli_query($conn, "
                         INSERT INTO StaffProjects (ProjectId, StaffId) 
                         VALUES ('$project_id', '$staff_id')
                     ") or throw new Exception('Không thể thêm dự án cho nhân viên: ' . mysqli_error($conn));
+
+                    // Nếu là Trưởng BQL, cập nhật ManagerId trong bảng Projects
+                    if ($position === 'Trưởng BQL') {
+                        mysqli_query($conn, "
+                            UPDATE Projects 
+                            SET ManagerId = '$staff_id' 
+                            WHERE ProjectID = '$project_id'
+                        ") or throw new Exception('Không thể cập nhật Trưởng BQL cho dự án: ' . mysqli_error($conn));
+                    }
                 }
             }
 
@@ -285,12 +330,12 @@ while ($row = mysqli_fetch_assoc($select_companies)) {
             <?php include '../admin_header.php'; ?>
         <div class="manage-container">
             <?php
-                if (isset($message)) {
+            if (isset($message) && !empty($message)) {
                 foreach ($message as $msg) {
                     echo '
-                        <div class="alert alert-info alert-dismissible fade show" role="alert">
-                        <span style="font-size: 16px;">' . $msg . '</span>
-                        <i style="font-size: 20px; cursor: pointer" class="fas fa-times" onclick="this.parentElement.remove();"></i>
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <div style="font-size: 16px;">' . $msg . '</div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>';
                 }
             }
